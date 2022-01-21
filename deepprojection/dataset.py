@@ -10,6 +10,7 @@ import psana
 
 # Load misc modules
 import numpy as np
+import random
 import json
 import csv
 import os
@@ -24,7 +25,6 @@ class SPIImageDataset(Dataset):
     needed for a successful data loading.  
     """
 
-    ## def __init__(self, exp, runs, mode, detector_name, drc_root):
     def __init__(self, fl_csv):
         """
         Args:
@@ -32,7 +32,7 @@ class SPIImageDataset(Dataset):
         """
         self.dataset_dict  = {}
         self.imglabel_list = []
-        self.psana_image_dict = {}
+        self.psana_imgreader_dict = {}
 
         # Read csv file of datasets
         with open(fl_csv, 'r') as fh:
@@ -50,11 +50,11 @@ class SPIImageDataset(Dataset):
                 basename = f"{exp}.{run}"
 
                 # Initiate image accessing layer
-                self.psana_image_dict[basename] = PsanaImage(exp, run, mode, detector_name)
+                self.psana_imgreader_dict[basename] = PsanaImage(exp, run, mode, detector_name)
 
                 # Obtain image labels from this dataset
-                imagelabel_fileparser       = ImageLabelFileParser(exp, run, drc_root)
-                self.dataset_dict[basename] = imagelabel_fileparser.imglabel_dict
+                imglabel_fileparser       = ImageLabelFileParser(exp, run, drc_root)
+                self.dataset_dict[basename] = imglabel_fileparser.imglabel_dict
 
         # Enumerate each image from all datasets
         for dataset_id, dataset_content in self.dataset_dict.items():
@@ -77,7 +77,7 @@ class SPIImageDataset(Dataset):
         print(f"Loading image {exp}.{run}.{event_num}...")
 
         basename = f"{exp}.{run}"
-        img = self.psana_image_dict[basename].get(int(event_num))
+        img = self.psana_imgreader_dict[basename].get(int(event_num))
 
         return img.reshape(-1), int(label)
 
@@ -88,9 +88,41 @@ class SPIImageDataset(Dataset):
         print(f"Loading image {exp}.{run}.{event_num}...")
 
         basename = f"{exp}.{run}"
-        img = self.psana_image_dict[basename].get(int(event_num))
+        img = self.psana_imgreader_dict[basename].get(int(event_num))
 
         return img.shape
+
+
+class SPIImageDatasetForSiamese(SPIImageDataset):
+    def __init__(self, fl_csv, size_sample, seed):
+        super().__init__(fl_csv)
+
+        self.num_stockimgs = len(self.imglabel_list)
+        self.size_sample = size_sample
+        self.seed = seed
+
+        return None
+
+    def __len__(self):
+        return self.size_sample
+
+    def __getitem__(self, idx):
+        if idx >= self.size_sample: raise IndexError("Index is larger than the size of samples.")
+
+        random.seed(self.seed)
+
+        # Randomly select two images
+        num_pool = range(self.num_stockimgs)
+        i1, i2 = random.sample(num_pool, 2)
+
+        # Read image data
+        img1, label1 = super().__getitem__(i1)
+        img2, label2 = super().__getitem__(i2)
+
+        # Compare their individual label and generate a new label
+        label = (label1 == label2)
+
+        return img1, img2, label
 
 
 class ImageLabelFileParser:
