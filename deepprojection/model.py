@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 
 
-class SPIImageEmbedding(nn.Module):
+class SPIImgEmbed(nn.Module):
     def __init__(self):
         super().__init__()
 
@@ -14,22 +14,33 @@ class SPIImageEmbedding(nn.Module):
             nn.Sigmoid()
         )
 
-    def encode(self, x):
+    def forward(self, x):
         x = self.conv(x)
 
         return x
 
 
-class Siamese(SPIImageEmbedding):
-    def __init__(self):
+class TripletLoss(nn.Module):
+    """ Embedding independent triplet loss. """
+    def __init__(self, alpha):
         super().__init__()
+        self.alpha = alpha
 
-    def forward(self, img1, img2):
-        img1_encoded = self.encode(img1)
-        img2_encoded = self.encode(img2)
+    def forward(self, img_anchor_embed, img_pos_embed, img_neg_embed):
+        ## # Encode images
+        ## img_anchor_embed = self.encode(img_anchor)
+        ## img_pos_embed    = self.encode(img_pos)
+        ## img_neg_embed    = self.encode(img_neg)
 
-        # Calculate the root mean square error (RMSE) between two images
-        img_diff = img1_encoded - img2_encoded
-        img_rmse = torch.sqrt( torch.mean(img_diff * img_diff) )
+        # Calculate the RMSD between anchor and positive
+        img_diff = img_anchor_embed - img_pos_embed
+        rmsd_anchor_pos = torch.sqrt( torch.mean(img_diff * img_diff) )
 
-        return img_rmse
+        # Calculate the RMSD between anchor and negative
+        img_diff = img_anchor_embed - img_neg_embed
+        rmsd_anchor_neg = torch.sqrt( torch.mean(img_diff * img_diff) )
+
+        # Calculate the triplet loss
+        loss_triplet = torch.max(rmsd_anchor_pos - rmsd_anchor_neg + alpha, 0)
+
+        return loss_triplet
