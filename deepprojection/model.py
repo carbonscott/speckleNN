@@ -14,6 +14,7 @@ class SPIImgEmbed(nn.Module):
             nn.Sigmoid()
         )
 
+
     def forward(self, x):
         x = self.conv(x)
 
@@ -25,6 +26,7 @@ class TripletLoss(nn.Module):
     def __init__(self, alpha):
         super().__init__()
         self.alpha = alpha
+
 
     def forward(self, img_anchor_embed, img_pos_embed, img_neg_embed):
         ## # Encode images
@@ -41,6 +43,6 @@ class TripletLoss(nn.Module):
         rmsd_anchor_neg = torch.sqrt( torch.mean(img_diff * img_diff) )
 
         # Calculate the triplet loss
-        loss_triplet = torch.max(rmsd_anchor_pos - rmsd_anchor_neg + alpha, 0)
+        loss_triplet = torch.max(rmsd_anchor_pos - rmsd_anchor_neg + self.alpha, 0)
 
-        return loss_triplet
+        return loss_triplet.mean()

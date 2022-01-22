@@ -147,7 +147,7 @@ class SPIImgDataset(SPIImg):
         img_pos, _ = super().__getitem__(id_pos)
         img_neg, _ = super().__getitem__(id_neg)
 
-        return img_anchor, img_pos, img_neg
+        return img_anchor, img_pos, img_neg, label_anchor
 
 
 class ImgLabelFileParser:
