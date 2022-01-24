@@ -4,7 +4,7 @@
 import torch
 import torch.nn as nn
 from deepprojection.dataset import SPIImgDataset, SiameseDataset
-from deepprojection.model   import Siamese, SiameseConfig
+from deepprojection.model   import SiameseModel, SiameseConfig
 from deepprojection.trainer import TrainerConfig, Trainer
 import matplotlib.pyplot as plt
 
@@ -23,7 +23,7 @@ spiimg = SPIImgDataset(fl_csv)
 size_y, size_x = spiimg.get_imagesize(0)
 
 config_siamese = SiameseConfig(alpha = 0.5, size_y = size_y, size_x = size_x)
-model = Siamese(config_siamese)
+model = SiameseModel(config_siamese)
 model.apply(init_weights)
 
 config_train = TrainerConfig( checkpoint_path = None,

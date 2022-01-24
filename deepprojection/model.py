@@ -38,7 +38,7 @@ class SPIImgEncoder(nn.Module):
         return x
 
 
-class Siamese(nn.Module):
+class SiameseModel(nn.Module):
     """ Embedding independent triplet loss. """
 
     def __init__(self, config):
