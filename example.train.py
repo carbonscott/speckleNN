@@ -3,8 +3,8 @@
 
 import torch
 import torch.nn as nn
-from deepprojection.dataset import SPIImgDataset
-from deepprojection.model   import SPIImgEmbed
+from deepprojection.dataset import SPIImg, SPIImgDataset
+from deepprojection.model   import Siamese
 from deepprojection.trainer import TrainerConfig, Trainer
 import matplotlib.pyplot as plt
 
@@ -38,11 +38,17 @@ def init_weights(module):
         module.weight.data.normal_(mean = 0.0, std = 0.02)
 
 fl_csv = 'datasets.csv'
-size_sample = 20
+size_sample = 100
 seed = 4
 dataset_train = SPIImgDataset(fl_csv, size_sample, seed)
 
-model = SPIImgEmbed()
+# Get image size
+spiimg = SPIImg(fl_csv)
+size_y, size_x = spiimg.get_imagesize(0)
+size_img = size_y * size_x
+
+alpha = 0.5
+model = Siamese(alpha, size_img)
 model.apply(init_weights)
 
 config_train = TrainerConfig( checkpoint_path = None,

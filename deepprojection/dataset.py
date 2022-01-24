@@ -74,7 +74,7 @@ class SPIImg(Dataset):
     def __getitem__(self, idx):
         exp, run, event_num, label = self.imglabel_list[idx]
 
-        print(f"Loading image {exp}.{run}.{event_num}...")
+        ## print(f"Loading image {exp}.{run}.{event_num}...")
 
         basename = f"{exp}.{run}"
         img = self.psana_imgreader_dict[basename].get(int(event_num))
@@ -85,7 +85,7 @@ class SPIImg(Dataset):
     def get_imagesize(self, idx):
         exp, run, event_num, label = self.imglabel_list[idx]
 
-        print(f"Loading image {exp}.{run}.{event_num}...")
+        ## print(f"Loading image {exp}.{run}.{event_num}...")
 
         basename = f"{exp}.{run}"
         img = self.psana_imgreader_dict[basename].get(int(event_num))
