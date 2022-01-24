@@ -53,7 +53,7 @@ class Trainer:
         # Load model and training configuration
         model, config_train = self.model, self.config_train
         model_raw           = model.module if hasattr(model, "module") else model
-        optimizer           = model_raw.configure_optimizers()
+        optimizer           = model_raw.configure_optimizers(config_train)
 
         # Train each epoch
         for epoch in tqdm.tqdm(range(config_train.max_epochs)):

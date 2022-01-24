@@ -42,7 +42,7 @@ class Siamese(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.alpha     = config.alpha
-        size_y, size_x = config.size_y, config_size_x
+        size_y, size_x = config.size_y, config.size_x
         dim_emb        = config.dim_emb
         isbias         = config.isbias
 
