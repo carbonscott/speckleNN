@@ -3,7 +3,7 @@
 
 import torch
 import torch.nn as nn
-from deepprojection.dataset import SPIImg, SPIImgDataset
+from deepprojection.dataset import SPIImgDataset, SiameseDataset
 from deepprojection.model   import Siamese
 from deepprojection.trainer import TrainerConfig, Trainer
 import matplotlib.pyplot as plt
@@ -40,10 +40,10 @@ def init_weights(module):
 fl_csv = 'datasets.csv'
 size_sample = 100
 seed = 4
-dataset_train = SPIImgDataset(fl_csv, size_sample, seed)
+dataset_train = SiameseDataset(fl_csv, size_sample, seed)
 
 # Get image size
-spiimg = SPIImg(fl_csv)
+spiimg = SPIImgDataset(fl_csv)
 size_y, size_x = spiimg.get_imagesize(0)
 size_img = size_y * size_x
 

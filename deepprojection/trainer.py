@@ -26,11 +26,11 @@ class TrainerConfig:
 
 
 class Trainer:
-    def __init__(self, model, dataset_train, dataset_test, config):
+    def __init__(self, model, dataset_train, dataset_test, config_train):
         self.model         = model
         self.dataset_train = dataset_train
         self.dataset_test  = dataset_test
-        self.config        = config
+        self.config_train  = config_train
 
         # Load data to gpus if available
         self.device = 'cpu'
@@ -43,45 +43,41 @@ class Trainer:
 
     def save_checkpoint(self):
         model_raw = self.model.module if hasattr(self.model, "module") else self.model
-        logger.info(f"Saving {self.config.checkpoint_path}")
-        torch.save(model_raw.state_dict(), self.config.checkpoint_path)
-
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.model.parameters(), lr = self.config.lr)
-
-        return optimizer
+        logger.info(f"Saving {self.config_train.checkpoint_path}")
+        torch.save(model_raw.state_dict(), self.config_train.checkpoint_path)
 
 
     def train(self):
-        model, config = self.model, self.config
-        model_raw = model.module if hasattr(model, "module") else model
-        optimizer = self.configure_optimizers()
+        """ The training loop.  """
 
-        for epoch in tqdm.tqdm(range(config.max_epochs)):
+        # Load model and training configuration
+        model, config_train = self.model, self.config_train
+        model_raw           = model.module if hasattr(model, "module") else model
+        optimizer           = model_raw.configure_optimizers()
+
+        # Train each epoch
+        for epoch in tqdm.tqdm(range(config_train.max_epochs)):
             model.train()
             dataset_train = self.dataset_train
-            loader_train = DataLoader( dataset_train, shuffle = True, 
-                                                      pin_memory = True, 
-                                                      batch_size = config.batch_size,
-                                                      num_workers = config.num_workers )
+            loader_train = DataLoader( dataset_train, shuffle     = True, 
+                                                      pin_memory  = True, 
+                                                      batch_size  = config_train.batch_size,
+                                                      num_workers = config_train.num_workers )
             losses = []
-            progbar = tqdm.tqdm(enumerate(loader_train), total = len(loader_train))
-            for step_id, (img_anchor, img_pos, img_neg, label_anchor) in progbar:
+
+            # Train each batch
+            batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train))
+            for step_id, (img_anchor, img_pos, img_neg, label_anchor) in batch:
                 img_anchor = img_anchor.to(self.device)
                 img_pos    = img_pos.to(self.device)
                 img_neg    = img_neg.to(self.device)
 
                 optimizer.zero_grad()
-                ## img_anchor_embed = model(img_anchor)
-                ## img_pos_embed    = model(img_pos)
-                ## img_neg_embed    = model(img_neg)
 
-                ## loss = tripletloss(img_anchor_embed, img_pos_embed, img_neg_embed)
                 loss = self.model.forward(img_anchor, img_pos, img_neg)
                 loss.backward()
                 optimizer.step()
 
                 losses.append(loss.cpu().detach().numpy())
 
-            print(f"Epoch: {epoch + 1}/{config.max_epochs} - Loss: {np.mean(loss.cpu().detach().numpy()):.4f}")
+            print(f"Epoch: {epoch + 1}/{config_train.max_epochs} - Loss: {np.mean(loss.cpu().detach().numpy()):.4f}")
