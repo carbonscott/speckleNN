@@ -24,8 +24,10 @@ class SPIImgEncoder(nn.Module):
         super().__init__()
 
         self.conv = nn.Sequential(
-            nn.Linear(dim_img, dim_emb, isbias),
-            nn.ReLU(inplace = True),
+            nn.Linear( in_features  = dim_img, 
+                       out_features = dim_emb, 
+                       bias         = isbias),
+            nn.ReLU(),
             nn.Sigmoid()
         )
 
@@ -67,11 +69,12 @@ class Siamese(nn.Module):
         # Calculate the triplet loss
         loss_triplet = max(rmsd_anchor_pos - rmsd_anchor_neg + self.alpha, 0)
 
-        return loss_triplet
+        return img_anchor_embed, img_pos_embed, img_neg_embed, loss_triplet
 
 
     def configure_optimizers(self, config_train):
         optimizer = torch.optim.Adam(self.encoder.parameters(), lr = config_train.lr)
+        ## optimizer = torch.optim.SGD(self.encoder.parameters(), lr = config_train.lr)
 
         return optimizer
 

@@ -17,7 +17,10 @@ import os
 
 
 class SPIImgDataset(Dataset):
-    """ SPI image accessing layer through `psana`.  """
+    """
+    SPI images are collected from multiple datasets specified in the input csv
+    file. All images are organized in a plain list.  
+    """
 
     def __init__(self, fl_csv):
         """
@@ -72,7 +75,6 @@ class SPIImgDataset(Dataset):
 
         ## print(f"Loading image {exp}.{run}.{event_num}...")
 
-        ## basename = f"{exp}.{run}"
         basename = (exp, run)
         img = self.psana_imgreader_dict[basename].get(int(event_num))
 
@@ -84,7 +86,6 @@ class SPIImgDataset(Dataset):
 
         ## print(f"Loading image {exp}.{run}.{event_num}...")
 
-        ## basename = f"{exp}.{run}"
         basename = (exp, run)
         img = self.psana_imgreader_dict[basename].get(int(event_num))
 
@@ -101,18 +102,20 @@ class SiameseDataset(SPIImgDataset):
     selecting a positive and negative, respectively.
     """
 
-    def __init__(self, fl_csv, size_sample, seed):
+    def __init__(self, fl_csv, size_sample, debug = False):
         super().__init__(fl_csv)
 
         self.num_stockimgs = len(self.imglabel_list)
         self.size_sample   = size_sample
-        self.seed          = seed
+        self.debug         = debug
 
         # Create a lookup table for locating the sequence number (seqi) based on a label
         self.label_seqi_dict = {}
         for seqi, (_, _, _, label) in enumerate(self.imglabel_list):
             if not label in self.label_seqi_dict: self.label_seqi_dict[label] = [seqi]
             else: self.label_seqi_dict[label].append(seqi)
+
+        self.triplets = self._form_tripets()
 
         return None
 
@@ -122,35 +125,53 @@ class SiameseDataset(SPIImgDataset):
 
 
     def __getitem__(self, idx):
-        if idx >= self.size_sample: raise IndexError("Index is larger than the size of samples.")
+        id_anchor, id_pos, id_neg = self.triplets[idx]
 
-        random.seed(self.seed)
-
-        # Randomly select an anchor
-        anchor_bucket = range(self.num_stockimgs)
-        id_anchor     = random.sample(anchor_bucket, 1)[0]
-
-        # Read the anchor image
+        # Read the anchor, pos, neg
         img_anchor, label_anchor = super().__getitem__(id_anchor)
-
-        # Create buckets of positives according to the anchor
-        pos_bucket = self.label_seqi_dict[label_anchor]
-
-        # Create buckets of negatives according to the anchor
-        neg_bucket = []
-        for label, ids in self.label_seqi_dict.items(): 
-            if label == label_anchor: continue
-            neg_bucket += ids
-
-        # Randomly sample one positive and one negative
-        id_pos = random.sample(pos_bucket, 1)[0]
-        id_neg = random.sample(neg_bucket, 1)[0]
-
-        # Read positive and negative images
         img_pos, _ = super().__getitem__(id_pos)
         img_neg, _ = super().__getitem__(id_neg)
 
-        return img_anchor, img_pos, img_neg, label_anchor
+        res = img_anchor, img_pos, img_neg, label_anchor
+
+        if self.debug: 
+            # Append (exp, run, event_num, label) to the result
+            for i in (id_anchor, id_pos, id_neg): 
+                title = [ str(j) for j in self.imglabel_list[i] ]
+                res += (' '.join(title), )
+
+        return res
+
+
+    def _form_tripets(self):
+        """ Creating `size_sample` tripets of id_anchor, id_pos, id_neg"""
+        # Randomly select an anchor `size_sample` times
+        size_sample   = self.size_sample
+        anchor_bucket = range(self.num_stockimgs)
+        ids_anchor    = random.choices(anchor_bucket, k = size_sample)
+
+        # Collection of triplets
+        triplets = []
+        for id_anchor in ids_anchor:
+            # Fetch the anchor label
+            _, _, _, label_anchor = self.imglabel_list[id_anchor]
+
+            # Create buckets of positives according to the anchor
+            pos_bucket = self.label_seqi_dict[label_anchor]
+
+            # Create buckets of negatives according to the anchor
+            neg_bucket = []
+            for label, ids in self.label_seqi_dict.items(): 
+                if label == label_anchor: continue
+                neg_bucket += ids
+
+            # Randomly sample one positive and one negative
+            id_pos = random.sample(pos_bucket, 1)[0]
+            id_neg = random.sample(neg_bucket, 1)[0]
+
+            triplets.append( (id_anchor, id_pos, id_neg) )
+
+        return triplets
 
 
 

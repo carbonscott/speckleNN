@@ -18,6 +18,7 @@ class TrainerConfig:
     batch_size      = 64
     max_epochs      = 10
     lr              = 0.001
+    debug           = False
 
     def __init__(self, **kwargs):
         # Set values of attributes that are not known when obj is created
@@ -55,6 +56,9 @@ class Trainer:
         model_raw           = model.module if hasattr(model, "module") else model
         optimizer           = model_raw.configure_optimizers(config_train)
 
+        # Debug on???
+        debug = self.config_train.debug
+
         # Train each epoch
         for epoch in tqdm.tqdm(range(config_train.max_epochs)):
             model.train()
@@ -67,17 +71,30 @@ class Trainer:
 
             # Train each batch
             batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train))
-            for step_id, (img_anchor, img_pos, img_neg, label_anchor) in batch:
+            for step_id, entry in batch:
+                if debug: 
+                    img_anchor, img_pos, img_neg, label_anchor, \
+                    title_anchor, title_pos, title_neg = entry
+
+                    for i in range(len(label_anchor)):
+                        print(f"Processing {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}...")
+                else: 
+                    img_anchor, img_pos, img_neg, label_anchor = entry
+
                 img_anchor = img_anchor.to(self.device)
                 img_pos    = img_pos.to(self.device)
                 img_neg    = img_neg.to(self.device)
 
+                ## print(f"{step_id:04d}, {img_anchor.shape}.")
+
                 optimizer.zero_grad()
 
-                loss = self.model.forward(img_anchor, img_pos, img_neg)
+                _, _, _, loss = self.model.forward(img_anchor, img_pos, img_neg)
                 loss.backward()
                 optimizer.step()
 
                 losses.append(loss.cpu().detach().numpy())
+
+                print(f"Batch loss: {np.mean(loss.cpu().detach().numpy()):.4f}")
 
             print(f"Epoch: {epoch + 1}/{config_train.max_epochs} - Loss: {np.mean(loss.cpu().detach().numpy()):.4f}")
