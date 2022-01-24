@@ -16,14 +16,8 @@ import csv
 import os
 
 
-class SPIImg(Dataset):
-    """
-    Single particle imaging (SPI) dataset.
-
-    It loads SPI images and labels for machine learning with PyTorch, hence a
-    data loader.  A label file, which contains the label of every image , is
-    needed for a successful data loading.  
-    """
+class SPIImgDataset(Dataset):
+    """ SPI image accessing layer through `psana`.  """
 
     def __init__(self, fl_csv):
         """
@@ -47,19 +41,21 @@ class SPIImg(Dataset):
                 exp, run, mode, detector_name, drc_root = line
 
                 # Form a minimal basename to describe a dataset
-                basename = f"{exp}.{run}"
+                ## basename = f"{exp}.{run}"
+                basename = (exp, run)
 
                 # Initiate image accessing layer
                 self.psana_imgreader_dict[basename] = PsanaImg(exp, run, mode, detector_name)
 
                 # Obtain image labels from this dataset
-                imglabel_fileparser       = ImgLabelFileParser(exp, run, drc_root)
+                imglabel_fileparser         = ImgLabelFileParser(exp, run, drc_root)
                 self.dataset_dict[basename] = imglabel_fileparser.imglabel_dict
 
         # Enumerate each image from all datasets
         for dataset_id, dataset_content in self.dataset_dict.items():
             # Get the exp and run
-            exp, run = dataset_id.split(".")
+            ## exp, run = dataset_id.split(".")
+            exp, run = dataset_id
 
             for event_num, label in dataset_content.items():
                 self.imglabel_list.append( (exp, run, int(event_num), int(label)) )
@@ -76,7 +72,8 @@ class SPIImg(Dataset):
 
         ## print(f"Loading image {exp}.{run}.{event_num}...")
 
-        basename = f"{exp}.{run}"
+        ## basename = f"{exp}.{run}"
+        basename = (exp, run)
         img = self.psana_imgreader_dict[basename].get(int(event_num))
 
         return img.reshape(-1), int(label)
@@ -87,27 +84,31 @@ class SPIImg(Dataset):
 
         ## print(f"Loading image {exp}.{run}.{event_num}...")
 
-        basename = f"{exp}.{run}"
+        ## basename = f"{exp}.{run}"
+        basename = (exp, run)
         img = self.psana_imgreader_dict[basename].get(int(event_num))
 
         return img.shape
 
 
-class SPIImgDataset(SPIImg):
+
+
+class SiameseDataset(SPIImgDataset):
     """
     Siamese requires an input of three images at a time, namely anchor,
     positive, and negative.  This dataset will create such triplet
     automatically by randomly choosing an anchor followed up by randomly
     selecting a positive and negative, respectively.
     """
+
     def __init__(self, fl_csv, size_sample, seed):
         super().__init__(fl_csv)
 
         self.num_stockimgs = len(self.imglabel_list)
-        self.size_sample = size_sample
-        self.seed = seed
+        self.size_sample   = size_sample
+        self.seed          = seed
 
-        # Create a lookup table for sequence number (seqi) based on label
+        # Create a lookup table for locating the sequence number (seqi) based on a label
         self.label_seqi_dict = {}
         for seqi, (_, _, _, label) in enumerate(self.imglabel_list):
             if not label in self.label_seqi_dict: self.label_seqi_dict[label] = [seqi]
@@ -115,8 +116,10 @@ class SPIImgDataset(SPIImg):
 
         return None
 
+
     def __len__(self):
         return self.size_sample
+
 
     def __getitem__(self, idx):
         if idx >= self.size_sample: raise IndexError("Index is larger than the size of samples.")
@@ -150,6 +153,8 @@ class SPIImgDataset(SPIImg):
         return img_anchor, img_pos, img_neg, label_anchor
 
 
+
+
 class ImgLabelFileParser:
     """
     It parses a label file associated with a run in an experiment.  The label 
@@ -160,10 +165,10 @@ class ImgLabelFileParser:
     """
 
     def __init__(self, exp, run, drc_root):
-        self.exp                   = exp
-        self.run                   = run
-        self.drc_root              = drc_root
-        self.path_labelfile        = ""
+        self.exp                = exp
+        self.run                = run
+        self.drc_root           = drc_root
+        self.path_labelfile     = ""
         self.imglabel_dict = {}
 
         # Initialize indexed image label
@@ -211,6 +216,8 @@ class ImgLabelFileParser:
             print(f"File doesn't exist!!! Missing {self.path_labelfile}.")
 
         return None
+
+
 
 
 class PsanaImg:
