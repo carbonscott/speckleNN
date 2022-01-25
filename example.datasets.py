@@ -110,7 +110,7 @@ def init_weights(module):
         module.weight.data.normal_(mean = 0.5, std = 0.02)
 
 fl_csv = 'datasets.csv'
-size_sample = 1000
+size_sample = 21000
 debug = True
 dataset_train = SiameseDataset(fl_csv, size_sample, debug = debug)
 
@@ -121,7 +121,7 @@ size_y, size_x = spiimg.get_imagesize(0)
 config_train = TrainerConfig( checkpoint_path = None,
                               num_workers     = 1,    # Visualization purpose
                               batch_size      = 1,
-                              max_epochs      = 4,
+                              max_epochs      = 1,
                               lr              = 0.0001, )
 
 # Load siamese model

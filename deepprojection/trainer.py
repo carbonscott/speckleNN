@@ -4,7 +4,6 @@
 import logging
 
 import torch
-import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
 import tqdm
 import numpy as np
@@ -13,12 +12,12 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 class TrainerConfig:
-    checkpoint_path = None
-    num_workers     = 4
-    batch_size      = 64
-    max_epochs      = 10
-    lr              = 0.001
-    debug           = False
+    path_chkpt  = None
+    num_workers = 4
+    batch_size  = 64
+    max_epochs  = 10
+    lr          = 0.001
+    debug       = False
 
     def __init__(self, **kwargs):
         # Set values of attributes that are not known when obj is created
@@ -27,10 +26,9 @@ class TrainerConfig:
 
 
 class Trainer:
-    def __init__(self, model, dataset_train, dataset_test, config_train):
+    def __init__(self, model, dataset_train, config_train):
         self.model         = model
         self.dataset_train = dataset_train
-        self.dataset_test  = dataset_test
         self.config_train  = config_train
 
         # Load data to gpus if available
@@ -43,9 +41,10 @@ class Trainer:
 
 
     def save_checkpoint(self):
-        model_raw = self.model.module if hasattr(self.model, "module") else self.model
-        logger.info(f"Saving {self.config_train.checkpoint_path}")
-        torch.save(model_raw.state_dict(), self.config_train.checkpoint_path)
+        # Hmmm, DataParallel wrappers keep raw model object in .module attribute
+        model = self.model.module if hasattr(self.model, "module") else self.model
+        logger.info(f"Saving {self.config_train.path_chkpt}")
+        torch.save(model.state_dict(), self.config_train.path_chkpt)
 
 
     def train(self):
@@ -98,3 +97,6 @@ class Trainer:
                 print(f"Batch loss: {np.mean(loss.cpu().detach().numpy()):.4f}")
 
             print(f"Epoch: {epoch + 1}/{config_train.max_epochs} - Loss: {np.mean(loss.cpu().detach().numpy()):.4f}")
+
+            # Save the model state
+            self.save_checkpoint()
