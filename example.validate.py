@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import logging
+logging.basicConfig( format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+                     datefmt="%m/%d/%Y %H:%M:%S",
+                     level=logging.INFO, )
+
 import torch
 from deepprojection.dataset import SPIImgDataset, SiameseDataset
 from deepprojection.model   import SiameseModel, SiameseConfig

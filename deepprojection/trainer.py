@@ -8,7 +8,6 @@ from torch.utils.data.dataloader import DataLoader
 import tqdm
 import numpy as np
 
-
 logger = logging.getLogger(__name__)
 
 class TrainerConfig:
@@ -76,15 +75,14 @@ class Trainer:
                     title_anchor, title_pos, title_neg = entry
 
                     for i in range(len(label_anchor)):
-                        print(f"Processing {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}...")
+                        ## print(f"Processing {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}...")
+                        logger.info(f"Processing {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}...")
                 else: 
                     img_anchor, img_pos, img_neg, label_anchor = entry
 
                 img_anchor = img_anchor.to(self.device)
                 img_pos    = img_pos.to(self.device)
                 img_neg    = img_neg.to(self.device)
-
-                ## print(f"{step_id:04d}, {img_anchor.shape}.")
 
                 optimizer.zero_grad()
 
@@ -94,9 +92,9 @@ class Trainer:
 
                 losses.append(loss.cpu().detach().numpy())
 
-                print(f"Batch loss: {np.mean(loss.cpu().detach().numpy()):.4f}")
+                logger.info(f"Epoch {epoch:d}, batch {step_id:d}, loss {np.mean(loss.cpu().detach().numpy()):.4f}.")
 
-            print(f"Epoch: {epoch + 1}/{config_train.max_epochs} - Loss: {np.mean(loss.cpu().detach().numpy()):.4f}")
+            ## print(f"Epoch: {epoch + 1}/{config_train.max_epochs} - Loss: {np.mean(loss.cpu().detach().numpy()):.4f}")
 
             # Save the model state
             self.save_checkpoint()

@@ -3,11 +3,14 @@
 
 '''
 Check if dataset class Siamese produces the expected outcomes.
-
 '''
 
+import logging
+logging.basicConfig( format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+                     datefmt="%m/%d/%Y %H:%M:%S",
+                     level=logging.INFO, )
+
 import torch
-import torch.nn as nn
 from deepprojection.dataset import SPIImgDataset, SiameseDataset
 from deepprojection.model   import SiameseModel, SiameseConfig
 from deepprojection.trainer import TrainerConfig, Trainer
@@ -106,7 +109,7 @@ class VizSiameseOutput:
 
 
 def init_weights(module):
-    if isinstance(module, nn.Embedding):
+    if isinstance(module, torch.nn.Embedding):
         module.weight.data.normal_(mean = 0.5, std = 0.02)
 
 fl_csv = 'datasets.csv'
