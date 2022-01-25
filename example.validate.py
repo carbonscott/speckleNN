@@ -27,11 +27,11 @@ model = SiameseModel(config_siamese)
 drc_cwd = os.getcwd()
 path_chkpt = os.path.join(drc_cwd, "trained_model.chkpt")
 config_test = ValidatorConfig( path_chkpt  = path_chkpt,
-                              num_workers   = 1,
-                              batch_size    = 20,
-                              max_epochs    = 1,
-                              lr            = 0.001, 
-                              debug         = debug, )
+                               num_workers   = 1,
+                               batch_size    = 20,
+                               max_epochs    = 1,
+                               lr            = 0.001, 
+                               debug         = debug, )
 
 tester = Validator(model, dataset_test, config_test)
 tester.test()
