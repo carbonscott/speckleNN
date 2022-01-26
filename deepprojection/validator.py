@@ -70,7 +70,7 @@ class Validator:
                     title_anchor, title_pos, title_neg = entry
 
                     for i in range(len(label_anchor)):
-                        print(f"Processing {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}...")
+                        logger.info(f"Processing {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}...")
                 else: 
                     img_anchor, img_pos, img_neg, label_anchor = entry
 
@@ -85,6 +85,6 @@ class Validator:
                     _, _, _, loss = self.model.forward(img_anchor, img_pos, img_neg)
                     losses.append(loss.cpu().detach().numpy())
 
-                print(f"Batch loss: {np.mean(loss.cpu().detach().numpy()):.4f}")
+                logger.info(f"Epoch {epoch:d}, batch {step_id:d}, loss {np.mean(loss.cpu().detach().numpy()):.4f}.")
 
-            print(f"Epoch: {epoch + 1}/{config_test.max_epochs} - Loss: {np.mean(loss.cpu().detach().numpy()):.4f}")
+            ## print(f"Epoch: {epoch + 1}/{config_test.max_epochs} - Loss: {np.mean(loss.cpu().detach().numpy()):.4f}")

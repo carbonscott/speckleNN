@@ -4,9 +4,9 @@
 import os
 import logging
 import torch
-from deepprojection.dataset import SPIImgDataset, SiameseDataset
-from deepprojection.model   import SiameseModel, SiameseConfig
-from deepprojection.trainer import TrainerConfig, Trainer
+from deepprojection.datasets.simulated import SiameseDataset
+from deepprojection.model              import SiameseModel, SiameseConfig
+from deepprojection.trainer            import TrainerConfig, Trainer
 
 logging.basicConfig( filename = f"{__file__[:__file__.rfind('.py')]}.log",
                      filemode = 'w',
@@ -20,28 +20,26 @@ def init_weights(module):
         ## print(module)
         module.weight.data.normal_(mean = 0.0, std = 0.02)
 
-fl_csv = 'datasets.csv'
-size_sample = 500
+size_sample = 1000
 debug = True
-dataset_train = SiameseDataset(fl_csv, size_sample, debug = debug)
+dataset_train = SiameseDataset(size_sample, debug = debug)
 
-# Get image size
-spiimg = SPIImgDataset(fl_csv)
-size_y, size_x = spiimg.get_imagesize(0)
+# This metadata is hand-coded for quick verification
+size_y, size_x = 128, 128
 
 # Try different margin (alpha) for Siamese net
-for i, alpha in enumerate((1.0, 0.8, 0.6, 0.4, 0.2, 0.1, 0.05)):
+for i, alpha in enumerate((10,)):
     config_siamese = SiameseConfig(alpha = alpha, size_y = size_y, size_x = size_x)
     model = SiameseModel(config_siamese)
     model.apply(init_weights)
 
     drc_cwd = os.getcwd()
-    path_chkpt = os.path.join(drc_cwd, f"trained_model.{i:02d}.chkpt")
+    path_chkpt = os.path.join(drc_cwd, f"simulated.trained_model.{i:02d}.chkpt")
     logger.info(f"alpha = {alpha}, checkpoint = trained_model.{i:02d}.chkpt.")
     config_train = TrainerConfig( path_chkpt  = path_chkpt,
                                   num_workers = 1,
-                                  batch_size  = 100,
-                                  max_epochs  = 4,
+                                  batch_size  = 200,
+                                  max_epochs  = 20,
                                   lr          = 0.001, 
                                   debug       = debug, )
 
