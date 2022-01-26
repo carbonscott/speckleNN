@@ -28,8 +28,14 @@ class SPIImgEncoder(nn.Module):
                        out_features = dim_emb, 
                        bias         = isbias),
             nn.ReLU(),
+            nn.Linear( in_features  = dim_emb, 
+                       out_features = dim_emb, 
+                       bias         = isbias),
             nn.Sigmoid()
         )
+
+        ## print(self.conv)
+        ## print(sum(p.numel() for p in self.conv.parameters()))
 
 
     def encode(self, x):
@@ -66,8 +72,8 @@ class SiameseModel(nn.Module):
         img_diff = img_anchor_embed - img_neg_embed
         rmsd_anchor_neg = torch.sqrt( torch.mean(img_diff * img_diff) )
 
-        # Calculate the triplet loss
-        loss_triplet = max(rmsd_anchor_pos - rmsd_anchor_neg + self.alpha, 0)
+        # Calculate the triplet loss, relu is another implementation of max(a, b)
+        loss_triplet = torch.relu(rmsd_anchor_pos - rmsd_anchor_neg + self.alpha)
 
         return img_anchor_embed, img_pos_embed, img_neg_embed, loss_triplet
 
