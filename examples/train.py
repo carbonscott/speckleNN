@@ -22,8 +22,9 @@ drc_cwd = os.getcwd()
 
 # Set up the log file...
 fl_log         = f"train.{timestamp}.log"
-prefixpath_log = "results.train"
-path_log       = os.path.join(drc_cwd, prefixpath_log, fl_log)
+prefixpath_log = os.path.join(drc_cwd, "results.train")
+if not os.path.exists(prefixpath_log): os.makedirs(prefixpath_log)
+path_log = os.path.join(prefixpath_log, fl_log)
 
 # Config logging behaviors
 logging.basicConfig( filename = path_log,
@@ -52,7 +53,8 @@ spiimg = SPIImgDataset(config_dataset)
 size_y, size_x = spiimg.get_imagesize(0)
 
 # Try different margin (alpha) for Siamese net...
-prefixpath_chkpt = "chkpts.train"
+prefixpath_chkpt = os.path.join(drc_cwd, "chkpts.train")
+if not os.path.exists(prefixpath_chkpt): os.makedirs(prefixpath_chkpt)
 for i, alpha in enumerate((1.0, )):
     # Config the model...
     config_siamese = ConfigSiameseModel(alpha = alpha, dim_emb = 32, size_y = size_y, size_x = size_x)
@@ -62,8 +64,8 @@ for i, alpha in enumerate((1.0, )):
     model.apply(init_weights)
 
     # Config the trainer...
-    fl_chkpt = f"trained_model.{i:02d}.chkpt"
-    path_chkpt = os.path.join(drc_cwd, prefixpath_chkpt, fl_chkpt)
+    fl_chkpt = f"train.{timestamp}.{i:02d}.chkpt"
+    path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
     config_train = ConfigTrainer( path_chkpt  = path_chkpt,
                                   num_workers = 1,
                                   batch_size  = 100,
