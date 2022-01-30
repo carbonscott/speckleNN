@@ -16,7 +16,24 @@ import json
 import csv
 import os
 
+import logging
+
 from .utils import downsample
+
+logger = logging.getLogger(__name__)
+
+class ConfigDataset:
+    ''' Biolerplate code to config dataset classs'''
+    NOHIT   = '1'
+    SINGLE  = '1'
+    MULTI   = '2'
+    UNKNOWN = '3'
+
+    def __init__(self, **kwargs):
+        logger.info(f"[[[Creating datasets]]]")
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+            logger.info(f"{k:12s} : {v}")
 
 
 class SPIImgDataset(Dataset):
@@ -25,15 +42,19 @@ class SPIImgDataset(Dataset):
     file. All images are organized in a plain list.  
     """
 
-    def __init__(self, fl_csv, exclude_labels = [], resize = ()):
+    ## def __init__(self, fl_csv, exclude_labels = (), resize = ()):
+    def __init__(self, config):
         """
         Args:
             fl_csv (string) : CSV file of datasets.
         """
-        self._dataset_dict  = {}
-        self.imglabel_list = []
+        fl_csv         = getattr(config, 'fl_csv')
+        exclude_labels = getattr(config, 'exclude_labels')
+        self.resize    = getattr(config, 'resize')
+
+        self._dataset_dict        = {}
+        self.imglabel_list        = []
         self.psana_imgreader_dict = {}
-        self.resize = resize
 
         # Read csv file of datasets
         with open(fl_csv, 'r') as fh:
@@ -85,8 +106,8 @@ class SPIImgDataset(Dataset):
         # Resize images
         ## if self.resize: img = skimage.transform.resize(img, self.resize)
         if self.resize:
-            bin_row, bin_col =  self.resize
-            img = downsize(img, self.resize, mask = None)
+            bin_row, bin_col = self.resize
+            img = downsample(img, bin_row, bin_col, mask = None)
 
         return img.reshape(-1), int(label)
 
@@ -103,7 +124,7 @@ class SPIImgDataset(Dataset):
         ## if self.resize: img = skimage.transform.resize(img, self.resize)
         if self.resize:
             bin_row, bin_col =  self.resize
-            img = downsize(img, self.resize, mask = None)
+            img = downsample(img, bin_row, bin_col, mask = None)
 
         return img.shape
 
@@ -118,12 +139,14 @@ class SiameseDataset(SPIImgDataset):
     selecting a positive and negative, respectively.
     """
 
-    def __init__(self, fl_csv, size_sample, exclude_labels = [], resize = (), debug = False):
-        super().__init__(fl_csv, exclude_labels = exclude_labels, resize = resize)
+    ## def __init__(self, fl_csv, size_sample, exclude_labels = (), resize = (), debug = False):
+    def __init__(self, config):
+        super().__init__(config)
+
+        self.size_sample = getattr(config, 'size_sample')
+        self.debug       = getattr(config, 'debug')
 
         self.num_stockimgs = len(self.imglabel_list)
-        self.size_sample   = size_sample
-        self.debug         = debug
 
         # Create a lookup table for locating the sequence number (seqi) based on a label
         label_seqi_dict = {}
@@ -205,7 +228,7 @@ class ImgLabelFileParser:
     The type of a lable is always string.  
     """
 
-    def __init__(self, exp, run, drc_root, exclude_labels = []):
+    def __init__(self, exp, run, drc_root, exclude_labels = ()):
         self.exp            = exp
         self.run            = run
         self.drc_root       = drc_root

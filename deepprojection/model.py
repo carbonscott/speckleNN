@@ -4,8 +4,11 @@
 import torch
 import torch.nn as nn
 
+import logging
 
-class SiameseConfig:
+logger = logging.getLogger(__name__)
+
+class ConfigSiameseModel:
     alpha   = 0.5
     size_y  = None
     size_x  = None
@@ -13,9 +16,12 @@ class SiameseConfig:
     isbias  = True
 
     def __init__(self, **kwargs):
+        logger.info(f"[[[Creating model]]]")
+
         # Set values of attributes that are not known when obj is created
         for k, v in kwargs.items():
             setattr(self, k, v)
+            logger.info(f"{k:12s} : {v}")
 
 
 class SPIImgEncoder(nn.Module):

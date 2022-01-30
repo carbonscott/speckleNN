@@ -11,9 +11,9 @@ logging.basicConfig( format="%(asctime)s - %(levelname)s - %(name)s - %(message)
                      level=logging.INFO, )
 
 import torch
-from deepprojection.dataset import SPIImgDataset, SiameseDataset
-from deepprojection.model   import SiameseModel, SiameseConfig
-from deepprojection.trainer import TrainerConfig, Trainer
+from deepprojection.experiments import SPIImgDataset, SiameseDataset
+from deepprojection.model       import SiameseModel, SiameseConfig
+from deepprojection.trainer     import TrainerConfig, Trainer
 import matplotlib.pyplot as plt
 import tqdm
 from torch.utils.data import DataLoader
@@ -113,12 +113,13 @@ def init_weights(module):
         module.weight.data.normal_(mean = 0.5, std = 0.02)
 
 fl_csv = 'datasets.csv'
-size_sample = 21000
+size_sample = 100
 debug = True
-dataset_train = SiameseDataset(fl_csv, size_sample, debug = debug)
+resize = (6, 6)
+dataset_train = SiameseDataset(fl_csv, size_sample, exclude_labels = ['3'], resize = resize, debug = debug)
 
 # Get image size
-spiimg = SPIImgDataset(fl_csv)
+spiimg = SPIImgDataset(fl_csv, resize = resize)
 size_y, size_x = spiimg.get_imagesize(0)
 
 config_train = TrainerConfig( checkpoint_path = None,
@@ -128,7 +129,7 @@ config_train = TrainerConfig( checkpoint_path = None,
                               lr              = 0.0001, )
 
 # Load siamese model
-config_siamese = SiameseConfig(alpha = 0.5, size_y = size_y, size_x = size_x)
+config_siamese = SiameseConfig(alpha = 0.5, size_y = size_y, size_x = size_x, dim_emb = 32)
 model = SiameseModel(config_siamese)
 model.apply(init_weights)
 

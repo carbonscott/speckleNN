@@ -10,7 +10,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-class TrainerConfig:
+class ConfigTrainer:
     path_chkpt  = None
     num_workers = 4
     batch_size  = 64
@@ -19,9 +19,11 @@ class TrainerConfig:
     debug       = False
 
     def __init__(self, **kwargs):
+        logger.info(f"[[[Creating trainer]]]")
         # Set values of attributes that are not known when obj is created
         for k, v in kwargs.items():
             setattr(self, k, v)
+            logger.info(f"{k:12s} : {v}")
 
 
 class Trainer:
