@@ -30,6 +30,7 @@ class SPIImgEncoder(nn.Module):
         super().__init__()
 
         self.conv = nn.Sequential(
+            ## nn.BatchNorm1d( num_features = dim_img ),
             nn.Linear( in_features  = dim_img, 
                        out_features = dim_emb, 
                        bias         = isbias),

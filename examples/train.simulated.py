@@ -4,10 +4,9 @@
 import os
 import logging
 import torch
-from deepprojection.datasets.experiments import SPIImgDataset, SiameseDataset, ConfigDataset
-from deepprojection.model                import SiameseModel , ConfigSiameseModel
-from deepprojection.trainer              import Trainer      , ConfigTrainer
-
+from deepprojection.datasets.simulated import SiameseDataset, ConfigDataset
+from deepprojection.model              import SiameseModel , ConfigSiameseModel
+from deepprojection.trainer            import Trainer      , ConfigTrainer
 from datetime import datetime
 
 # Global variable
@@ -21,7 +20,7 @@ timestamp = now.strftime("%Y%m%d%H%M%S")
 drc_cwd = os.getcwd()
 
 # Set up the log file...
-fl_log         = f"{timestamp}.train.log"
+fl_log         = f"{timestamp}.train.simulated.log"
 DRCLOG         = "logs"
 prefixpath_log = os.path.join(drc_cwd, DRCLOG)
 if not os.path.exists(prefixpath_log): os.makedirs(prefixpath_log)
@@ -35,50 +34,46 @@ logging.basicConfig( filename = path_log,
                      level=logging.INFO, )
 logger = logging.getLogger(__name__)
 
-# Initialize weights...
 def init_weights(module):
     if isinstance(module, (torch.nn.Embedding, torch.nn.Linear)):
+        ## print(module)
         module.weight.data.normal_(mean = 0.0, std = 0.02)
 
-# Config the dataset...
-resize_y, resize_x = 6, 6
-resize = (resize_y, resize_x) if not None in (resize_y, resize_x) else ()
-exclude_labels = [ ConfigDataset.NOHIT, ConfigDataset.UNKNOWN ]
-config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
-                                size_sample    = 1000, 
-                                resize         = resize,
-                                exclude_labels = exclude_labels,
-                                debug          = DEBUG )
+
+drc_cwd      = os.getcwd()
+fl_x_train   = "x_train.npy"
+fl_y_train   = "y_train.npy"
+path_x_train = os.path.join(drc_cwd, fl_x_train)
+path_y_train = os.path.join(drc_cwd, fl_y_train)
+
+exclude_labels = [ ConfigDataset.UNKNOWN ]
+config_dataset = ConfigDataset( path_x_train = path_x_train,
+                                path_y_train = path_y_train,
+                                size_sample  = 1000,
+                                debug        = DEBUG )
 dataset_train = SiameseDataset(config_dataset)
 
-# Get image size...
-spiimg = SPIImgDataset(config_dataset)
-size_y, size_x = spiimg.get_imagesize(0)
+# This metadata is hand-coded for quick verification
+size_y, size_x = 128, 128
 
-# Try different margin (alpha) for Siamese net...
-DRCCHKPT = "chkpts"
-prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
-if not os.path.exists(prefixpath_chkpt): os.makedirs(prefixpath_chkpt)
-
-# Config the model...
-alpha   = 1.0
+# Try different margin (alpha) for Siamese net
+alpha = 1.0
 dim_emb = 32
 config_siamese = ConfigSiameseModel(alpha = alpha, dim_emb = dim_emb, size_y = size_y, size_x = size_x)
-model          = SiameseModel(config_siamese)
-
-# Initialize model...
+model = SiameseModel(config_siamese)
 model.apply(init_weights)
 
 # Config the trainer...
-fl_chkpt = f"{timestamp}.train.chkpt"
+fl_chkpt = f"{timestamp}.train.simulated.chkpt"
+DRCCHKPT = "chkpts"
+prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
 path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
 config_train = ConfigTrainer( path_chkpt  = path_chkpt,
                               num_workers = 1,
                               batch_size  = 100,
-                              max_epochs  = 5,
+                              max_epochs  = 15,
                               lr          = 0.001, 
                               debug       = DEBUG, )
 
-# Training...
 trainer = Trainer(model, dataset_train, config_train)
 trainer.train()

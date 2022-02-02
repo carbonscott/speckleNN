@@ -8,10 +8,9 @@ from torch.utils.data.dataloader import DataLoader
 import tqdm
 import numpy as np
 
-
 logger = logging.getLogger(__name__)
 
-class ValidatorConfig:
+class ConfigValidator:
     path_chkpt  = None
     num_workers = 4
     batch_size  = 64
@@ -20,9 +19,13 @@ class ValidatorConfig:
     debug       = False
 
     def __init__(self, **kwargs):
+        logger.info(f"[[[Creating trainer]]]")
         # Set values of attributes that are not known when obj is created
         for k, v in kwargs.items():
             setattr(self, k, v)
+            logger.info(f"{k:12s} : {v}")
+
+
 
 
 class Validator:
@@ -42,7 +45,7 @@ class Validator:
         return None
 
 
-    def test(self):
+    def validate(self):
         """ The testing loop.  """
 
         # Load model and testing configuration

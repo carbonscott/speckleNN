@@ -9,6 +9,24 @@ from torch.utils.data import Dataset
 import numpy as np
 import random
 import os
+import logging
+
+from deepprojection.utils import downsample
+
+logger = logging.getLogger(__name__)
+
+class ConfigDataset:
+    ''' Biolerplate code to config dataset classs'''
+    NOHIT   = '1'
+    SINGLE  = '1'
+    MULTI   = '2'
+    UNKNOWN = '3'
+
+    def __init__(self, **kwargs):
+        logger.info(f"[[[Creating datasets]]]")
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+            logger.info(f"{k:12s} : {v}")
 
 
 class SiameseDataset:
@@ -19,16 +37,13 @@ class SiameseDataset:
     selecting a positive and negative, respectively.
     """
 
-    def __init__(self, size_sample, debug = False):
-        drc_data   = os.path.dirname(os.path.realpath(__file__))
-        fl_x_train = os.path.join(drc_data, "x_train.npy")
-        fl_y_train = os.path.join(drc_data, "y_train.npy")
-        self.x_train    = np.load(fl_x_train)
-        self.y_train    = np.load(fl_y_train)
+    def __init__(self, config):
+        self.x_train = np.load(config.path_x_train)
+        self.y_train = np.load(config.path_y_train)
 
         self.num_stockimgs = len(self.y_train)
-        self.size_sample   = size_sample
-        self.debug         = debug
+        self.size_sample   = config.size_sample
+        self.debug         = config.debug
 
         # Create a lookup table for locating the sequence number (seqi) based on a label
         self.label_seqi_dict = {}
