@@ -31,10 +31,10 @@ class ConfigDataset:
     NEEDHELP = '4'
 
     def __init__(self, **kwargs):
-        logger.info(f"[[[Creating datasets]]]")
+        logger.info(f"___/ Configure Dataset \___")
         for k, v in kwargs.items():
             setattr(self, k, v)
-            logger.info(f"{k:12s} : {v}")
+            logger.info(f"KV - {k:16s} : {v}")
 
 
 class SPIImgDataset(Dataset):
@@ -87,7 +87,7 @@ class SPIImgDataset(Dataset):
             exp, run = dataset_id
 
             for event_num, label in dataset_content.items():
-                self.imglabel_list.append( (exp, run, event_num, label) )
+                self.imglabel_list.append( (exp, run, f"{event_num:>6s}", label) )
 
         return None
 
@@ -163,11 +163,10 @@ class SiameseDataset(SPIImgDataset):
         self.labels = list(set([ i[-1] for i in self.imglabel_list ]))
 
         # Log the number of images for each label...
-        logger.info("[[[Dataset statistics]]]")
-        logger.info(f"(label : num_img)")
+        logger.info("___/ Dataset statistics \___")
         for label in self.labels:
             num_img = len(label_seqi_dict[label])
-            logger.info(f"'{label}' : {num_img}")
+            logger.info(f"KV - {label:16s} : {num_img}")
 
         # Form triplet for ML training...
         self.triplets = self._form_tripets(label_seqi_dict)

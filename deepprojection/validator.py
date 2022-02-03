@@ -19,11 +19,11 @@ class ConfigValidator:
     debug       = False
 
     def __init__(self, **kwargs):
-        logger.info(f"[[[Creating trainer]]]")
+        logger.info(f"__/ Configure Validator \___")
         # Set values of attributes that are not known when obj is created
         for k, v in kwargs.items():
             setattr(self, k, v)
-            logger.info(f"{k:12s} : {v}")
+            logger.info(f"{k:16s} : {v}")
 
 
 
@@ -73,7 +73,7 @@ class Validator:
                     title_anchor, title_pos, title_neg = entry
 
                     for i in range(len(label_anchor)):
-                        logger.info(f"Processing {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}...")
+                        logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}")
                 else: 
                     img_anchor, img_pos, img_neg, label_anchor = entry
 
@@ -88,6 +88,6 @@ class Validator:
                     _, _, _, loss = self.model.forward(img_anchor, img_pos, img_neg)
                     losses.append(loss.cpu().detach().numpy())
 
-                logger.info(f"Epoch {epoch:d}, batch {step_id:d}, loss {np.mean(loss.cpu().detach().numpy()):.4f}.")
+                logger.info(f"MSG - epoch {epoch:d}, batch {step_id:d}, loss {np.mean(loss.cpu().detach().numpy()):.4f}")
 
             ## print(f"Epoch: {epoch + 1}/{config_test.max_epochs} - Loss: {np.mean(loss.cpu().detach().numpy()):.4f}")

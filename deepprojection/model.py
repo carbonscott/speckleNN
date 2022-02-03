@@ -12,12 +12,12 @@ class ConfigSiameseModel:
     alpha   = 0.5
 
     def __init__(self, **kwargs):
-        logger.info(f"[[[Creating model]]]")
+        logger.info(f"___/ Configure Siamese Model \___")
 
         # Set values of attributes that are not known when obj is created
         for k, v in kwargs.items():
             setattr(self, k, v)
-            logger.info(f"{k:12s} : {v}")
+            logger.info(f"KV - {k:16} : {v}")
 
 
 class SiameseModel(nn.Module):

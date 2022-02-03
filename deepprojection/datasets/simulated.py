@@ -17,16 +17,17 @@ logger = logging.getLogger(__name__)
 
 class ConfigDataset:
     ''' Biolerplate code to config dataset classs'''
-    NOHIT   = '1'
-    SINGLE  = '1'
-    MULTI   = '2'
-    UNKNOWN = '3'
+    NOHIT    = '0'
+    SINGLE   = '1'
+    MULTI    = '2'
+    UNKNOWN  = '3'
+    NEEDHELP = '4'
 
     def __init__(self, **kwargs):
-        logger.info(f"[[[Creating datasets]]]")
+        logger.info(f"___/ Configure Dataset \___")
         for k, v in kwargs.items():
             setattr(self, k, v)
-            logger.info(f"{k:12s} : {v}")
+            logger.info(f"{k:16s} : {v}")
 
 
 class SiameseDataset:

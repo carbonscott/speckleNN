@@ -19,11 +19,11 @@ class ConfigTrainer:
     debug       = False
 
     def __init__(self, **kwargs):
-        logger.info(f"[[[Creating trainer]]]")
+        logger.info(f"___/ Configure Trainer \___")
         # Set values of attributes that are not known when obj is created
         for k, v in kwargs.items():
             setattr(self, k, v)
-            logger.info(f"{k:12s} : {v}")
+            logger.info(f"KV - {k:16s} : {v}")
 
 
 class Trainer:
@@ -44,7 +44,7 @@ class Trainer:
     def save_checkpoint(self):
         # Hmmm, DataParallel wrappers keep raw model object in .module attribute
         model = self.model.module if hasattr(self.model, "module") else self.model
-        logger.info(f"Saving {self.config_train.path_chkpt}")
+        logger.info(f"SAVE - {self.config_train.path_chkpt}")
         torch.save(model.state_dict(), self.config_train.path_chkpt)
 
 
@@ -77,8 +77,7 @@ class Trainer:
                     title_anchor, title_pos, title_neg = entry
 
                     for i in range(len(label_anchor)):
-                        ## print(f"Processing {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}...")
-                        logger.info(f"Processing {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}...")
+                        logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}")
                 else: 
                     img_anchor, img_pos, img_neg, label_anchor = entry
 
@@ -94,7 +93,7 @@ class Trainer:
 
                 losses.append(loss.cpu().detach().numpy())
 
-                logger.info(f"Epoch {epoch:d}, batch {step_id:d}, loss {np.mean(loss.cpu().detach().numpy()):.4f}.")
+                logger.info(f"MSG - epoch {epoch:d}, batch {step_id:d}, loss {np.mean(loss.cpu().detach().numpy()):.4f}")
 
             ## print(f"Epoch: {epoch + 1}/{config_train.max_epochs} - Loss: {np.mean(loss.cpu().detach().numpy()):.4f}")
 

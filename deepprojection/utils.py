@@ -1,7 +1,6 @@
 import numpy as np
 import skimage.measure as sm
 
-
 def downsample(assem, bin_row=2, bin_col=2, mask=None):
     """ Helper function to img_to_thumbnail(). 
         Adopted from https://github.com/chuckie82/DeepProjection/blob/master/DeepProjection/utils.py

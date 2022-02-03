@@ -8,12 +8,12 @@ logger = logging.getLogger(__name__)
 class ConfigEncoder:
 
     def __init__(self, **kwargs):
-        logger.info(f"[[[Creating encoder]]]")
+        logger.info(f"___/ Configure Encoder \___")
 
         # Set values of attributes that are not known when obj is created
         for k, v in kwargs.items():
             setattr(self, k, v)
-            logger.info(f"{k:12s} : {v}")
+            logger.info(f"KV - {k:16s} : {v}")
 
 
 class SimpleEncoder(nn.Module):
