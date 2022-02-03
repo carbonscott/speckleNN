@@ -7,6 +7,7 @@ import torch
 from deepprojection.datasets.experiments import SPIImgDataset, SiameseDataset, ConfigDataset
 from deepprojection.model                import SiameseModel , ConfigSiameseModel
 from deepprojection.trainer              import Trainer      , ConfigTrainer
+from deepprojection.encoders.linear      import SimpleEncoder, ConfigEncoder
 
 from datetime import datetime
 
@@ -21,7 +22,7 @@ timestamp = now.strftime("%Y%m%d%H%M%S")
 drc_cwd = os.getcwd()
 
 # Set up the log file...
-fl_log         = f"{timestamp}.train.log"
+fl_log         = f"{timestamp}.train.log.tmp"
 DRCLOG         = "logs"
 prefixpath_log = os.path.join(drc_cwd, DRCLOG)
 if not os.path.exists(prefixpath_log): os.makedirs(prefixpath_log)
@@ -43,9 +44,11 @@ def init_weights(module):
 # Config the dataset...
 resize_y, resize_x = 6, 6
 resize = (resize_y, resize_x) if not None in (resize_y, resize_x) else ()
-exclude_labels = [ ConfigDataset.NOHIT, ConfigDataset.UNKNOWN ]
+exclude_labels = [ ConfigDataset.NOHIT, ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
+## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
+## exclude_labels = [ ConfigDataset.UNKNOWN ]
 config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
-                                size_sample    = 1000, 
+                                size_sample    = 5000, 
                                 resize         = resize,
                                 exclude_labels = exclude_labels,
                                 debug          = DEBUG )
@@ -60,11 +63,22 @@ DRCCHKPT = "chkpts"
 prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
 if not os.path.exists(prefixpath_chkpt): os.makedirs(prefixpath_chkpt)
 
+# Config the encoder...
+dim_emb = 32
+config_encoder = ConfigEncoder( dim_emb = dim_emb,
+                                size_y  = size_y,
+                                size_x  = size_x,
+                                isbias  = True )
+encoder = SimpleEncoder(config_encoder)
+
 # Config the model...
 alpha   = 1.0
-dim_emb = 32
-config_siamese = ConfigSiameseModel(alpha = alpha, dim_emb = dim_emb, size_y = size_y, size_x = size_x)
-model          = SiameseModel(config_siamese)
+config_siamese = ConfigSiameseModel( alpha   = alpha, 
+                                     dim_emb = dim_emb, 
+                                     size_y  = size_y, 
+                                     size_x  = size_x,
+                                     encoder = encoder, )
+model = SiameseModel(config_siamese)
 
 # Initialize model...
 model.apply(init_weights)
@@ -74,8 +88,8 @@ fl_chkpt = f"{timestamp}.train.chkpt"
 path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
 config_train = ConfigTrainer( path_chkpt  = path_chkpt,
                               num_workers = 1,
-                              batch_size  = 100,
-                              max_epochs  = 5,
+                              batch_size  = 500,
+                              max_epochs  = 10,
                               lr          = 0.001, 
                               debug       = DEBUG, )
 
