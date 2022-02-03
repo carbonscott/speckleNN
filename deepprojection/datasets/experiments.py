@@ -146,7 +146,6 @@ class SiameseDataset(SPIImgDataset):
         super().__init__(config)
 
         self.size_sample = getattr(config, 'size_sample')
-        self.debug       = getattr(config, 'debug')
 
         self.num_stockimgs = len(self.imglabel_list)
 
@@ -186,12 +185,11 @@ class SiameseDataset(SPIImgDataset):
 
         res = img_anchor, img_pos, img_neg, label_anchor
 
-        if self.debug: 
-            # Append (exp, run, event_num, label) to the result
-            for i in (id_anchor, id_pos, id_neg): 
-                ## title = [ str(j) for j in self.imglabel_list[i] ]
-                title = self.imglabel_list[i]
-                res += (' '.join(title), )
+        # Append (exp, run, event_num, label) to the result
+        for i in (id_anchor, id_pos, id_neg): 
+            ## title = [ str(j) for j in self.imglabel_list[i] ]
+            title = self.imglabel_list[i]
+            res += (' '.join(title), )
 
         return res
 

@@ -10,7 +10,6 @@ from deepprojection.validator            import Validator      , ConfigValidator
 from deepprojection.encoders.linear      import SimpleEncoder, ConfigEncoder
 from utils import read_log
 
-DEBUG = True
 
 # Create a timestamp to name the log file...
 timestamp = "20220203115233"
@@ -38,8 +37,7 @@ resize_y, resize_x = 6, 6
 config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
                                 size_sample    = 5000, 
                                 resize         = (resize_y, resize_x),
-                                exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ],
-                                debug          = DEBUG )
+                                exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ], )
 dataset_validate = SiameseDataset(config_dataset)
 
 
@@ -74,8 +72,7 @@ config_validator = ConfigValidator( path_chkpt  = path_chkpt,
                                     num_workers = 1,
                                     batch_size  = 500,
                                     max_epochs  = 1,    # Epoch = 1 for validate
-                                    lr          = 0.001, 
-                                    debug       = DEBUG, )
+                                    lr          = 0.001, )
 
 
 validator = Validator(model, dataset_validate, config_validator)

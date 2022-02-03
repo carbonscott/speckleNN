@@ -11,8 +11,6 @@ from deepprojection.encoders.linear      import SimpleEncoder, ConfigEncoder
 
 from datetime import datetime
 
-# Global variable
-DEBUG = True
 
 # Create a timestamp to name the log file...
 now = datetime.now()
@@ -22,7 +20,7 @@ timestamp = now.strftime("%Y%m%d%H%M%S")
 drc_cwd = os.getcwd()
 
 # Set up the log file...
-fl_log         = f"{timestamp}.train.log"
+fl_log         = f"{timestamp}.train.log.tmp"
 DRCLOG         = "logs"
 prefixpath_log = os.path.join(drc_cwd, DRCLOG)
 if not os.path.exists(prefixpath_log): os.makedirs(prefixpath_log)
@@ -50,8 +48,7 @@ exclude_labels = [ ConfigDataset.NOHIT, ConfigDataset.UNKNOWN, ConfigDataset.NEE
 config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
                                 size_sample    = 1000, 
                                 resize         = resize,
-                                exclude_labels = exclude_labels,
-                                debug          = DEBUG )
+                                exclude_labels = exclude_labels, )
 dataset_train = SiameseDataset(config_dataset)
 
 # Get image size...
@@ -90,8 +87,7 @@ config_train = ConfigTrainer( path_chkpt  = path_chkpt,
                               num_workers = 1,
                               batch_size  = 200,
                               max_epochs  = 10,
-                              lr          = 0.001, 
-                              debug       = DEBUG, )
+                              lr          = 0.001, )
 
 # Training...
 trainer = Trainer(model, dataset_train, config_train)

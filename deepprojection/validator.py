@@ -16,7 +16,6 @@ class ConfigValidator:
     batch_size  = 64
     max_epochs  = 10
     lr          = 0.001
-    debug       = False
 
     def __init__(self, **kwargs):
         logger.info(f"__/ Configure Validator \___")
@@ -51,9 +50,6 @@ class Validator:
         # Load model and testing configuration
         model, config_test = self.model, self.config_test
 
-        # Debug on???
-        debug = self.config_test.debug
-
         # Train each epoch
         for epoch in tqdm.tqdm(range(config_test.max_epochs)):
             # Load model state
@@ -69,29 +65,18 @@ class Validator:
             for step_id, entry in batch:
                 losses = []
 
-                if debug: 
-                    img_anchor, img_pos, img_neg, label_anchor, \
-                    title_anchor, title_pos, title_neg = entry
-
-                    ## for i in range(len(label_anchor)):
-                    ##     logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}")
-                else: 
-                    img_anchor, img_pos, img_neg, label_anchor = entry
+                img_anchor, img_pos, img_neg, label_anchor, \
+                title_anchor, title_pos, title_neg = entry
 
                 img_anchor = img_anchor.to(self.device)
                 img_pos    = img_pos.to(self.device)
                 img_neg    = img_neg.to(self.device)
 
-                ## print(f"{step_id:04d}, {img_anchor.shape}.")
-
-                if debug: 
-                    with torch.no_grad():
-                        for i in range(len(label_anchor)):
-                            _, _, _, loss = self.model.forward(img_anchor[i], img_pos[i], img_neg[i])
-                            loss_val = loss.cpu().detach().numpy()
-                            losses.append(loss_val)
-                            logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}, {loss_val:7.4f}")
+                with torch.no_grad():
+                    for i in range(len(label_anchor)):
+                        _, _, _, loss = self.model.forward(img_anchor[i], img_pos[i], img_neg[i])
+                        loss_val = loss.cpu().detach().numpy()
+                        losses.append(loss_val)
+                        logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}, {loss_val:7.4f}")
 
                 logger.info(f"MSG - epoch {epoch:d}, batch {step_id:d}, loss {np.mean(losses):.4f}")
-
-            ## print(f"Epoch: {epoch + 1}/{config_test.max_epochs} - Loss: {np.mean(loss.cpu().detach().numpy()):.4f}")

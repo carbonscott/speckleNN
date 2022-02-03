@@ -16,7 +16,6 @@ class ConfigTrainer:
     batch_size  = 64
     max_epochs  = 10
     lr          = 0.001
-    debug       = False
 
     def __init__(self, **kwargs):
         logger.info(f"___/ Configure Trainer \___")
@@ -56,9 +55,6 @@ class Trainer:
         model_raw           = model.module if hasattr(model, "module") else model
         optimizer           = model_raw.configure_optimizers(config_train)
 
-        # Debug on???
-        debug = self.config_train.debug
-
         # Train each epoch
         for epoch in tqdm.tqdm(range(config_train.max_epochs)):
             model.train()
@@ -72,14 +68,11 @@ class Trainer:
             # Train each batch
             batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train))
             for step_id, entry in batch:
-                if debug: 
-                    img_anchor, img_pos, img_neg, label_anchor, \
-                    title_anchor, title_pos, title_neg = entry
+                img_anchor, img_pos, img_neg, label_anchor, \
+                title_anchor, title_pos, title_neg = entry
 
-                    for i in range(len(label_anchor)):
-                        logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}")
-                else: 
-                    img_anchor, img_pos, img_neg, label_anchor = entry
+                for i in range(len(label_anchor)):
+                    logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}")
 
                 img_anchor = img_anchor.to(self.device)
                 img_pos    = img_pos.to(self.device)
