@@ -10,10 +10,6 @@ logger = logging.getLogger(__name__)
 
 class ConfigSiameseModel:
     alpha   = 0.5
-    size_y  = None
-    size_x  = None
-    dim_emb = 32
-    isbias  = True
 
     def __init__(self, **kwargs):
         logger.info(f"[[[Creating model]]]")
@@ -24,45 +20,13 @@ class ConfigSiameseModel:
             logger.info(f"{k:12s} : {v}")
 
 
-class SPIImgEncoder(nn.Module):
-
-    def __init__(self, dim_img, dim_emb = 32, isbias = True):
-        super().__init__()
-
-        self.conv = nn.Sequential(
-            ## nn.BatchNorm1d( num_features = dim_img ),
-            nn.Linear( in_features  = dim_img, 
-                       out_features = dim_emb, 
-                       bias         = isbias),
-            nn.ReLU(),
-            nn.Linear( in_features  = dim_emb, 
-                       out_features = dim_emb, 
-                       bias         = isbias),
-            nn.Sigmoid()
-        )
-
-        ## print(self.conv)
-        ## print(sum(p.numel() for p in self.conv.parameters()))
-
-
-    def encode(self, x):
-        x = self.conv(x)
-
-        return x
-
-
 class SiameseModel(nn.Module):
     """ Embedding independent triplet loss. """
 
     def __init__(self, config):
         super().__init__()
-        self.alpha     = config.alpha
-        size_y, size_x = config.size_y, config.size_x
-        dim_emb        = config.dim_emb
-        isbias         = config.isbias
-
-        dim_img = size_y * size_x
-        self.encoder = SPIImgEncoder(dim_img, dim_emb, isbias)
+        self.alpha   = config.alpha
+        self.encoder = config.encoder
 
 
     def forward(self, img_anchor, img_pos, img_neg):
