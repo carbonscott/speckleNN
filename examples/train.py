@@ -22,7 +22,7 @@ timestamp = now.strftime("%Y%m%d%H%M%S")
 drc_cwd = os.getcwd()
 
 # Set up the log file...
-fl_log         = f"{timestamp}.train.log.tmp"
+fl_log         = f"{timestamp}.train.log"
 DRCLOG         = "logs"
 prefixpath_log = os.path.join(drc_cwd, DRCLOG)
 if not os.path.exists(prefixpath_log): os.makedirs(prefixpath_log)
@@ -31,7 +31,7 @@ path_log = os.path.join(prefixpath_log, fl_log)
 # Config logging behaviors
 logging.basicConfig( filename = path_log,
                      filemode = 'w',
-                     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+                     format="%(asctime)s %(levelname)s %(name)-35s - %(message)s",
                      datefmt="%m/%d/%Y %H:%M:%S",
                      level=logging.INFO, )
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ exclude_labels = [ ConfigDataset.NOHIT, ConfigDataset.UNKNOWN, ConfigDataset.NEE
 ## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
 ## exclude_labels = [ ConfigDataset.UNKNOWN ]
 config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
-                                size_sample    = 5000, 
+                                size_sample    = 1000, 
                                 resize         = resize,
                                 exclude_labels = exclude_labels,
                                 debug          = DEBUG )
@@ -88,7 +88,7 @@ fl_chkpt = f"{timestamp}.train.chkpt"
 path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
 config_train = ConfigTrainer( path_chkpt  = path_chkpt,
                               num_workers = 1,
-                              batch_size  = 500,
+                              batch_size  = 200,
                               max_epochs  = 10,
                               lr          = 0.001, 
                               debug       = DEBUG, )

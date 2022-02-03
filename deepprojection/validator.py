@@ -60,20 +60,21 @@ class Validator:
             model.eval()
             dataset_test = self.dataset_test
             loader_test  = DataLoader( dataset_test, shuffle     = True, 
-                                                      pin_memory  = True, 
-                                                      batch_size  = config_test.batch_size,
-                                                      num_workers = config_test.num_workers )
-            losses = []
+                                                     pin_memory  = True, 
+                                                     batch_size  = config_test.batch_size,
+                                                     num_workers = config_test.num_workers )
 
             # Train each batch
             batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test))
             for step_id, entry in batch:
+                losses = []
+
                 if debug: 
                     img_anchor, img_pos, img_neg, label_anchor, \
                     title_anchor, title_pos, title_neg = entry
 
-                    for i in range(len(label_anchor)):
-                        logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}")
+                    ## for i in range(len(label_anchor)):
+                    ##     logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}")
                 else: 
                     img_anchor, img_pos, img_neg, label_anchor = entry
 
@@ -83,11 +84,14 @@ class Validator:
 
                 ## print(f"{step_id:04d}, {img_anchor.shape}.")
 
-                with torch.no_grad():
+                if debug: 
+                    with torch.no_grad():
+                        for i in range(len(label_anchor)):
+                            _, _, _, loss = self.model.forward(img_anchor[i], img_pos[i], img_neg[i])
+                            loss_val = loss.cpu().detach().numpy()
+                            losses.append(loss_val)
+                            logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}, {loss_val:7.4f}")
 
-                    _, _, _, loss = self.model.forward(img_anchor, img_pos, img_neg)
-                    losses.append(loss.cpu().detach().numpy())
-
-                logger.info(f"MSG - epoch {epoch:d}, batch {step_id:d}, loss {np.mean(loss.cpu().detach().numpy()):.4f}")
+                logger.info(f"MSG - epoch {epoch:d}, batch {step_id:d}, loss {np.mean(losses):.4f}")
 
             ## print(f"Epoch: {epoch + 1}/{config_test.max_epochs} - Loss: {np.mean(loss.cpu().detach().numpy()):.4f}")

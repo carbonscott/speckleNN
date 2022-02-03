@@ -67,7 +67,7 @@ class Trainer:
                                                       pin_memory  = True, 
                                                       batch_size  = config_train.batch_size,
                                                       num_workers = config_train.num_workers )
-            losses = []
+            ## losses = []
 
             # Train each batch
             batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train))
@@ -91,9 +91,10 @@ class Trainer:
                 loss.backward()
                 optimizer.step()
 
-                losses.append(loss.cpu().detach().numpy())
+                loss_val = loss.cpu().detach().numpy()
+                ## losses.append(loss_val)
 
-                logger.info(f"MSG - epoch {epoch:d}, batch {step_id:d}, loss {np.mean(loss.cpu().detach().numpy()):.4f}")
+                logger.info(f"MSG - epoch {epoch:d}, batch {step_id:d}, loss {loss_val:.4f}")
 
             ## print(f"Epoch: {epoch + 1}/{config_train.max_epochs} - Loss: {np.mean(loss.cpu().detach().numpy()):.4f}")
 

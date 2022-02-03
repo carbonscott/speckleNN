@@ -43,19 +43,18 @@ class SPIImgDataset(Dataset):
     file. All images are organized in a plain list.  
     """
 
-    ## def __init__(self, fl_csv, exclude_labels = (), resize = ()):
     def __init__(self, config):
         """
         Args:
             fl_csv (string) : CSV file of datasets.
         """
-        fl_csv         = getattr(config, 'fl_csv')
-        exclude_labels = getattr(config, 'exclude_labels')
-        self.resize    = getattr(config, 'resize')
+        fl_csv         = config.fl_csv
+        exclude_labels = config.exclude_labels
+        self.resize    = config.resize
 
         self._dataset_dict        = {}
-        self.imglabel_list        = []
         self.psana_imgreader_dict = {}
+        self.imglabel_list        = []
 
         # Read csv file of datasets
         with open(fl_csv, 'r') as fh:
@@ -143,7 +142,6 @@ class SiameseDataset(SPIImgDataset):
     selecting a positive and negative, respectively.
     """
 
-    ## def __init__(self, fl_csv, size_sample, exclude_labels = (), resize = (), debug = False):
     def __init__(self, config):
         super().__init__(config)
 
@@ -169,7 +167,7 @@ class SiameseDataset(SPIImgDataset):
             logger.info(f"KV - {label:16s} : {num_img}")
 
         # Form triplet for ML training...
-        self.triplets = self._form_tripets(label_seqi_dict)
+        self.triplets = self._form_triplets(label_seqi_dict)
 
         return None
 
@@ -198,7 +196,7 @@ class SiameseDataset(SPIImgDataset):
         return res
 
 
-    def _form_tripets(self, label_seqi_dict):
+    def _form_triplets(self, label_seqi_dict):
         """ 
         Creating `size_sample` tripets of id_anchor, id_pos, id_neg.  
 
