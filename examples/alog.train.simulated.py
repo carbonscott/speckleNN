@@ -11,9 +11,8 @@ logging.basicConfig( format="%(message)s",
 logger = logging.getLogger(__name__)
 
 # Locate the path of the log file...
-## id_log   = '20220203115233'
-id_log   = '20220203150247'
-fl_log   = f'{id_log}.train.log'
+id_log   = '20220203221010'
+fl_log   = f'{id_log}.train.simulated.log'
 drc_log  = 'logs'
 path_log = os.path.join(drc_log, fl_log)
 

@@ -12,7 +12,8 @@ from utils import read_log
 
 
 # Create a timestamp to name the log file...
-timestamp = "20220203115233"
+## timestamp = "20220203115233"
+timestamp = "20220203150247"
 
 # Configure the location to run the job...
 drc_cwd = os.getcwd()
@@ -35,9 +36,10 @@ logger = logging.getLogger(__name__)
 # Config the dataset...
 resize_y, resize_x = 6, 6
 config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
-                                size_sample    = 5000, 
+                                size_sample    = 1000, 
                                 resize         = (resize_y, resize_x),
                                 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ], )
+                                ## exclude_labels = [ ConfigDataset.NOHIT, ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ], )
 dataset_validate = SiameseDataset(config_dataset)
 
 
@@ -58,11 +60,7 @@ encoder = SimpleEncoder(config_encoder)
 
 # Set up the model
 alpha   = 1.0
-config_siamese = ConfigSiameseModel( alpha   = alpha, 
-                                     dim_emb = dim_emb, 
-                                     size_y  = size_y, 
-                                     size_x  = size_x,
-                                     encoder = encoder, )
+config_siamese = ConfigSiameseModel( alpha   = alpha, encoder = encoder, )
 model = SiameseModel(config_siamese)
 
 # Read chkpt from a trainig
@@ -70,7 +68,7 @@ fl_chkpt = f"{timestamp}.train.chkpt"
 path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
 config_validator = ConfigValidator( path_chkpt  = path_chkpt,
                                     num_workers = 1,
-                                    batch_size  = 500,
+                                    batch_size  = 200,
                                     max_epochs  = 1,    # Epoch = 1 for validate
                                     lr          = 0.001, )
 

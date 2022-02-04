@@ -44,15 +44,17 @@ class SiameseDataset:
 
         self.num_stockimgs = len(self.y_train)
         self.size_sample   = config.size_sample
-        self.debug         = config.debug
+
+        # Consolidate labels in the dataset...
+        self.labels = list(set(self.y_train))
 
         # Create a lookup table for locating the sequence number (seqi) based on a label
-        self.label_seqi_dict = {}
+        label_seqi_dict = {}
         for seqi, label in enumerate(self.y_train):
-            if not label in self.label_seqi_dict: self.label_seqi_dict[label] = [seqi]
-            else: self.label_seqi_dict[label].append(seqi)
+            if not label in label_seqi_dict: label_seqi_dict[label] = [seqi]
+            else: label_seqi_dict[label].append(seqi)
 
-        self.triplets = self._form_tripets()
+        self.triplets = self._form_triplets(label_seqi_dict)
 
         return None
 
@@ -72,41 +74,81 @@ class SiameseDataset:
 
         res = img_anchor, img_pos, img_neg, label_anchor
 
-        if self.debug: 
-            # Append (exp, run, event_num, label) to the result
-            for i in (id_anchor, id_pos, id_neg): 
-                title = f"{i} {self.y_train[i]}"
-                res += (title, )
+        # Append (exp, run, event_num, label) to the result
+        for i in (id_anchor, id_pos, id_neg): 
+            title = f"{i} {self.y_train[i]}"
+            res += (title, )
 
         return res
 
 
-    def _form_tripets(self):
-        """ Creating `size_sample` tripets of id_anchor, id_pos, id_neg"""
-        # Randomly select an anchor `size_sample` times
-        size_sample   = self.size_sample
-        anchor_bucket = range(self.num_stockimgs)
-        ids_anchor    = random.choices(anchor_bucket, k = size_sample)
+    def _form_triplets(self, label_seqi_dict):
+        """ 
+        Creating `size_sample` tripets of id_anchor, id_pos, id_neg.  
 
-        # Collection of triplets
+        The anchor label is sampled from a set of labels, which ensures that
+        the triplets don't have a favored combination.  
+        """
+        size_sample       = self.size_sample
+        label_anchor_list = random.choices(self.labels, k = size_sample)
+
+        # Collection of triplets...
         triplets = []
-        for id_anchor in ids_anchor:
-            # Fetch the anchor label
-            label_anchor = self.y_train[id_anchor]
+        for label_anchor in label_anchor_list:
+            # Fetch the anchor label...
+            # Create buckets of anchors...
+            anchor_bucket = label_seqi_dict[label_anchor]
 
-            # Create buckets of positives according to the anchor
-            pos_bucket = self.label_seqi_dict[label_anchor]
+            # Randomly sample one anchor...
+            id_anchor = random.choice(anchor_bucket)
 
-            # Create buckets of negatives according to the anchor
-            neg_bucket = []
-            for label, ids in self.label_seqi_dict.items(): 
-                if label == label_anchor: continue
-                neg_bucket += ids
+            # Create buckets of positives according to the anchor...
+            pos_bucket = anchor_bucket
 
-            # Randomly sample one positive and one negative
-            id_pos = random.sample(pos_bucket, 1)[0]
-            id_neg = random.sample(neg_bucket, 1)[0]
+            # Randomly sample one positive...
+            id_pos = random.choice(pos_bucket)
+
+            # Create buckets of negatives according to the anchor...
+            neg_labels = [ label for label in self.labels if label != label_anchor ]
+            neg_label  = random.choice(neg_labels)
+            neg_bucket = label_seqi_dict[neg_label]
+
+            # Randomly sample one negative...
+            id_neg = random.choice(neg_bucket)
 
             triplets.append( (id_anchor, id_pos, id_neg) )
 
         return triplets
+
+
+
+
+    ## def _form_tripets(self):
+    ##     """ Creating `size_sample` tripets of id_anchor, id_pos, id_neg"""
+    ##     # Randomly select an anchor `size_sample` times
+    ##     size_sample   = self.size_sample
+    ##     anchor_bucket = range(self.num_stockimgs)
+    ##     ids_anchor    = random.choices(anchor_bucket, k = size_sample)
+
+    ##     # Collection of triplets
+    ##     triplets = []
+    ##     for id_anchor in ids_anchor:
+    ##         # Fetch the anchor label
+    ##         label_anchor = self.y_train[id_anchor]
+
+    ##         # Create buckets of positives according to the anchor
+    ##         pos_bucket = self.label_seqi_dict[label_anchor]
+
+    ##         # Create buckets of negatives according to the anchor
+    ##         neg_bucket = []
+    ##         for label, ids in self.label_seqi_dict.items(): 
+    ##             if label == label_anchor: continue
+    ##             neg_bucket += ids
+
+    ##         # Randomly sample one positive and one negative
+    ##         id_pos = random.sample(pos_bucket, 1)[0]
+    ##         id_neg = random.sample(neg_bucket, 1)[0]
+
+    ##         triplets.append( (id_anchor, id_pos, id_neg) )
+
+    ##     return triplets

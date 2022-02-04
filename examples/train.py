@@ -20,7 +20,7 @@ timestamp = now.strftime("%Y%m%d%H%M%S")
 drc_cwd = os.getcwd()
 
 # Set up the log file...
-fl_log         = f"{timestamp}.train.log.tmp"
+fl_log         = f"{timestamp}.train.log"
 DRCLOG         = "logs"
 prefixpath_log = os.path.join(drc_cwd, DRCLOG)
 if not os.path.exists(prefixpath_log): os.makedirs(prefixpath_log)
@@ -46,7 +46,7 @@ exclude_labels = [ ConfigDataset.NOHIT, ConfigDataset.UNKNOWN, ConfigDataset.NEE
 ## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
 ## exclude_labels = [ ConfigDataset.UNKNOWN ]
 config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
-                                size_sample    = 1000, 
+                                size_sample    = 2000, 
                                 resize         = resize,
                                 exclude_labels = exclude_labels, )
 dataset_train = SiameseDataset(config_dataset)
@@ -70,11 +70,7 @@ encoder = SimpleEncoder(config_encoder)
 
 # Config the model...
 alpha   = 1.0
-config_siamese = ConfigSiameseModel( alpha   = alpha, 
-                                     dim_emb = dim_emb, 
-                                     size_y  = size_y, 
-                                     size_x  = size_x,
-                                     encoder = encoder, )
+config_siamese = ConfigSiameseModel( alpha   = alpha, encoder = encoder, )
 model = SiameseModel(config_siamese)
 
 # Initialize model...
@@ -86,7 +82,7 @@ path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
 config_train = ConfigTrainer( path_chkpt  = path_chkpt,
                               num_workers = 1,
                               batch_size  = 200,
-                              max_epochs  = 10,
+                              max_epochs  = 15,
                               lr          = 0.001, )
 
 # Training...
