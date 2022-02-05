@@ -51,6 +51,7 @@ class SPIImgDataset(Dataset):
         fl_csv         = config.fl_csv
         exclude_labels = config.exclude_labels
         self.resize    = config.resize
+        self.isflat    = config.isflat
 
         self._dataset_dict        = {}
         self.psana_imgreader_dict = {}
@@ -112,22 +113,30 @@ class SPIImgDataset(Dataset):
             bin_row, bin_col = self.resize
             img_norm = downsample(img_norm, bin_row, bin_col, mask = None)
 
-        return img_norm.reshape(-1), int(label)
+        # If not flat, add one extra dimension to reflect the number channels...
+        img_norm = img_norm[np.newaxis,] if not self.isflat else img_norm.reshape(-1)
+
+        return img_norm, int(label)
 
 
     def get_imagesize(self, idx):
-        exp, run, event_num, label = self.imglabel_list[idx]
+        ## exp, run, event_num, label = self.imglabel_list[idx]
 
         ## print(f"Loading image {exp}.{run}.{event_num}...")
 
-        basename = (exp, run)
-        img = self.psana_imgreader_dict[basename].get(int(event_num))
+        ## basename = (exp, run)
+        ## img = self.psana_imgreader_dict[basename].get(int(event_num))
 
-        # Resize images
-        ## if self.resize: img = skimage.transform.resize(img, self.resize)
-        if self.resize:
-            bin_row, bin_col =  self.resize
-            img = downsample(img, bin_row, bin_col, mask = None)
+        ## # Resize images
+        ## ## if self.resize: img = skimage.transform.resize(img, self.resize)
+        ## if self.resize:
+        ##     bin_row, bin_col =  self.resize
+        ##     img = downsample(img, bin_row, bin_col, mask = None)
+
+        ## # If not flat, add one extra dimension to reflect the number channels...
+        ## img_norm = img_norm.reshape(1, -1) if not self.isflat else img_norm.reshape(-1)
+
+        img, _ = self.__getitem__(idx)
 
         return img.shape
 
