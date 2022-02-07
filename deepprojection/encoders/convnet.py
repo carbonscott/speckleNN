@@ -25,7 +25,6 @@ class Hirotaka0122(nn.Module):
 
         size_y, size_x = config.size_y, config.size_x
         isbias         = config.isbias
-        ## device         = config.device
 
         dim_emb        = config.dim_emb
         dim_img = size_y * size_x
@@ -40,7 +39,6 @@ class Hirotaka0122(nn.Module):
                                    "kernel_size"  : 5,
                                    "stride"       : 1,
                                    "padding"      : 0,
-                                   ## "device"       : device,
                                    "bias"         : isbias,
                                  },
                       "pool 1" : { 
@@ -54,7 +52,6 @@ class Hirotaka0122(nn.Module):
                                    "kernel_size"  : 5,
                                    "stride"       : 1,
                                    "padding"      : 0,
-                                   ## "device"       : device,
                                    "bias"         : isbias,
                                  },
                       "pool 2" : { 
@@ -66,7 +63,7 @@ class Hirotaka0122(nn.Module):
 
         in_channels = 1
         conv_volume = ConvVolume(size_y, size_x, in_channels, conv_dict)
-        conv_size_y, conv_size_x, conv_channels = conv_volume.shape()
+        conv_channels, conv_size_y, conv_size_x = conv_volume.shape()
         self.dim_features = conv_size_y * conv_size_x * conv_channels
 
         # Define conv object...
@@ -93,7 +90,7 @@ class Hirotaka0122(nn.Module):
             nn.Linear( in_features  = dim_emb, 
                        out_features = dim_emb, 
                        bias         = isbias),
-            nn.Sigmoid()
+            ## nn.Sigmoid()
         )
 
 
@@ -103,4 +100,3 @@ class Hirotaka0122(nn.Module):
         x = self.classifer(x)
 
         return x
-

@@ -89,10 +89,10 @@ class ConvVolume:
             layer_params = self.conv_dict[layer_name]
 
             #  Obtain the size of the new volume...
-            self.size_y, self.size_x, self.channels = \
+            self.channels, self.size_y, self.size_x = \
                 self.method_dict[method](**layer_params)
 
-        return self.size_y, self.size_x, self.channels
+        return self.channels, self.size_y, self.size_x
 
 
     def _get_shape_from_conv2d(self, **kwargs):
@@ -107,7 +107,7 @@ class ConvVolume:
         out_size_y = (size_y - kernel_size + 2 * padding) // stride + 1
         out_size_x = (size_x - kernel_size + 2 * padding) // stride + 1
 
-        return out_size_y, out_size_x, out_channels
+        return out_channels, out_size_y, out_size_x
 
 
     def _get_shape_from_pool(self, **kwargs):
@@ -121,5 +121,5 @@ class ConvVolume:
         out_size_y = (size_y - kernel_size) // stride + 1
         out_size_x = (size_x - kernel_size) // stride + 1
 
-        return out_size_y, out_size_x, out_channels
+        return out_channels, out_size_y, out_size_x
 

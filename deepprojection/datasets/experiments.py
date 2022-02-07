@@ -96,51 +96,42 @@ class SPIImgDataset(Dataset):
         return len(self.imglabel_list)
 
 
-    def __getitem__(self, idx):
+    def get_img_and_label(self, idx):
         # Read image...
         exp, run, event_num, label = self.imglabel_list[idx]
         basename = (exp, run)
         img = self.psana_imgreader_dict[basename].get(int(event_num))
+
+        # Resize images...
+        if self.resize:
+            bin_row, bin_col = self.resize
+            img = downsample(img, bin_row, bin_col, mask = None)
+
+        return img, label
+
+
+    def __getitem__(self, idx):
+        ## # Read image...
+        ## exp, run, event_num, label = self.imglabel_list[idx]
+        ## basename = (exp, run)
+        ## img = self.psana_imgreader_dict[basename].get(int(event_num))
+
+        img, label = self.get_img_and_label(idx)
 
         # Normalize input image...
         img_mean = np.mean(img)
         img_std  = np.std(img)
         img_norm = (img - img_mean) / img_std
 
-        # Resize images...
-        ## if self.resize: img = skimage.transform.resize(img, self.resize)
-        if self.resize:
-            bin_row, bin_col = self.resize
-            img_norm = downsample(img_norm, bin_row, bin_col, mask = None)
+        ## # Resize images...
+        ## if self.resize:
+        ##     bin_row, bin_col = self.resize
+        ##     img_norm = downsample(img_norm, bin_row, bin_col, mask = None)
 
         # If not flat, add one extra dimension to reflect the number channels...
         img_norm = img_norm[np.newaxis,] if not self.isflat else img_norm.reshape(-1)
 
         return img_norm, int(label)
-
-
-    def get_imagesize(self, idx):
-        ## exp, run, event_num, label = self.imglabel_list[idx]
-
-        ## print(f"Loading image {exp}.{run}.{event_num}...")
-
-        ## basename = (exp, run)
-        ## img = self.psana_imgreader_dict[basename].get(int(event_num))
-
-        ## # Resize images
-        ## ## if self.resize: img = skimage.transform.resize(img, self.resize)
-        ## if self.resize:
-        ##     bin_row, bin_col =  self.resize
-        ##     img = downsample(img, bin_row, bin_col, mask = None)
-
-        ## # If not flat, add one extra dimension to reflect the number channels...
-        ## img_norm = img_norm.reshape(1, -1) if not self.isflat else img_norm.reshape(-1)
-
-        img, _ = self.__getitem__(idx)
-
-        return img.shape
-
-
 
 
 class SiameseDataset(SPIImgDataset):
