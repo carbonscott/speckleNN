@@ -14,7 +14,7 @@ import torch
 from deepprojection.datasets.experiments import SPIImgDataset, SiameseDataset, ConfigDataset
 from deepprojection.model                import SiameseModel, ConfigSiameseModel
 from deepprojection.validator            import ConfigValidator, Validator
-from deepprojection.encoders.linear      import SimpleEncoder, ConfigEncoder
+from deepprojection.encoders.convnet     import Hirotaka0122, ConfigEncoder
 import matplotlib.pyplot as plt
 import tqdm
 from torch.utils.data import DataLoader
@@ -88,19 +88,19 @@ class VizSiameseOutput:
 
     def plot_emb_anchor(self, title = ""): 
         self.ax_emb_anchor.plot(self.emb_anchor)
-        self.ax_emb_anchor.set_aspect(15)
+        ## self.ax_emb_anchor.set_aspect(15)
         self.ax_emb_anchor.set_title(title)
 
 
     def plot_emb_pos(self, title = ""): 
         self.ax_emb_pos.plot(self.emb_pos)
-        self.ax_emb_pos.set_aspect(15)
+        ## self.ax_emb_pos.set_aspect(15)
         self.ax_emb_pos.set_title(title)
 
 
     def plot_emb_neg(self, title = ""): 
         self.ax_emb_neg.plot(self.emb_neg)
-        self.ax_emb_neg.set_aspect(15)
+        ## self.ax_emb_neg.set_aspect(15)
         self.ax_emb_neg.set_title(title)
 
 
@@ -119,7 +119,9 @@ class VizSiameseOutput:
 ## timestamp = "20220201224358"
 ## timestamp = "20220202145638"
 ## timestamp = "20220202184307"
-timestamp = "20220205133931"
+## timestamp = "20220205133931"
+## timestamp = "20220207114826"
+timestamp = "20220207115721"
 
 def init_weights(module):
     if isinstance(module, torch.nn.Embedding):
@@ -132,7 +134,7 @@ config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
                                 resize         = (resize_y, resize_x),
                                 ## exclude_labels = [ ConfigDataset.NOHIT, ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ],
                                 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ], 
-                                isflat         = True, 
+                                isflat         = False, 
                               )
 dataset_validate = SiameseDataset(config_dataset)
 
@@ -141,16 +143,17 @@ spiimg = SPIImgDataset(config_dataset)
 size_y, size_x = spiimg.get_img_and_label(0)[0].shape
 
 # Config the encoder...
-dim_emb = 32
+## dim_emb = 2
+dim_emb = 10
 config_encoder = ConfigEncoder( dim_emb = dim_emb,
                                 size_y  = size_y,
                                 size_x  = size_x,
                                 isbias  = True )
-encoder = SimpleEncoder(config_encoder)
+encoder = Hirotaka0122(config_encoder)
 
 # Load siamese model with random weights
 alpha   = 1.0
-config_siamese = ConfigSiameseModel( alpha   = alpha, encoder = encoder, )
+config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
 model_raw = SiameseModel(config_siamese)
 model_raw.apply(init_weights)
 
@@ -196,19 +199,11 @@ for epoch in tqdm.tqdm(range(config_validator.max_epochs)):
         ## print(title_anchor)
 
         for i in range(len(label_anchor)):
-            ## emb_anchor, emb_pos, emb_neg, _ = model_raw.forward(img_anchor[i], img_pos[i], img_neg[i])
-            ## viz_metadata = VizMetadata(size_y = size_y, size_x = size_x, figsize = (12*3,6*3),
-            ##                            title_anchor = title_anchor[i],
-            ##                            title_pos    = title_pos[i],
-            ##                            title_neg    = title_neg[i],)
-            ## viz = VizSiameseOutput(img_anchor[i], img_pos[i], img_neg[i], emb_anchor, emb_pos, emb_neg, viz_metadata)
-            ## viz.show()
-
-            emb_anchor, emb_pos, emb_neg, loss = model.forward(img_anchor[i], img_pos[i], img_neg[i])
+            emb_anchor, emb_pos, emb_neg, loss = model.forward(img_anchor[i].unsqueeze(0), img_pos[i].unsqueeze(0), img_neg[i].unsqueeze(0))
             viz_metadata = VizMetadata(size_y = size_y, size_x = size_x, figsize = (8*3,6*3),
                                        title_anchor = title_anchor[i],
                                        title_pos    = title_pos[i],
                                        title_neg    = title_neg[i],
                                        title_fig    = loss, )
-            viz = VizSiameseOutput(img_anchor[i], img_pos[i], img_neg[i], emb_anchor, emb_pos, emb_neg, viz_metadata)
+            viz = VizSiameseOutput(img_anchor[i], img_pos[i], img_neg[i], emb_anchor[0], emb_pos[0], emb_neg[0], viz_metadata)
             viz.show()

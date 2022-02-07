@@ -54,7 +54,7 @@ dataset_train = SiameseDataset(config_dataset)
 
 # Get image size...
 spiimg = SPIImgDataset(config_dataset)
-channels, size_y, size_x = spiimg.get_imagesize(0)
+size_y, size_x = spiimg.get_img_and_label(0)[0].shape
 
 # Try different margin (alpha) for Siamese net...
 DRCCHKPT = "chkpts"
@@ -62,7 +62,7 @@ prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
 if not os.path.exists(prefixpath_chkpt): os.makedirs(prefixpath_chkpt)
 
 # Config the encoder...
-dim_emb = 32
+dim_emb = 10
 config_encoder = ConfigEncoder( dim_emb = dim_emb,
                                 size_y  = size_y,
                                 size_x  = size_x,
@@ -70,7 +70,8 @@ config_encoder = ConfigEncoder( dim_emb = dim_emb,
 encoder = Hirotaka0122(config_encoder)
 
 # Config the model...
-alpha   = 1.0
+## alpha   = 1.0
+alpha   = 100.0
 config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
 model = SiameseModel(config_siamese)
 
@@ -82,8 +83,8 @@ fl_chkpt = f"{timestamp}.train.chkpt"
 path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
 config_train = ConfigTrainer( path_chkpt  = path_chkpt,
                               num_workers = 1,
-                              batch_size  = 100,
-                              max_epochs  = 15,
+                              batch_size  = 200,
+                              max_epochs  = 3,
                               lr          = 0.001, )
 
 # Training...
