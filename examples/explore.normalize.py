@@ -197,7 +197,8 @@ class HistSPIImg():
             b, e = data_seg[0], data_seg[-1]
             if abs(e - b) < 10e-6: 
                 print(f"The bin cap (={bin_cap}) is too small, some population density reaches to infinity!!!")
-                den = 1e-1
+                den = np.nan    # Follow behaviros of matlab and gnuplot that ignore infinity
+                                # https://discourse.matplotlib.org/t/plotting-array-with-inf/9641/2
             else: den = bin_step / (e - b)
             bin_val.append(den)
             bin_edge.append(b)
@@ -222,5 +223,6 @@ img = img_reader.get(event_num, mode = "image")
 ## img_raw = img_reader.get(event_num, mode = "raw")
 
 # Dispaly an image...
+## img[img < 0] = 0
 disp_manager = HistSPIImg(img, figsize = (18, 18))
 disp_manager.show()
