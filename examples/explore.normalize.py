@@ -101,10 +101,10 @@ class HistSPIImg():
 
         # Add a rectangle to specify the range (vmin, vmax)...
         mtrans = mtransforms.blended_transform_factory(self.ax_img[0].transData, self.ax_img[0].transAxes)
-        #                                                  ~~~~~~~~~~~~  ~~~~~~~~~~~~
-        # Axes X (Keep as DC) ___________________________________|             :
-        #                                                                      :
-        # Axes Y (Transform to AC) ............................................:
+        #                                              ~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~~~~~~~~~
+        # Axes X (Keep as DC) ______________________________________|                       :
+        #                                                                                   :
+        # Axes Y (Transform to AC) .........................................................:
 
         w = vmax - vmin
         rect = mpatches.Rectangle((vmin, 0), width=w, height=1, transform=mtrans,
