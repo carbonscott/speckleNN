@@ -131,7 +131,12 @@ class PairValidator:
                 with torch.no_grad():
                     # Look at each example in a batch...
                     for i in range(len(label_anchor)):
-                        _, _, rmsd = self.model.forward(img_anchor[i], img_second[i])
+                        # Biolerplate unsqueeze due to the design of PyTorch Conv2d, no idea how to improve yet...
+                        if config_test.isflat:
+                            _, _, rmsd = self.model.forward(img_anchor[i], img_second[i])
+                        else:
+                            _, _, rmsd = self.model.forward(img_anchor[i].unsqueeze(0), img_second[i].unsqueeze(0))
+
                         rmsd_val = rmsd.cpu().detach().numpy()
                         rmsds.append(rmsd_val)
                         logger.info(f"TEST - {title_anchor[i]}, {title_second[i]}, {rmsd_val:7.4f}")
