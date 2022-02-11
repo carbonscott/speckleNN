@@ -52,7 +52,7 @@ class HistSPIImg():
         self.figsize = figsize
         for k, v in kwargs.items(): setattr(self, k, v)
 
-        self.img_mean = np.mean(img)
+        self.img_mean = np.nanmean(img)
         self.img_std  = np.std(img)
 
         self.fig, (self.ax_img, self.ax_norm) = self.create_panels()
@@ -90,7 +90,7 @@ class HistSPIImg():
         self.ax_img[0].set_box_aspect(0.5)
         self.ax_img[0].set_yscale('log')
         self.ax_img[0].set_xlim(rng[0], rng[1])
-        ymin, ymax = min(bin_val), max(bin_val)
+        ymin, ymax = np.nanmin(bin_val), np.nanmax(bin_val)
         self.ax_img[0].set_ylim(ymin, ymax)
         self.ax_img[0].set_title(f"$\mu = {img_mean:.4f}$; $\sigma = {img_std:.4f};  b = {bin_cap}$")
         self.ax_img[0].set_xlabel('Pixel intensity')
@@ -122,9 +122,9 @@ class HistSPIImg():
         img = self.img
         img_mean = self.img_mean
         img_std  = self.img_std
-
         img_norm = (img - img_mean) / img_std
-        img_mean = np.mean(img_norm)
+
+        img_mean = np.nanmean(img_norm)
         img_std  = np.std(img_norm)
         bin_val, bin_rng = self.population_density(img_norm, bin_cap)
 
@@ -140,7 +140,7 @@ class HistSPIImg():
         self.ax_norm[0].set_box_aspect(0.5)
         self.ax_norm[0].set_yscale('log')
         self.ax_norm[0].set_xlim(rng[0], rng[1])
-        ymin, ymax = min(bin_val), max(bin_val)
+        ymin, ymax = np.nanmin(bin_val), np.nanmax(bin_val)
         self.ax_norm[0].set_ylim(ymin, ymax)
         self.ax_norm[0].set_title(f"$\mu = {img_mean:.4f}$; $\sigma = {img_std:.4f};  b = {bin_cap}$")
         self.ax_norm[0].set_xlabel('Pixel intensity')
@@ -166,7 +166,7 @@ class HistSPIImg():
 
     def show(self): 
         self.plot_img (rng = [-150, 250], bin_cap = 200, vcenter = 0, vmin = -120,  vmax = 150)
-        self.plot_norm(rng = [-1,     5], bin_cap = 200, vcenter = 0, vmin = -1,    vmax = 1)
+        self.plot_norm(rng = [-1,     5], bin_cap = 200, vcenter = 0, vmin = -1,    vmax = 4)
 
         img_mean = self.img_mean
         img_std  = self.img_std
@@ -210,7 +210,7 @@ class HistSPIImg():
 
 
 # Specify the dataset and detector...
-exp, run, mode, detector_name = 'amo06516', '90', 'idx', 'pnccdFront'
+exp, run, mode, detector_name = 'amo06516', '102', 'idx', 'pnccdFront'
 
 # Initialize an image reader...
 img_reader = PsanaImg(exp, run, mode, detector_name)
@@ -218,11 +218,13 @@ img_reader = PsanaImg(exp, run, mode, detector_name)
 # Access an image (e.g. event 796)...
 ## event_num = 796
 ## event_num = 1997
-event_num = 3120
+## event_num = 3120
+event_num = 1
+## event_num = 709
 img = img_reader.get(event_num, mode = "image")
 ## img_raw = img_reader.get(event_num, mode = "raw")
 
 # Dispaly an image...
-## img[img < 0] = 0
+## img[img < np.nanstd(img)] = 0
 disp_manager = HistSPIImg(img, figsize = (18, 18))
 disp_manager.show()
