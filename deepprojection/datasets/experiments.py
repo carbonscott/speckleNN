@@ -134,20 +134,12 @@ class SPIImgDataset(Dataset):
         return img_norm, int(label)
 
 
-class SiameseDataset(SPIImgDataset):
-    """
-    Siamese requires an input of three images at a time, namely anchor,
-    positive, and negative.  This dataset will create such triplet
-    automatically by randomly choosing an anchor followed up by randomly
-    selecting a positive and negative, respectively.
-    """
+class Siamese(SPIImgDataset):
 
     def __init__(self, config):
         super().__init__(config)
 
         self.size_sample = getattr(config, 'size_sample')
-
-        self.num_stockimgs = len(self.imglabel_list)
 
         # Create a lookup table for locating the sequence number (seqi) based on a label...
         label_seqi_dict = {}
@@ -164,6 +156,44 @@ class SiameseDataset(SPIImgDataset):
         for label in self.labels:
             num_img = len(label_seqi_dict[label])
             logger.info(f"KV - {label:16s} : {num_img}")
+
+        self.label_seqi_dict = label_seqi_dict
+
+        return None
+
+
+
+
+class SiameseDataset(Siamese):
+    """
+    Siamese requires an input of three images at a time, namely anchor,
+    positive, and negative.  This dataset will create such triplet
+    automatically by randomly choosing an anchor followed up by randomly
+    selecting a positive and negative, respectively.
+    """
+
+    def __init__(self, config):
+        super().__init__(config)
+
+        label_seqi_dict = self.label_seqi_dict
+
+        ## self.size_sample = getattr(config, 'size_sample')
+
+        ## # Create a lookup table for locating the sequence number (seqi) based on a label...
+        ## label_seqi_dict = {}
+        ## for seqi, (_, _, _, label) in enumerate(self.imglabel_list):
+        ##     # Keep track of label and its seqi
+        ##     if not label in label_seqi_dict: label_seqi_dict[label] = [seqi]
+        ##     else                           : label_seqi_dict[label].append(seqi)
+
+        ## # Consolidate labels in the dataset...
+        ## self.labels = list(set([ i[-1] for i in self.imglabel_list ]))
+
+        ## # Log the number of images for each label...
+        ## logger.info("___/ Dataset statistics \___")
+        ## for label in self.labels:
+        ##     num_img = len(label_seqi_dict[label])
+        ##     logger.info(f"KV - {label:16s} : {num_img}")
 
         # Form triplet for ML training...
         self.triplets = self._form_triplets(label_seqi_dict)
@@ -231,6 +261,86 @@ class SiameseDataset(SPIImgDataset):
             triplets.append( (id_anchor, id_pos, id_neg) )
 
         return triplets
+
+
+
+class SiameseTestset(Siamese):
+    """
+    Siamese testset returns a list of image pairs, anchor and second.  
+
+    This implementation is mainly designed to measure true/false positve/negative.  
+
+    Measurement: result_pred == result_supposed, result_pred
+    Here result means 
+    - match   : positve
+    - mismatch: negative
+    """
+
+    def __init__(self, config):
+        super().__init__(config)
+
+        label_seqi_dict = self.label_seqi_dict
+
+        # Form triplet for ML training...
+        self.doublets = self._form_doublets(label_seqi_dict)
+
+        return None
+
+
+    def __len__(self):
+        return self.size_sample
+
+
+    def __getitem__(self, idx):
+        id_anchor, id_second = self.doublets[idx]
+
+        # Read the anchor, pos, neg
+        img_anchor, label_anchor = super().__getitem__(id_anchor)
+        img_second, _ = super().__getitem__(id_second)
+
+        res = img_anchor, img_second, label_anchor
+
+        # Append (exp, run, event_num, label) to the result
+        for i in (id_anchor, id_second): 
+            ## title = [ str(j) for j in self.imglabel_list[i] ]
+            title = self.imglabel_list[i]
+            res += (' '.join(title), )
+
+        return res
+
+
+    def _form_doublets(self, label_seqi_dict):
+        """ 
+        Creating `size_sample` doublets of two images.
+
+        Used for model validation only.  
+        """
+        # Select two list of random labels following uniform distribution...
+        # For anchor
+        size_sample       = self.size_sample
+        label_anchor_list = random.choices(self.labels, k = size_sample)
+
+        # Collection of doublets...
+        doublets = []
+        for label_anchor in label_anchor_list:
+            # Fetch the anchor label...
+            # Create buckets of anchors...
+            anchor_bucket = label_seqi_dict[label_anchor]
+
+            # Randomly sample one anchor...
+            id_anchor = random.choice(anchor_bucket)
+
+            # Create buckets of second images...
+            label_second = random.choice(self.labels)
+
+            second_bucket = label_seqi_dict[label_second]
+
+            # Randomly sample one second image...
+            id_second = random.choice(second_bucket)
+
+            doublets.append( (id_anchor, id_second) )
+
+        return doublets
 
 
 

@@ -56,3 +56,23 @@ class SiameseModel(nn.Module):
         return optimizer
 
 
+
+
+class SiameseModelCompare(nn.Module):
+    """ Embedding independent triplet loss. """
+
+    def __init__(self, config):
+        super().__init__()
+        self.encoder = config.encoder
+
+
+    def forward(self, img_anchor, img_second):
+        # Encode images
+        img_anchor_embed = self.encoder.encode(img_anchor)
+        img_second_embed = self.encoder.encode(img_second)
+
+        # Calculate the RMSD between anchor and second
+        img_diff           = img_anchor_embed - img_second_embed
+        rmsd_anchor_second = torch.sqrt( torch.mean(img_diff * img_diff) )
+
+        return img_anchor_embed, img_second_embed, rmsd_anchor_second

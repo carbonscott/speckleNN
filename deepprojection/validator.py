@@ -27,7 +27,7 @@ class ConfigValidator:
 
 
 
-class Validator:
+class LossValidator:
     def __init__(self, model, dataset_test, config_test):
         self.model        = model
         self.dataset_test = dataset_test
@@ -73,6 +73,7 @@ class Validator:
                 img_neg    = img_neg.to(self.device)
 
                 with torch.no_grad():
+                    # Look at each example in a batch...
                     for i in range(len(label_anchor)):
                         _, _, _, loss = self.model.forward(img_anchor[i], img_pos[i], img_neg[i])
                         loss_val = loss.cpu().detach().numpy()
@@ -80,3 +81,57 @@ class Validator:
                         logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}, {loss_val:7.4f}")
 
                 logger.info(f"MSG - epoch {epoch:d}, batch {step_id:d}, loss {np.mean(losses):.4f}")
+
+
+
+
+class PairValidator:
+    def __init__(self, model, dataset_test, config_test):
+        self.model        = model
+        self.dataset_test = dataset_test
+        self.config_test  = config_test
+
+        # Load data to gpus if available
+        self.device = 'cpu'
+        if torch.cuda.is_available():
+            self.device = torch.cuda.current_device()
+
+            self.model.load_state_dict(torch.load(self.config_test.path_chkpt))
+            self.model = torch.nn.DataParallel(self.model).to(self.device)
+
+        return None
+
+
+    def validate(self):
+        """ The testing loop.  """
+
+        # Load model and testing configuration
+        model, config_test = self.model, self.config_test
+
+        # Train each epoch
+        for epoch in tqdm.tqdm(range(config_test.max_epochs)):
+            # Load model state
+            model.eval()
+            dataset_test = self.dataset_test
+            loader_test  = DataLoader( dataset_test, shuffle     = True, 
+                                                     pin_memory  = True, 
+                                                     batch_size  = config_test.batch_size,
+                                                     num_workers = config_test.num_workers )
+
+            # Train each batch
+            batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test))
+            for step_id, entry in batch:
+                rmsds = []
+
+                img_anchor, img_second, label_anchor, title_anchor, title_second = entry
+
+                img_anchor = img_anchor.to(self.device)
+                img_second = img_second.to(self.device)
+
+                with torch.no_grad():
+                    # Look at each example in a batch...
+                    for i in range(len(label_anchor)):
+                        _, _, rmsd = self.model.forward(img_anchor[i], img_second[i])
+                        rmsd_val = rmsd.cpu().detach().numpy()
+                        rmsds.append(rmsd_val)
+                        logger.info(f"TEST - {title_anchor[i]}, {title_second[i]}, {rmsd_val:7.4f}")
