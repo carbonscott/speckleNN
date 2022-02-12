@@ -139,4 +139,4 @@ class PairValidator:
 
                         rmsd_val = rmsd.cpu().detach().numpy()
                         rmsds.append(rmsd_val)
-                        logger.info(f"TEST - {title_anchor[i]}, {title_second[i]}, {rmsd_val:7.4f}")
+                        logger.info(f"DATA - {title_anchor[i]}, {title_second[i]}, {rmsd_val:7.4f}")

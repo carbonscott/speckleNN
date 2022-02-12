@@ -111,22 +111,12 @@ class SPIImgDataset(Dataset):
 
 
     def __getitem__(self, idx):
-        ## # Read image...
-        ## exp, run, event_num, label = self.imglabel_list[idx]
-        ## basename = (exp, run)
-        ## img = self.psana_imgreader_dict[basename].get(int(event_num))
-
         img, label = self.get_img_and_label(idx)
 
         # Normalize input image...
         img_mean = np.mean(img)
         img_std  = np.std(img)
         img_norm = (img - img_mean) / img_std
-
-        ## # Resize images...
-        ## if self.resize:
-        ##     bin_row, bin_col = self.resize
-        ##     img_norm = downsample(img_norm, bin_row, bin_col, mask = None)
 
         # If not flat, add one extra dimension to reflect the number channels...
         img_norm = img_norm[np.newaxis,] if not self.isflat else img_norm.reshape(-1)

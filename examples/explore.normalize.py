@@ -2,11 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import psana
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-import matplotlib.patches as mpatches
-import matplotlib.transforms as mtransforms
+import matplotlib.pyplot       as plt
+import matplotlib.colors       as mcolors
+import matplotlib.patches      as mpatches
+import matplotlib.transforms   as mtransforms
+import matplotlib.font_manager as font_manager
 import numpy as np
+import os
 
 
 class PsanaImg:
@@ -45,7 +47,7 @@ class PsanaImg:
 
 
 
-class HistSPIImg():
+class HistSPIImg:
 
     def __init__(self, img, figsize, **kwargs):
         self.img = img
@@ -59,8 +61,21 @@ class HistSPIImg():
 
 
     def create_panels(self):
-        plt.rcParams.update({'font.size': 18})
-        plt.rcParams.update({'font.family' : 'sans-serif'})
+        # Where to load external font...
+        drc_py    = os.path.dirname(os.path.realpath(__file__))
+        drc_font  = os.path.join("fonts", "Helvetica")
+        fl_ttf    = f"Helvetica.ttf"
+        path_font = os.path.join(drc_py, drc_font, fl_ttf)
+        prop_font = font_manager.FontProperties( fname = path_font )
+
+        # Add Font and configure font properties
+        font_manager.fontManager.addfont(path_font)
+        prop_font = font_manager.FontProperties(fname = path_font)
+        self.prop_font = prop_font
+
+        # Specify fonts for pyplot...
+        plt.rcParams['font.family'] = prop_font.get_name()
+        plt.rcParams['font.size']   = 18
 
         nrows, ncols = 3, 2
         fig = plt.figure(figsize = self.figsize)
@@ -92,7 +107,7 @@ class HistSPIImg():
         self.ax_img[0].set_xlim(rng[0], rng[1])
         ymin, ymax = np.nanmin(bin_val), np.nanmax(bin_val)
         self.ax_img[0].set_ylim(ymin, ymax)
-        self.ax_img[0].set_title(f"$\mu = {img_mean:.4f}$; $\sigma = {img_std:.4f};  b = {bin_cap}$")
+        self.ax_img[0].set_title(f"$\mu = {img_mean:.4f}$; $\sigma = {img_std:.4f};  b = {bin_cap}$", fontdict = {"fontsize" : 18})
         self.ax_img[0].set_xlabel('Pixel intensity')
         self.ax_img[0].set_ylabel('Population density')
         print(f"Image: ")
@@ -142,7 +157,7 @@ class HistSPIImg():
         self.ax_norm[0].set_xlim(rng[0], rng[1])
         ymin, ymax = np.nanmin(bin_val), np.nanmax(bin_val)
         self.ax_norm[0].set_ylim(ymin, ymax)
-        self.ax_norm[0].set_title(f"$\mu = {img_mean:.4f}$; $\sigma = {img_std:.4f};  b = {bin_cap}$")
+        self.ax_norm[0].set_title(f"$\mu = {img_mean:.4f}$; $\sigma = {img_std:.4f};  b = {bin_cap}$", fontdict = {"fontsize" : 18})
         self.ax_norm[0].set_xlabel('Pixel intensity')
         self.ax_norm[0].set_ylabel('Population density')
         print(f"Norm: ")
@@ -164,14 +179,33 @@ class HistSPIImg():
         im.set_cmap('seismic')
         plt.colorbar(im, ax = self.ax_norm[1], orientation="horizontal", pad = 0.05)
 
-    def show(self): 
+    def show(self, filename = None): 
         self.plot_img (rng = [-150, 250], bin_cap = 200, vcenter = 0, vmin = -120,  vmax = 150)
         self.plot_norm(rng = [-1,     5], bin_cap = 200, vcenter = 0, vmin = -1,    vmax = 4)
 
         img_mean = self.img_mean
         img_std  = self.img_std
-        ## plt.suptitle(f"mean = {img_mean:.4f}; std = {img_std:.4f}")
-        plt.show()
+
+        ## plt.subplots_adjust(top    = 1.0)
+        ## plt.subplots_adjust(bottom = 0.0)
+        plt.subplots_adjust(hspace = 0.0)
+        if not isinstance(filename, str): 
+            plt.show()
+        else:
+            plt.suptitle(f"IMG - {filename}", y = 0.92)
+
+            # Set up drc...
+            DRCPDF         = "pdfs"
+            drc_cwd        = os.getcwd()
+            prefixpath_pdf = os.path.join(drc_cwd, DRCPDF)
+            if not os.path.exists(prefixpath_pdf): os.makedirs(prefixpath_pdf)
+
+            # Specify file...
+            fl_pdf = f"{filename}.pdf"
+            path_pdf = os.path.join(prefixpath_pdf, fl_pdf)
+
+            # Export...
+            plt.savefig(path_pdf, dpi = 100)
 
 
     def population_density(self, data, bin_cap = 100):
@@ -210,7 +244,7 @@ class HistSPIImg():
 
 
 # Specify the dataset and detector...
-exp, run, mode, detector_name = 'amo06516', '102', 'idx', 'pnccdFront'
+exp, run, mode, detector_name = 'amo06516', '90', 'idx', 'pnccdFront'
 
 # Initialize an image reader...
 img_reader = PsanaImg(exp, run, mode, detector_name)
@@ -219,12 +253,18 @@ img_reader = PsanaImg(exp, run, mode, detector_name)
 ## event_num = 796
 ## event_num = 1997
 ## event_num = 3120
-event_num = 1
+## event_num = 1
 ## event_num = 709
-img = img_reader.get(event_num, mode = "image")
-## img_raw = img_reader.get(event_num, mode = "raw")
 
-# Dispaly an image...
-## img[img < np.nanstd(img)] = 0
-disp_manager = HistSPIImg(img, figsize = (18, 18))
-disp_manager.show()
+event_nums = (1, 709, 796, 1997, 3120)
+for event_num in event_nums:
+    img = img_reader.get(event_num, mode = "image")
+    ## img_raw = img_reader.get(event_num, mode = "raw")
+
+    # Dispaly an image...
+    ## img[img < np.nanstd(img)] = 0
+    basename = f"{exp}.{int(run):04d}"
+    filename = f"{basename}.{event_num:05d}"
+    disp_manager = HistSPIImg(img, figsize = (18, 16))
+    ## disp_manager.show()
+    disp_manager.show(filename = filename)
