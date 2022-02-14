@@ -99,4 +99,8 @@ class Hirotaka0122(nn.Module):
         x = x.view(-1, self.dim_features)
         x = self.classifer(x)
 
+        # L2 Normalize...
+        dnorm = torch.norm(x)
+        x = x / dnorm
+
         return x

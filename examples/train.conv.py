@@ -3,6 +3,7 @@
 
 import os
 import logging
+import numpy as np
 import torch
 from deepprojection.datasets.experiments import SPIImgDataset, SiameseDataset, ConfigDataset
 from deepprojection.model                import SiameseModel , ConfigSiameseModel
@@ -40,21 +41,45 @@ def init_weights(module):
         module.weight.data.normal_(mean = 0.0, std = 0.02)
 
 # Config the dataset...
-resize_y, resize_x = 6, 6
-resize = (resize_y, resize_x) if not None in (resize_y, resize_x) else ()
-## exclude_labels = [ ConfigDataset.NOHIT, ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
-exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
-## exclude_labels = [ ConfigDataset.UNKNOWN ]
+exclude_labels = [ ConfigDataset.NOHIT, ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
 config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
                                 size_sample    = 2000, 
-                                resize         = resize,
+                                mode           = 'image',
+                                mask           = None,
+                                resize         = None,
                                 isflat         = False,
                                 exclude_labels = exclude_labels, )
-dataset_train = SiameseDataset(config_dataset)
 
 # Get image size...
 spiimg = SPIImgDataset(config_dataset)
-size_y, size_x = spiimg.get_img_and_label(0)[0].shape
+img    = spiimg.get_img_and_label(0)[0]
+size_y, size_x = img.shape
+
+# Creat a mask...
+# Create a raw mask
+mask = np.ones_like(img)
+
+# Mask out the top 10%
+top = 0.1
+h_false = int(top * size_y)
+mask_false_area = (slice(0, h_false), slice(0, size_x))
+mask[mask_false_area[0], mask_false_area[1]] = 0
+
+# Mask out the oversaturated panel in 102
+mask_false_area = (slice(510, None), slice(541, 670))
+mask[mask_false_area[0], mask_false_area[1]] = 0
+
+# Reconfig the dataset...
+resize_y, resize_x = 6, 6
+resize = (resize_y, resize_x) if not None in (resize_y, resize_x) else ()
+config_dataset.resize = resize
+config_dataset.mask   = mask
+dataset_train = SiameseDataset(config_dataset)
+
+# Obtain the new size...
+spiimg = SPIImgDataset(config_dataset)
+img    = spiimg.get_img_and_label(0)[0]
+size_y, size_x = img.shape
 
 # Try different margin (alpha) for Siamese net...
 DRCCHKPT = "chkpts"
@@ -84,7 +109,7 @@ path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
 config_train = ConfigTrainer( path_chkpt  = path_chkpt,
                               num_workers = 1,
                               batch_size  = 200,
-                              max_epochs  = 3,
+                              max_epochs  = 15,
                               lr          = 0.001, )
 
 # Training...

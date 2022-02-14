@@ -49,6 +49,8 @@ class SPIImgDataset(Dataset):
         exclude_labels = config.exclude_labels
         self.resize    = config.resize
         self.isflat    = config.isflat
+        self.mode      = config.mode
+        self.mask      = config.mask
 
         self._dataset_dict        = {}
         self.psana_imgreader_dict = {}
@@ -95,7 +97,7 @@ class SPIImgDataset(Dataset):
         # Read image...
         exp, run, event_num, label = self.imglabel_list[idx]
         basename = (exp, run)
-        img = self.psana_imgreader_dict[basename].get(int(event_num))
+        img = self.psana_imgreader_dict[basename].get(int(event_num), mode = self.mode, mask = self.mask)
 
         # Resize images...
         if self.resize:
@@ -402,14 +404,23 @@ class PsanaImg:
         self.detector = psana.Detector(detector_name)
 
 
-    def get(self, event_num):
-        # Fetch the timestamp according to event number
+    def get(self, event_num, mode = "image", mask = None):
+        # Fetch the timestamp according to event number...
         timestamp = self.timestamps[int(event_num)]
 
-        # Access each event based on timestamp
+        # Access each event based on timestamp...
         event = self.run_current.event(timestamp)
 
-        # Fetch image data based on timestamp from detector
-        img = self.detector.image(event)
+        # Only two modes are supported...
+        assert mode in ("raw", "image"), f"Mode {mode} is not allowed!!!  Only 'raw' or 'image' are supported."
+
+        # Fetch image data based on timestamp from detector...
+        read = { "image" : self.detector.image,
+                 "raw"   : self.detector.raw,}
+        img = read[mode](event)
+
+        # Apply mask...
+        if isinstance(mask, np.ndarray): img *= mask
 
         return img
+
