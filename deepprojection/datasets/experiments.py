@@ -24,11 +24,12 @@ logger = logging.getLogger(__name__)
 
 class ConfigDataset:
     ''' Biolerplate code to config dataset classs'''
-    NOHIT    = '0'
-    SINGLE   = '1'
-    MULTI    = '2'
-    UNKNOWN  = '3'
-    NEEDHELP = '4'
+    NOHIT      = '0'
+    SINGLE     = '1'
+    MULTI      = '2'
+    UNKNOWN    = '3'
+    NEEDHELP   = '4'
+    BACKGROUND = '9'
 
     def __init__(self, **kwargs):
         logger.info(f"___/ Configure Dataset \___")
@@ -44,10 +45,6 @@ class SPIImgDataset(Dataset):
     """
 
     def __init__(self, config):
-        """
-        Args:
-            fl_csv (string) : CSV file of datasets.
-        """
         fl_csv         = config.fl_csv
         exclude_labels = config.exclude_labels
         self.resize    = config.resize
@@ -70,20 +67,18 @@ class SPIImgDataset(Dataset):
                 exp, run, mode, detector_name, drc_root = line
 
                 # Form a minimal basename to describe a dataset
-                ## basename = f"{exp}.{run}"
                 basename = (exp, run)
 
                 # Initiate image accessing layer
                 self.psana_imgreader_dict[basename] = PsanaImg(exp, run, mode, detector_name)
 
                 # Obtain image labels from this dataset
-                imglabel_fileparser         = ImgLabelFileParser(exp, run, drc_root, exclude_labels)
+                imglabel_fileparser = ImgLabelFileParser(exp, run, drc_root, exclude_labels)
                 self._dataset_dict[basename] = imglabel_fileparser.imglabel_dict
 
         # Enumerate each image from all datasets
         for dataset_id, dataset_content in self._dataset_dict.items():
             # Get the exp and run
-            ## exp, run = dataset_id.split(".")
             exp, run = dataset_id
 
             for event_num, label in dataset_content.items():
@@ -166,24 +161,6 @@ class SiameseDataset(Siamese):
         super().__init__(config)
 
         label_seqi_dict = self.label_seqi_dict
-
-        ## self.size_sample = getattr(config, 'size_sample')
-
-        ## # Create a lookup table for locating the sequence number (seqi) based on a label...
-        ## label_seqi_dict = {}
-        ## for seqi, (_, _, _, label) in enumerate(self.imglabel_list):
-        ##     # Keep track of label and its seqi
-        ##     if not label in label_seqi_dict: label_seqi_dict[label] = [seqi]
-        ##     else                           : label_seqi_dict[label].append(seqi)
-
-        ## # Consolidate labels in the dataset...
-        ## self.labels = list(set([ i[-1] for i in self.imglabel_list ]))
-
-        ## # Log the number of images for each label...
-        ## logger.info("___/ Dataset statistics \___")
-        ## for label in self.labels:
-        ##     num_img = len(label_seqi_dict[label])
-        ##     logger.info(f"KV - {label:16s} : {num_img}")
 
         # Form triplet for ML training...
         self.triplets = self._form_triplets(label_seqi_dict)

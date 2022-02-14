@@ -57,10 +57,12 @@ class HistSPIImg:
         self.img_mean = np.nanmean(img)
         self.img_std  = np.std(img)
 
-        self.fig, (self.ax_img, self.ax_norm) = self.create_panels()
+        self.config_fonts()
+
+        return None
 
 
-    def create_panels(self):
+    def config_fonts(self):
         # Where to load external font...
         drc_py    = os.path.dirname(os.path.realpath(__file__))
         drc_font  = os.path.join("fonts", "Helvetica")
@@ -77,6 +79,10 @@ class HistSPIImg:
         plt.rcParams['font.family'] = prop_font.get_name()
         plt.rcParams['font.size']   = 18
 
+        return None
+
+
+    def create_panels(self):
         nrows, ncols = 3, 2
         fig = plt.figure(figsize = self.figsize)
 
@@ -180,20 +186,21 @@ class HistSPIImg:
         plt.colorbar(im, ax = self.ax_norm[1], orientation="horizontal", pad = 0.05)
 
     def show(self, filename = None): 
-        self.plot_img (rng = [-150, 250], bin_cap = 200, vcenter = 0, vmin = -120,  vmax = 150)
-        self.plot_norm(rng = [-1,     5], bin_cap = 200, vcenter = 0, vmin = -1,    vmax = 4)
+        self.fig, (self.ax_img, self.ax_norm) = self.create_panels()
+
+        self.plot_img (rng = [-150, 250], bin_cap = 200, vcenter = 0, vmin = -100,  vmax = 150)
+        self.plot_norm(rng = [-4,     5], bin_cap = 200, vcenter = 0, vmin = -2,    vmax = 4)
 
         img_mean = self.img_mean
         img_std  = self.img_std
 
         ## plt.subplots_adjust(top    = 1.0)
         ## plt.subplots_adjust(bottom = 0.0)
-        plt.subplots_adjust(hspace = 0.0)
+        plt.subplots_adjust(hspace = 0.5)
+        plt.suptitle(f"IMG - {filename}", y = 0.95)
         if not isinstance(filename, str): 
             plt.show()
         else:
-            plt.suptitle(f"IMG - {filename}", y = 0.92)
-
             # Set up drc...
             DRCPDF         = "pdfs"
             drc_cwd        = os.getcwd()
@@ -205,6 +212,7 @@ class HistSPIImg:
             path_pdf = os.path.join(prefixpath_pdf, fl_pdf)
 
             # Export...
+            ## plt.savefig(path_pdf, dpi = 100, bbox_inches='tight', pad_inches = 0)
             plt.savefig(path_pdf, dpi = 100)
 
 
@@ -244,7 +252,7 @@ class HistSPIImg:
 
 
 # Specify the dataset and detector...
-exp, run, mode, detector_name = 'amo06516', '90', 'idx', 'pnccdFront'
+exp, run, mode, detector_name = 'amo06516', '102', 'idx', 'pnccdFront'
 
 # Initialize an image reader...
 img_reader = PsanaImg(exp, run, mode, detector_name)
@@ -265,6 +273,6 @@ for event_num in event_nums:
     ## img[img < np.nanstd(img)] = 0
     basename = f"{exp}.{int(run):04d}"
     filename = f"{basename}.{event_num:05d}"
-    disp_manager = HistSPIImg(img, figsize = (18, 16))
+    disp_manager = HistSPIImg(img, figsize = (15, 13))
     ## disp_manager.show()
     disp_manager.show(filename = filename)
