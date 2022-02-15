@@ -41,7 +41,7 @@ def init_weights(module):
         module.weight.data.normal_(mean = 0.0, std = 0.02)
 
 # Config the dataset...
-exclude_labels = [ ConfigDataset.NOHIT, ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
+exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
 config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
                                 size_sample    = 2000, 
                                 mode           = 'image',

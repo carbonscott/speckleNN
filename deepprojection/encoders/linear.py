@@ -35,7 +35,8 @@ class SimpleEncoder(nn.Module):
             nn.Linear( in_features  = dim_emb, 
                        out_features = dim_emb, 
                        bias         = isbias),
-            nn.Sigmoid()
+            ## nn.Sigmoid()
+            nn.Softmax(dim = 1)
         )
 
 

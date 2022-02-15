@@ -72,12 +72,12 @@ class Hirotaka0122(nn.Module):
             nn.Conv2d(    **conv_dict["conv 1"] ),
             nn.PReLU(),
             nn.MaxPool2d( **conv_dict["pool 1"] ),
-            nn.Dropout(0.3),
+            nn.Dropout(0.1),
 
             nn.Conv2d(    **conv_dict["conv 2"] ),
             nn.PReLU(),
             nn.MaxPool2d( **conv_dict["pool 2"] ),
-            nn.Dropout(0.3),
+            nn.Dropout(0.1),
         )
 
         # Define the scoring layer (classifer)...
@@ -90,7 +90,7 @@ class Hirotaka0122(nn.Module):
             nn.Linear( in_features  = dim_emb, 
                        out_features = dim_emb, 
                        bias         = isbias),
-            ## nn.Sigmoid()
+            nn.Softmax(dim = 1)
         )
 
 
@@ -99,8 +99,8 @@ class Hirotaka0122(nn.Module):
         x = x.view(-1, self.dim_features)
         x = self.classifer(x)
 
-        # L2 Normalize...
-        dnorm = torch.norm(x)
-        x = x / dnorm
+        ## # L2 Normalize...
+        ## dnorm = torch.norm(x)
+        ## x = x / dnorm
 
         return x
