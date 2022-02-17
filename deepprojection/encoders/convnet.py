@@ -101,9 +101,9 @@ class Hirotaka0122(nn.Module):
         x = x.view(-1, self.dim_features)
         x = self.classifer(x)
 
-        ## # L2 Normalize...
-        ## dnorm = torch.norm(x)
-        ## x = x / dnorm
+        # L2 Normalize...
+        dnorm = torch.norm(x, dim = -1, keepdim = True)
+        x = x / dnorm
 
         return x
 
@@ -195,5 +195,9 @@ class AdamBielski(nn.Module):
         x = self.conv(x)
         x = x.view(-1, self.dim_features)
         x = self.classifer(x)
+
+        # L2 Normalize...
+        dnorm = torch.norm(x, dim = -1, keepdim = True)
+        x = x / dnorm
 
         return x
