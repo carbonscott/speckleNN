@@ -37,16 +37,16 @@ class SiameseModel(nn.Module):
 
         # Calculate the RMSD between anchor and positive
         img_diff = img_anchor_embed - img_pos_embed
-        rmsd_anchor_pos = torch.sqrt( torch.mean(img_diff * img_diff) )
+        rmsd_anchor_pos = torch.sum(img_diff * img_diff, dim = -1)
 
         # Calculate the RMSD between anchor and negative
         img_diff = img_anchor_embed - img_neg_embed
-        rmsd_anchor_neg = torch.sqrt( torch.mean(img_diff * img_diff) )
+        rmsd_anchor_neg = torch.sum(img_diff * img_diff, dim = -1)
 
         # Calculate the triplet loss, relu is another implementation of max(a, b)
         loss_triplet = torch.relu(rmsd_anchor_pos - rmsd_anchor_neg + self.alpha)
 
-        return img_anchor_embed, img_pos_embed, img_neg_embed, loss_triplet
+        return img_anchor_embed, img_pos_embed, img_neg_embed, loss_triplet.mean()
 
 
     def configure_optimizers(self, config_train):
@@ -73,6 +73,6 @@ class SiameseModelCompare(nn.Module):
 
         # Calculate the RMSD between anchor and second
         img_diff           = img_anchor_embed - img_second_embed
-        rmsd_anchor_second = torch.sqrt( torch.mean(img_diff * img_diff) )
+        rmsd_anchor_second = torch.sqrt( torch.mean(img_diff * img_diff, dim = -1) )
 
         return img_anchor_embed, img_second_embed, rmsd_anchor_second

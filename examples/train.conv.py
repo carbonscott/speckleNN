@@ -8,7 +8,7 @@ import torch
 from deepprojection.datasets.experiments import SPIImgDataset, SiameseDataset, ConfigDataset
 from deepprojection.model                import SiameseModel , ConfigSiameseModel
 from deepprojection.trainer              import Trainer      , ConfigTrainer
-from deepprojection.encoders.convnet     import Hirotaka0122 , ConfigEncoder
+from deepprojection.encoders.convnet     import Hirotaka0122 , AdamBielski , ConfigEncoder
 
 from datetime import datetime
 
@@ -81,22 +81,23 @@ spiimg = SPIImgDataset(config_dataset)
 img    = spiimg.get_img_and_label(0)[0]
 size_y, size_x = img.shape
 
-# Try different margin (alpha) for Siamese net...
+# Set up checkpoint file...
 DRCCHKPT = "chkpts"
 prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
 if not os.path.exists(prefixpath_chkpt): os.makedirs(prefixpath_chkpt)
 
 # Config the encoder...
-dim_emb = 10
+dim_emb = 2
 config_encoder = ConfigEncoder( dim_emb = dim_emb,
                                 size_y  = size_y,
                                 size_x  = size_x,
                                 isbias  = True )
 encoder = Hirotaka0122(config_encoder)
+## encoder = AdamBielski(config_encoder)
 
 # Config the model...
+## alpha   = 1000.0
 alpha   = 1.0
-## alpha   = 100.0
 config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
 model = SiameseModel(config_siamese)
 
@@ -108,9 +109,9 @@ fl_chkpt = f"{timestamp}.train.chkpt"
 path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
 config_train = ConfigTrainer( path_chkpt  = path_chkpt,
                               num_workers = 1,
-                              batch_size  = 200,
+                              batch_size  = 40,
                               max_epochs  = 15,
-                              lr          = 0.001, )
+                              lr          = 1e-3, )
 
 # Training...
 trainer = Trainer(model, dataset_train, config_train)

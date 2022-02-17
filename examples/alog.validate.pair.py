@@ -74,8 +74,8 @@ class VizRaw:
                                 s = 72 * 2.5, )
         self.ax_l.set_box_aspect(0.5)
         self.ax_l.set_xlabel('Validation Example Index')
-        self.ax_l.set_ylim(-0.1, 1.1)
-        self.ax_l.set_xticks([])
+        self.ax_l.set_ylim(-0.1, 0.4)
+        ## self.ax_l.set_xticks([])
         self.ax_l.set_ylabel('Distance')
 
 
@@ -90,8 +90,8 @@ class VizRaw:
                                 s = 72 * 2, )
         self.ax_r.set_box_aspect(0.5)
         self.ax_r.set_xlabel('Validation Example Index')
-        self.ax_r.set_ylim(-0.1, 1.1)
-        self.ax_r.set_xticks([])
+        self.ax_r.set_ylim(-0.1, 0.4)
+        ## self.ax_r.set_xticks([])
         self.ax_r.set_ylabel('Distance')
 
 
@@ -138,10 +138,10 @@ class VizRaw:
     def show(self, filename = None): 
         self.fig, (self.ax_l, self.ax_r) = self.create_panels()
 
-        self.plot_l(cat = (True , True ), marker = "o", facecolor = 'none', edgecolor = '#43A047', label = 'True positive')
-        self.plot_r(cat = (False, True ), marker = "o", facecolor = 'none', edgecolor = '#43A047', label = 'False positive')
         self.plot_r(cat = (False, False), marker = "o", facecolor = 'none', edgecolor = '#E53935', label = 'False negative')
+        self.plot_r(cat = (False, True ), marker = "o", facecolor = 'none', edgecolor = '#43A047', label = 'False positive')
         self.plot_l(cat = (True , False), marker = "o", facecolor = 'none', edgecolor = '#E53935', label = 'True negative')
+        self.plot_l(cat = (True , True ), marker = "o", facecolor = 'none', edgecolor = '#43A047', label = 'True positive')
         self.report_metrics()
         self.plot_legend()
 
@@ -155,6 +155,10 @@ class VizRaw:
             drc_cwd        = os.getcwd()
             prefixpath_pdf = os.path.join(drc_cwd, DRCPDF)
             if not os.path.exists(prefixpath_pdf): os.makedirs(prefixpath_pdf)
+
+            # PDF doesn't need x index (hard to see anyway)...
+            self.ax_l.set_xticks([])
+            self.ax_r.set_xticks([])
 
             # Specify file...
             fl_pdf = f"{filename}.pdf"
@@ -174,8 +178,7 @@ def judger(dist, threshold):
 
 
 # File to analyze...
-## id_log = '20220203115233'
-id_log = "20220203150247"
+id_log = "20220215220550"
 
 # Configure the location to run the job...
 drc_cwd = os.getcwd()
@@ -207,22 +210,7 @@ res_dict = { (True , True ) : [],    # True  positive
              (False, False) : [],    # False negative
              (True , False) : [],    # True  negative
            }
-threshold = 0.5
-## for i, (anchor, second, dist) in enumerate(log_dict[ "data" ]):
-##     anchor = tuple(anchor.split())
-##     second = tuple(second.split())
-##     dist   = np.float64(dist)
-## 
-##     # Get the supposed result (match or not)...
-##     label_anchor_supposed = anchor[-1]
-##     label_second_supposed = second[-1]
-##     predicate = label_anchor_supposed == label_second_supposed
-## 
-##     # Get the predicted result (match or not)...
-##     res_pred = judger(dist, threshold)
-## 
-##     # Assign category...
-##     res_dict[(predicate, res_pred)].append((i, dist))
+threshold = 0.25/2
 
 for i, (anchor, second, dist) in enumerate(log_dict[ "data" ]):
     anchor = tuple(anchor.split())
@@ -246,4 +234,5 @@ for i, (anchor, second, dist) in enumerate(log_dict[ "data" ]):
 figsize = (16, 6)
 disp_manager = VizRaw(res_dict = res_dict, figsize = figsize)
 fl_pdf = f"alog.{id_log}"
-disp_manager.show(filename = fl_pdf)
+disp_manager.show()
+## disp_manager.show(filename = fl_pdf)
