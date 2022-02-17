@@ -80,19 +80,16 @@ class Hirotaka0122(nn.Module):
             nn.Dropout(0.1),
         )
 
-        # Define the scoring layer (classifer)...
+        # Define the embedding layer...
         self.classifer = nn.Sequential(
-            # Fully-connected layers for scoring...
             nn.Linear( in_features  = self.dim_features, 
                        ## out_features = dim_emb, 
                        out_features = 512, 
                        bias         = isbias),
             nn.PReLU(),
-            ## nn.Linear( in_features  = dim_emb, 
             nn.Linear( in_features  = 512, 
                        out_features = dim_emb, 
                        bias         = isbias),
-            ## nn.LogSoftmax(dim = -1)
         )
 
 
@@ -173,9 +170,8 @@ class AdamBielski(nn.Module):
             nn.Dropout(0.1),
         )
 
-        # Define the scoring layer (classifer)...
+        # Define the embedding layer...
         self.classifer = nn.Sequential(
-            # Fully-connected layers for scoring...
             nn.Linear( in_features  = self.dim_features, 
                        out_features = 256, 
                        bias         = isbias),
@@ -187,7 +183,6 @@ class AdamBielski(nn.Module):
             nn.Linear( in_features  = 256, 
                        out_features = dim_emb, 
                        bias         = isbias),
-            ## nn.LogSoftmax(dim = -1)
         )
 
 
