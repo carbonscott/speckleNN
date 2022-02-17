@@ -141,7 +141,7 @@ python alog.validate.pair.py
 The above command should produce a figure, shown below, which breaks down the
 true/false positive/negative.  
 
-![](./figures/alog.20220215220550.png)
+![](./figures/alog.20220216211902.png)
 
 Moreover, a breakdown of above information can be done by running
 
@@ -152,7 +152,7 @@ python alog.validate.pair.brkdwn.py
 This will show which cases are handeled well well by the training model, and
 vice versa.  An example figure is shown below.  
 
-![](./figures/alog.20220215220550.brkdwn.png)
+![](./figures/alog.20220216211902.brkdwn.png)
 
 
 ## Caveats
