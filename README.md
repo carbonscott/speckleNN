@@ -193,18 +193,16 @@ USERNAME=$(whoami)
 cd $PSOCAKE_PROJECT
 
 mkdir -p $PSOCAKE_PROJECT/amo06516/$USERNAME/psocake/
+
 ln -s /reg/data/ana03/scratch/cwang31/scratch/spi/amo06516/cwang31/psocake/r0090 \
       $PSOCAKE_PROJECT/amo06516/$USERNAME/psocake/r0090
 
-mkdir -p $PSOCAKE_PROJECT/amo06516/$USERNAME/psocake/
 ln -s /reg/data/ana03/scratch/cwang31/scratch/spi/amo06516/cwang31/psocake/r0091 \
       $PSOCAKE_PROJECT/amo06516/$USERNAME/psocake/r0091
 
-mkdir -p $PSOCAKE_PROJECT/amo06516/$USERNAME/psocake/
 ln -s /reg/data/ana03/scratch/cwang31/scratch/spi/amo06516/cwang31/psocake/r0094 \
       $PSOCAKE_PROJECT/amo06516/$USERNAME/psocake/r0094
 
-mkdir -p $PSOCAKE_PROJECT/amo06516/$USERNAME/psocake/
 ln -s /reg/data/ana03/scratch/cwang31/scratch/spi/amo06516/cwang31/psocake/r0102 \
       $PSOCAKE_PROJECT/amo06516/$USERNAME/psocake/r0102
 ```
