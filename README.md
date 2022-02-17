@@ -53,6 +53,12 @@ directory will be referred to as `$PROJECT` throughout this document.
 
 ## Training/validation workflow
 
+As a prerequisite, go to the project folder.  
+
+```
+cd $PROJECT    # Skip it if you have already been in the project directory.
+```
+
 ### Obtain required files
 
 Example Python files and a label file (in `.csv`) are provided in the `examples`
@@ -70,19 +76,13 @@ cp $PACKAGE/examples/*.csv $PROJECT
 ### Start training
 
 ```
-python $PROJECT/train.py
+python train.py
 ```
 
 Training parameters like the number of training examples can be specified in the
 `train.py`.  
 
 ### How to monitor the progress of training?
-
-As a prerequisite, go to the project folder.  
-
-```
-cd $PROJECT    # Skip it if you have already been in the project directory.
-```
 
 Every training session is logged into a log file (`.train.log`) under `logs`.  `logs`
 direcotry will be created by `train.py` if absent.  It's a text file which can
@@ -120,7 +120,7 @@ specified in the `validate.pair.py` as well.
 Then, simply run
 
 ```
-python $PROJECT/validate.pair.py
+python validate.pair.py
 ```
 
 This will produce a `.validate.pair.log` file under `logs` directory.  You can
@@ -135,7 +135,7 @@ this purpose.  `alog` stands for "analyze log".
 
 
 ```
-python $PROJECT/alog.validate.pair.py
+python alog.validate.pair.py
 ```
 
 The above command should produce a figure, shown below, which breaks down the
@@ -146,7 +146,7 @@ true/false positive/negative.
 Moreover, a breakdown of above information can be done by running
 
 ```
-python $PROJECT/alog.validate.pair.brkdwn.py
+python alog.validate.pair.brkdwn.py
 ```
 
 This will show which cases are handeled well well by the training model, and
