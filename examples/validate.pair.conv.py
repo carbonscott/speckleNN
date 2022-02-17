@@ -12,8 +12,7 @@ from deepprojection.encoders.convnet     import Hirotaka0122       , ConfigEncod
 
 
 # Create a timestamp to name the log file...
-## timestamp = "20220207115721"
-timestamp = "20220214220141"
+timestamp = "20220216211902"
 
 # Configure the location to run the job...
 drc_cwd = os.getcwd()
@@ -78,7 +77,7 @@ DRCCHKPT = "chkpts"
 prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
 
 # Config the encoder...
-dim_emb = 10
+dim_emb = 128
 config_encoder = ConfigEncoder( dim_emb = dim_emb,
                                 size_y  = size_y,
                                 size_x  = size_x,
@@ -98,8 +97,7 @@ config_validator = ConfigValidator( path_chkpt  = path_chkpt,
                                     batch_size  = 200,
                                     isflat      = False,
                                     max_epochs  = 1,    # Epoch = 1 for validate
-                                    lr          = 0.001, )
-
+                                    lr          = 1e-3, )
 
 validator = PairValidator(model, dataset_validate, config_validator)
 validator.validate()

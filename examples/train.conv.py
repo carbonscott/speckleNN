@@ -87,7 +87,7 @@ prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
 if not os.path.exists(prefixpath_chkpt): os.makedirs(prefixpath_chkpt)
 
 # Config the encoder...
-dim_emb = 2
+dim_emb = 128
 config_encoder = ConfigEncoder( dim_emb = dim_emb,
                                 size_y  = size_y,
                                 size_x  = size_x,
@@ -96,7 +96,6 @@ encoder = Hirotaka0122(config_encoder)
 ## encoder = AdamBielski(config_encoder)
 
 # Config the model...
-## alpha   = 1000.0
 alpha   = 1.0
 config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
 model = SiameseModel(config_siamese)
@@ -110,7 +109,7 @@ path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
 config_train = ConfigTrainer( path_chkpt  = path_chkpt,
                               num_workers = 1,
                               batch_size  = 40,
-                              max_epochs  = 15,
+                              max_epochs  = 20,
                               lr          = 1e-3, )
 
 # Training...
