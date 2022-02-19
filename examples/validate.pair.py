@@ -69,6 +69,7 @@ resize_y, resize_x = 6, 6
 resize = (resize_y, resize_x) if not None in (resize_y, resize_x) else ()
 config_dataset.resize = resize
 config_dataset.mask   = mask
+config_dataset.report()
 dataset_validate = SiameseTestset(config_dataset)
 
 # Obtain the new size...

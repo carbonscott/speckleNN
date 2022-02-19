@@ -12,7 +12,7 @@ from deepprojection.encoders.convnet     import Hirotaka0122       , ConfigEncod
 
 
 # Create a timestamp to name the log file...
-timestamp = "20220216211902"
+timestamp = "20220217112407"
 
 # Configure the location to run the job...
 drc_cwd = os.getcwd()
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 # Config the dataset...
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
 config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
-                                size_sample    = 2000, 
+                                size_sample    = 5000, 
                                 mode           = 'image',
                                 mask           = None,
                                 resize         = None,
@@ -66,6 +66,7 @@ resize_y, resize_x = 6, 6
 resize = (resize_y, resize_x) if not None in (resize_y, resize_x) else ()
 config_dataset.resize = resize
 config_dataset.mask   = mask
+config_dataset.report()
 dataset_validate = SiameseTestset(config_dataset)
 
 # Obtain the new size...
@@ -85,8 +86,7 @@ config_encoder = ConfigEncoder( dim_emb = dim_emb,
 encoder = Hirotaka0122(config_encoder)
 
 # Set up the model
-alpha = 1.0
-config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
+config_siamese = ConfigSiameseModel( encoder = encoder, )
 model = SiameseModelCompare(config_siamese)
 
 # Read chkpt from a trainig

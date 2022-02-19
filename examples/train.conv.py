@@ -73,7 +73,8 @@ mask[mask_false_area[0], mask_false_area[1]] = 0
 resize_y, resize_x = 6, 6
 resize = (resize_y, resize_x) if not None in (resize_y, resize_x) else ()
 config_dataset.resize = resize
-config_dataset.mask   = mask
+config_dataset.mask = mask
+config_dataset.report()
 dataset_train = SiameseDataset(config_dataset)
 
 # Obtain the new size...
@@ -96,7 +97,8 @@ encoder = Hirotaka0122(config_encoder)
 ## encoder = AdamBielski(config_encoder)
 
 # Config the model...
-alpha   = 1.0
+## alpha = 1.5
+alpha = 0.2
 config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
 model = SiameseModel(config_siamese)
 
