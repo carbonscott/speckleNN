@@ -32,9 +32,13 @@ class ConfigDataset:
     BACKGROUND = '9'
 
     def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        for k, v in kwargs.items(): setattr(self, k, v)
+
+    def report(self):
         logger.info(f"___/ Configure Dataset \___")
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+        for k, v in self.__dict__.items():
+            if k == 'kwargs': continue
             logger.info(f"KV - {k:16s} : {v}")
 
 
