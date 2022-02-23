@@ -9,8 +9,13 @@ from deepprojection.datasets.experiments import SPIImgDataset, SiameseDataset, C
 from deepprojection.model                import SiameseModel , ConfigSiameseModel
 from deepprojection.trainer              import Trainer      , ConfigTrainer
 from deepprojection.encoders.convnet     import Hirotaka0122 , AdamBielski , ConfigEncoder
+from deepprojection.utils                import set_seed
 
 from datetime import datetime
+
+
+# Set seed for reproducibility...
+set_seed(0)
 
 
 # Create a timestamp to name the log file...
@@ -48,6 +53,8 @@ config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
                                 mask           = None,
                                 resize         = None,
                                 isflat         = False,
+                                istrain        = True,
+                                frac_train     = 0.8,
                                 exclude_labels = exclude_labels, )
 
 # Get image size...
@@ -98,7 +105,7 @@ encoder = Hirotaka0122(config_encoder)
 
 # Config the model...
 ## alpha = 1.5
-alpha = 0.2
+alpha = 2.4
 config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
 model = SiameseModel(config_siamese)
 
