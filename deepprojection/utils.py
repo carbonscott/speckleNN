@@ -1,5 +1,17 @@
+import random
+import torch
 import numpy as np
 import skimage.measure as sm
+
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+    return None
+
 
 def downsample(assem, bin_row=2, bin_col=2, mask=None):
     """ Downsample an SPI image.  
@@ -122,4 +134,3 @@ class ConvVolume:
         out_size_x = (size_x - kernel_size) // stride + 1
 
         return out_channels, out_size_y, out_size_x
-

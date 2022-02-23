@@ -15,6 +15,7 @@ import random
 import json
 import csv
 import os
+from sklearn.model_selection import train_test_split
 
 import logging
 
@@ -49,16 +50,18 @@ class SPIImgDataset(Dataset):
     """
 
     def __init__(self, config):
-        fl_csv         = config.fl_csv
-        exclude_labels = config.exclude_labels
-        self.resize    = config.resize
-        self.isflat    = config.isflat
-        self.mode      = config.mode
-        self.mask      = config.mask
+        fl_csv          = config.fl_csv
+        exclude_labels  = config.exclude_labels
+        self.resize     = config.resize
+        self.isflat     = config.isflat
+        self.mode       = config.mode
+        self.mask       = config.mask
+        self.istrain    = config.istrain
+        self.frac_train = config.frac_train    # Proportion/Fraction of training examples
 
         self._dataset_dict        = {}
         self.psana_imgreader_dict = {}
-        self.imglabel_list        = []
+        self.imglabel_orig_list   = []
 
         # Read csv file of datasets
         with open(fl_csv, 'r') as fh:
@@ -88,7 +91,20 @@ class SPIImgDataset(Dataset):
             exp, run = dataset_id
 
             for event_num, label in dataset_content.items():
-                self.imglabel_list.append( (exp, run, f"{event_num:>6s}", label) )
+                self.imglabel_orig_list.append( (exp, run, f"{event_num:>6s}", label) )
+
+        # Split the original image list into training set and test set...
+        num_list  = len(self.imglabel_orig_list)
+        num_train = int(self.frac_train * num_list)
+
+        # Get training examples
+        imglabel_train_list = random.sample(self.imglabel_orig_list, num_train)
+
+        # Get test examples
+        imglabel_test_list = set(self.imglabel_orig_list) - set(imglabel_train_list)
+        imglabel_test_list = list(imglabel_test_list)
+
+        self.imglabel_list = imglabel_train_list if self.istrain else imglabel_test_list
 
         return None
 
