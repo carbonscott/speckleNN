@@ -38,7 +38,8 @@ class LossValidator:
         if torch.cuda.is_available():
             self.device = torch.cuda.current_device()
 
-            self.model.load_state_dict(torch.load(self.config_test.path_chkpt))
+            chkpt = torch.load(self.config_test.path_chkpt)
+            self.model.load_state_dict(chkpt)
             self.model = torch.nn.DataParallel(self.model).to(self.device)
 
         return None
@@ -96,7 +97,8 @@ class PairValidator:
         if torch.cuda.is_available():
             self.device = torch.cuda.current_device()
 
-            self.model.load_state_dict(torch.load(self.config_test.path_chkpt))
+            chkpt = torch.load(self.config_test.path_chkpt)
+            self.model.load_state_dict(chkpt)
             self.model = torch.nn.DataParallel(self.model).to(self.device)
 
         return None
@@ -112,11 +114,15 @@ class PairValidator:
         for epoch in tqdm.tqdm(range(config_test.max_epochs)):
             # Load model state
             model.eval()
+
             dataset_test = self.dataset_test
-            loader_test  = DataLoader( dataset_test, shuffle     = True, 
-                                                     pin_memory  = True, 
+            loader_test  = DataLoader( dataset_test, shuffle     = config_test.shuffle, 
+                                                     pin_memory  = config_test.pin_memory, 
                                                      batch_size  = config_test.batch_size,
                                                      num_workers = config_test.num_workers )
+
+            # Debug purpose
+            self.loader_test = loader_test
 
             # Train each batch
             batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test))
@@ -135,6 +141,7 @@ class PairValidator:
                         if config_test.isflat:
                             _, _, rmsd = self.model.forward(img_anchor[i], img_second[i])
                         else:
+                            ## print(title_anchor[i], title_second[i])
                             _, _, rmsd = self.model.forward(img_anchor[i].unsqueeze(0), img_second[i].unsqueeze(0))
 
                         rmsd_val = rmsd.cpu().detach().numpy()

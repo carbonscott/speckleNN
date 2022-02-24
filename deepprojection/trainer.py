@@ -59,8 +59,8 @@ class Trainer:
         for epoch in tqdm.tqdm(range(config_train.max_epochs)):
             model.train()
             dataset_train = self.dataset_train
-            loader_train = DataLoader( dataset_train, shuffle     = True, 
-                                                      pin_memory  = True, 
+            loader_train = DataLoader( dataset_train, shuffle     = config_train.shuffle, 
+                                                      pin_memory  = config_train.pin_memory, 
                                                       batch_size  = config_train.batch_size,
                                                       num_workers = config_train.num_workers )
             ## losses = []

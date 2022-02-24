@@ -19,7 +19,7 @@ from sklearn.model_selection import train_test_split
 
 import logging
 
-from deepprojection.utils import downsample
+from deepprojection.utils import downsample, set_seed
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +58,14 @@ class SPIImgDataset(Dataset):
         self.mask       = config.mask
         self.istrain    = config.istrain
         self.frac_train = config.frac_train    # Proportion/Fraction of training examples
+        self.seed       = config.seed
 
         self._dataset_dict        = {}
         self.psana_imgreader_dict = {}
         self.imglabel_orig_list   = []
+
+        # Set the seed...
+        set_seed(self.seed)
 
         # Read csv file of datasets
         with open(fl_csv, 'r') as fh:
@@ -102,7 +106,7 @@ class SPIImgDataset(Dataset):
 
         # Get test examples
         imglabel_test_list = set(self.imglabel_orig_list) - set(imglabel_train_list)
-        imglabel_test_list = list(imglabel_test_list)
+        imglabel_test_list = sorted(list(imglabel_test_list))
 
         self.imglabel_list = imglabel_train_list if self.istrain else imglabel_test_list
 
@@ -156,7 +160,7 @@ class Siamese(SPIImgDataset):
             else                           : label_seqi_dict[label].append(seqi)
 
         # Consolidate labels in the dataset...
-        self.labels = list(set([ i[-1] for i in self.imglabel_list ]))
+        self.labels = sorted(list(set([ i[-1] for i in self.imglabel_list ])))
 
         # Log the number of images for each label...
         logger.info("___/ Dataset statistics \___")
@@ -164,7 +168,7 @@ class Siamese(SPIImgDataset):
             num_img = len(label_seqi_dict[label])
             logger.info(f"KV - {label:16s} : {num_img}")
 
-        self.label_seqi_dict = label_seqi_dict
+        self.label_seqi_dict = { k: v for k, v in sorted(label_seqi_dict.items(), key=lambda item: item[0]) }
 
         return None
 
