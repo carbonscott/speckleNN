@@ -15,13 +15,13 @@ class RandomPatch:
                                   var_patch_y = 0, var_patch_x = 0, 
                                   is_random_flip = False,
                                   is_return_mask = False):
-        self.num_patch      = num_patch
-        self.size_patch_y   = size_patch_y
-        self.size_patch_x   = size_patch_x
-        self.var_patch_y    = var_patch_y
-        self.var_patch_x    = var_patch_x
-        self.is_random_flip = is_random_flip
-        self.is_return_mask = is_return_mask
+        self.num_patch      = num_patch                   # ...Number of patches
+        self.size_patch_y   = size_patch_y                # ...Size of the patch in y dimension
+        self.size_patch_x   = size_patch_x                # ...Size of the patch in x dimension
+        self.var_patch_y    = max(0, min(var_patch_y, 1)) # ...Percent variation with respect to the patch size in x dimension
+        self.var_patch_x    = max(0, min(var_patch_x, 1)) # ...Percent variation with respect to the patch size in y dimension
+        self.is_random_flip = is_random_flip              # ...Is it allowed to have random flip between x and y dimensions
+        self.is_return_mask = is_return_mask              # ...Is it allowed to return a mask
 
 
     def __call__(self, img):
@@ -51,8 +51,9 @@ class RandomPatch:
             varsize_patch_x = int(size_patch_x * self.var_patch_x)
 
             # Sample an integer from the min-max pixel to vary
-            delta_patch_y = np.random.randint(low = -varsize_patch_y, high = varsize_patch_y)
-            delta_patch_x = np.random.randint(low = -varsize_patch_x, high = varsize_patch_x)
+            # Also allow user to set var_patch = 0 when variance is not desired
+            delta_patch_y = np.random.randint(low = -varsize_patch_y, high = varsize_patch_y if varsize_patch_y else 1)
+            delta_patch_x = np.random.randint(low = -varsize_patch_x, high = varsize_patch_x if varsize_patch_x else 1)
 
             # Apply the change
             size_patch_y += delta_patch_y
