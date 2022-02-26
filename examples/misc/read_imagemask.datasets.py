@@ -10,6 +10,7 @@ import matplotlib.patches      as mpatches
 import matplotlib.transforms   as mtransforms
 import matplotlib.font_manager as font_manager
 import numpy as np
+from deepprojection.datasets.experiments import SPIImgDataset, SiameseDataset, ConfigDataset
 from deepprojection.datasets import transform
 
 class DisplaySPIImg():
@@ -71,7 +72,8 @@ class DisplaySPIImg():
         x, y = center
         marker_obj = mpl.markers.MarkerStyle(marker = "+")
         if not angle == None: marker_obj._transform = marker_obj.get_transform().rotate_deg(angle)
-        self.ax_img.plot(x, y, marker = marker_obj, markersize = 18, color = 'black', markeredgewidth = 4)
+        ## self.ax_img.plot(x, y, marker = marker_obj, markersize = 18, color = 'black', markeredgewidth = 4)
+        self.ax_mask.plot(x, y, marker = marker_obj, markersize = 18, color = 'black', markeredgewidth = 4)
 
 
     def config_colorbar(self, vmin = -1, vcenter = 0, vmax = 1):
@@ -125,42 +127,47 @@ class PsanaImg:
 
 
 
+# Config the dataset...
+exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
+config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
+                                size_sample    = 500, 
+                                mode           = 'image',
+                                mask           = None,
+                                resize         = None,
+                                seed           = 0,
+                                isflat         = False,
+                                istrain        = True,
+                                trans          = None,
+                                frac_train     = 0.8,
+                                exclude_labels = exclude_labels, )
 
-# Specify the dataset and detector...
-exp, run, mode, detector_name = 'amo06516', '90', 'idx', 'pnccdFront'
+# Get image...
+spiimg = SPIImgDataset(config_dataset)
+## img    = spiimg.get_img_and_label(0)[0]
+img, _ = spiimg[10]
+img = img.squeeze(axis = 0)
 
-# Initialize an image reader...
-img_reader = PsanaImg(exp, run, mode, detector_name)
-
-# Access an image (e.g. event 796)...
-event_num = 796
-img = img_reader.get(event_num, mode = "image")
-
-## # Normalize image...
-## img = (img - np.mean(img)) / np.std(img)
-
-angle = 23
+# Apply trans...
+angle = None
 center = (524, 506)
 trans_random_rotate = transform.RandomRotate(angle = angle, center = center)
-img = trans_random_rotate(img)
 
-# Apply the transform...
 num_patch = 5
 size_patch_y, size_patch_x = 70, 500
-trans_random_patch = transform.RandomPatch(num_patch, size_patch_y, size_patch_x, 
-                                           var_patch_y = 0.2, var_patch_x = 0.2, 
-                                           is_return_mask = True, is_random_flip = True)
-img_masked, mask = trans_random_patch(img)
+trans_random_patch  = transform.RandomPatch(num_patch             , size_patch_y     , size_patch_x, 
+                                            var_patch_y = 0.2     , var_patch_x = 0.2, 
+                                            is_return_mask = False, is_random_flip = True)
+trans_list = [trans_random_rotate, trans_random_patch]
+spiimg.trans = trans_list    # Directly modify the property trans to apply transformation
 
-## angle = 23
-## center = (524, 506)
-## trans_random_rotate = transform.RandomRotate(angle = angle, center = center)
-## img_masked = trans_random_rotate(img_masked)
-## mask = trans_random_rotate(mask)
+# Get image...
+img_masked, _ = spiimg[10]
+img_masked = img_masked.squeeze(axis = 0)
+angle = trans_random_rotate.angle
 
 # Normalize image...
 img_masked = (img_masked - np.mean(img_masked)) / np.std(img_masked)
 
 # Dispaly an image...
-disp_manager = DisplaySPIImg(img_masked, mask, figsize = (18, 8))
+disp_manager = DisplaySPIImg(img, img_masked, figsize = (18, 8))
 disp_manager.show(center = center, angle = angle)
