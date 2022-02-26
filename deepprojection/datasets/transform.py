@@ -3,8 +3,7 @@
 
 import random
 import numpy as np
-import torch
-import torch.nn as nn
+from skimage.transform import rotate
 
 
 class RandomPatch:
@@ -22,6 +21,8 @@ class RandomPatch:
         self.var_patch_x    = max(0, min(var_patch_x, 1)) # ...Percent variation with respect to the patch size in y dimension
         self.is_random_flip = is_random_flip              # ...Is it allowed to have random flip between x and y dimensions
         self.is_return_mask = is_return_mask              # ...Is it allowed to return a mask
+
+        return None
 
 
     def __call__(self, img):
@@ -77,3 +78,23 @@ class RandomPatch:
         output = img if not self.is_return_mask else img, mask
 
         return output
+
+
+
+
+class RandomRotate:
+    """ Apply random rotation to an image around the beam center.
+    """
+    def __init__(self, angle = None, center = (0, 0)):
+        self.angle  = angle
+        self.center = center
+
+        return None
+
+
+    def __call__(self, img): 
+        if self.angle is None:
+            # Sample an angle from 0 to 360 uniformly...
+            self.angle = np.random.uniform(low = 0, high = 360)
+
+        return rotate(img, angle = self.angle, center = self.center)
