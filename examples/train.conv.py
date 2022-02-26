@@ -9,14 +9,9 @@ from deepprojection.datasets.experiments import SPIImgDataset, SiameseDataset, C
 from deepprojection.model                import SiameseModel , ConfigSiameseModel
 from deepprojection.trainer              import Trainer      , ConfigTrainer
 from deepprojection.encoders.convnet     import Hirotaka0122 , AdamBielski , ConfigEncoder
-from deepprojection.utils                import set_seed
+from deepprojection.datasets             import transform
 
 from datetime import datetime
-
-
-# Set seed for reproducibility...
-set_seed(0)
-
 
 # Create a timestamp to name the log file...
 now = datetime.now()
@@ -52,8 +47,10 @@ config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
                                 mode           = 'image',
                                 mask           = None,
                                 resize         = None,
+                                seed           = 0,
                                 isflat         = False,
                                 istrain        = True,
+                                trans          = None,
                                 frac_train     = 0.8,
                                 exclude_labels = exclude_labels, )
 
@@ -75,6 +72,21 @@ mask[mask_false_area[0], mask_false_area[1]] = 0
 # Mask out the oversaturated panel in 102
 mask_false_area = (slice(510, None), slice(541, 670))
 mask[mask_false_area[0], mask_false_area[1]] = 0
+
+# Random transformation for data augmentation...
+# Random rotation
+angle = None
+center = (524, 506)
+trans_random_rotate = transform.RandomRotate(angle = angle, center = center)
+
+# Random patching
+num_patch = 5
+size_patch_y, size_patch_x = 70, 500
+trans_random_patch  = transform.RandomPatch(num_patch             , size_patch_y     , size_patch_x, 
+                                            var_patch_y = 0.2     , var_patch_x = 0.2, 
+                                            is_return_mask = False, is_random_flip = True)
+trans_list = [trans_random_rotate, trans_random_patch]
+config_dataset.trans = trans_list
 
 # Reconfig the dataset...
 resize_y, resize_x = 6, 6
@@ -104,8 +116,7 @@ encoder = Hirotaka0122(config_encoder)
 ## encoder = AdamBielski(config_encoder)
 
 # Config the model...
-## alpha = 1.5
-alpha = 2.4
+alpha = 2.0
 config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
 model = SiameseModel(config_siamese)
 
@@ -118,6 +129,8 @@ path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
 config_train = ConfigTrainer( path_chkpt  = path_chkpt,
                               num_workers = 1,
                               batch_size  = 40,
+                              pin_memory  = True,
+                              shuffle     = False,
                               max_epochs  = 20,
                               lr          = 1e-3, )
 

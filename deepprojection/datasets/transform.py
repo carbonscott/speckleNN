@@ -75,7 +75,8 @@ class RandomPatch:
         img *= mask
 
         # Construct the return value...
-        output = img if not self.is_return_mask else img, mask
+        # Parentheses are necessary
+        output = img if not self.is_return_mask else (img, mask)
 
         return output
 

@@ -43,6 +43,8 @@ class ConfigDataset:
             logger.info(f"KV - {k:16s} : {v}")
 
 
+
+
 class SPIImgDataset(Dataset):
     """
     SPI images are collected from multiple datasets specified in the input csv
@@ -59,6 +61,7 @@ class SPIImgDataset(Dataset):
         self.istrain    = config.istrain
         self.frac_train = config.frac_train    # Proportion/Fraction of training examples
         self.seed       = config.seed
+        self.trans      = config.trans
 
         self._dataset_dict        = {}
         self.psana_imgreader_dict = {}
@@ -123,6 +126,11 @@ class SPIImgDataset(Dataset):
         basename = (exp, run)
         img = self.psana_imgreader_dict[basename].get(int(event_num), mode = self.mode, mask = self.mask)
 
+        # Apply transform if available???
+        if isinstance(self.trans, (tuple, list)):
+            for trans in self.trans:
+                img = trans(img)
+
         # Resize images...
         if self.resize:
             bin_row, bin_col = self.resize
@@ -143,6 +151,8 @@ class SPIImgDataset(Dataset):
         img_norm = img_norm[np.newaxis,] if not self.isflat else img_norm.reshape(-1)
 
         return img_norm, int(label)
+
+
 
 
 class Siamese(SPIImgDataset):
@@ -254,6 +264,7 @@ class SiameseDataset(Siamese):
             triplets.append( (id_anchor, id_pos, id_neg) )
 
         return triplets
+
 
 
 
@@ -447,4 +458,3 @@ class PsanaImg:
         if isinstance(mask, np.ndarray): img *= mask
 
         return img
-
