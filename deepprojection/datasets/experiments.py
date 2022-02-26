@@ -68,7 +68,8 @@ class SPIImgDataset(Dataset):
         self.imglabel_orig_list   = []
 
         # Set the seed...
-        set_seed(self.seed)
+        # Debatable whether seed should be set in the dataset or in the running code
+        if not self.seed is None: set_seed(self.seed)
 
         # Read csv file of datasets
         with open(fl_csv, 'r') as fh:
