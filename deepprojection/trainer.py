@@ -78,9 +78,9 @@ class Trainer:
                 img_pos    = img_pos.to(self.device)
                 img_neg    = img_neg.to(self.device)
 
-                optimizer.zero_grad()
-
                 _, _, _, loss = self.model.forward(img_anchor, img_pos, img_neg)
+
+                optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
