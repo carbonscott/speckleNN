@@ -49,7 +49,7 @@ class Trainer:
         torch.save(model.state_dict(), self.config_train.path_chkpt)
 
 
-    def train(self, is_save_checkpoint = True):
+    def train(self, is_save_checkpoint = True, main_epoch = None):
         """ The training loop.  """
 
         # Load model and training configuration
@@ -59,6 +59,8 @@ class Trainer:
 
         # Train each epoch
         for epoch in tqdm.tqdm(range(config_train.max_epochs)):
+            epoch_str = f"{main_epoch:d}:{epoch:d}" if main_epoch is not None else "{epoch:d}"
+
             model.train()
             dataset_train = self.dataset_train
             loader_train = DataLoader( dataset_train, shuffle     = config_train.shuffle, 
@@ -89,10 +91,10 @@ class Trainer:
                 loss_val = loss.cpu().detach().numpy()
                 losses_epoch.append(loss_val)
 
-                logger.info(f"MSG - epoch {epoch:d}, batch {step_id:d}, loss {loss_val:.4f}")
+                logger.info(f"MSG - epoch {epoch_str}, batch {step_id:d}, loss {loss_val:.4f}")
 
             loss_epoch_mean = np.mean(losses_epoch)
-            logger.info(f"MSG - epoch {epoch:d}, loss mean {loss_epoch_mean:.4f}")
+            logger.info(f"MSG - epoch {epoch_str}, loss mean {loss_epoch_mean:.4f}")
 
             # Save the model state
             if is_save_checkpoint: self.save_checkpoint()

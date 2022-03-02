@@ -46,7 +46,7 @@ class LossValidator:
         return None
 
 
-    def validate(self, is_return_loss = False):
+    def validate(self, is_return_loss = False, main_epoch = None):
         """ The testing loop.  """
 
         # Load model and testing configuration...
@@ -54,6 +54,8 @@ class LossValidator:
 
         # Train each epoch...
         for epoch in tqdm.tqdm(range(config_test.max_epochs)):
+            epoch_str = f"{main_epoch:d}:{epoch:d}" if main_epoch is not None else "{epoch:d}"
+
             # Load model state...
             model.eval()
             dataset_test = self.dataset_test
@@ -85,11 +87,11 @@ class LossValidator:
                     logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}, {loss_val:7.4f}")
 
                 loss_batch_mean = np.mean(losses_batch)
-                logger.info(f"MSG - epoch {epoch:d}, batch {step_id:d}, loss {loss_batch_mean:.4f}")
+                logger.info(f"MSG - epoch {epoch_str}, batch {step_id:d}, loss {loss_batch_mean:.4f}")
                 losses_epoch.append(loss_batch_mean)
 
             loss_epoch_mean = np.mean(losses_epoch)
-            logger.info(f"MSG - epoch {epoch:d}, loss mean {loss_epoch_mean:.4f}")
+            logger.info(f"MSG - epoch {epoch_str}, loss mean {loss_epoch_mean:.4f}")
 
         # Record the mean loss of the last epoch...
         final_loss = loss_epoch_mean
