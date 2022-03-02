@@ -22,7 +22,7 @@ timestamp = now.strftime("%Y%m%d%H%M%S")
 drc_cwd = os.getcwd()
 
 # Set up the log file...
-fl_log         = f"{timestamp}.train_validate.log"
+fl_log         = f"{timestamp}.train.log"
 DRCLOG         = "logs"
 prefixpath_log = os.path.join(drc_cwd, DRCLOG)
 if not os.path.exists(prefixpath_log): os.makedirs(prefixpath_log)
@@ -94,7 +94,7 @@ model.apply(init_weights)
 # [[[ CHECKPOINT ]]]
 DRCCHKPT         = "chkpts"
 prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
-fl_chkpt         = f"{timestamp}.train_validate.chkpt"
+fl_chkpt         = f"{timestamp}.train.chkpt"
 path_chkpt       = os.path.join(prefixpath_chkpt, fl_chkpt)
 
 
