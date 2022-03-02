@@ -23,7 +23,7 @@ class ConfigValidator:
         # Set values of attributes that are not known when obj is created...
         for k, v in kwargs.items():
             setattr(self, k, v)
-            logger.info(f"{k:16s} : {v}")
+            logger.info(f"KV - {k:16s} : {v}")
 
 
 
@@ -46,56 +46,50 @@ class LossValidator:
         return None
 
 
-    def validate(self, is_return_loss = False, main_epoch = None):
+    def validate(self, is_return_loss = False, epoch = None):
         """ The testing loop.  """
 
         # Load model and testing configuration...
         model, config_test = self.model, self.config_test
 
-        # Train each epoch...
-        for epoch in tqdm.tqdm(range(config_test.max_epochs)):
-            epoch_str = f"{main_epoch:d}:{epoch:d}" if main_epoch is not None else "{epoch:d}"
+        # Train an epoch...
+        # Load model state...
+        model.eval()
+        dataset_test = self.dataset_test
+        loader_test  = DataLoader( dataset_test, shuffle     = config_test.shuffle, 
+                                                 pin_memory  = config_test.pin_memory, 
+                                                 batch_size  = config_test.batch_size,
+                                                 num_workers = config_test.num_workers )
 
-            # Load model state...
-            model.eval()
-            dataset_test = self.dataset_test
-            loader_test  = DataLoader( dataset_test, shuffle     = config_test.shuffle, 
-                                                     pin_memory  = config_test.pin_memory, 
-                                                     batch_size  = config_test.batch_size,
-                                                     num_workers = config_test.num_workers )
+        # Train each batch...
+        losses_epoch = []
+        batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test), disable = config_test.tqdm_disable)
+        for step_id, entry in batch:
+            losses_batch = []
 
-            # Train each batch...
-            losses_epoch = []
-            batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test), disable = config_test.tqdm_disable)
-            for step_id, entry in batch:
-                losses_batch = []
+            img_anchor, img_pos, img_neg, label_anchor, \
+            title_anchor, title_pos, title_neg = entry
 
-                img_anchor, img_pos, img_neg, label_anchor, \
-                title_anchor, title_pos, title_neg = entry
+            img_anchor = img_anchor.to(self.device)
+            img_pos    = img_pos.to(self.device)
+            img_neg    = img_neg.to(self.device)
 
-                img_anchor = img_anchor.to(self.device)
-                img_pos    = img_pos.to(self.device)
-                img_neg    = img_neg.to(self.device)
+            for i in range(len(label_anchor)):
+                logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}")
 
-                for i in range(len(label_anchor)):
-                    logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}")
+            with torch.no_grad():
+                _, _, _, loss = self.model.forward(img_anchor, img_pos, img_neg)
+                loss_val = loss.cpu().detach().numpy()
+                losses_batch.append(loss_val)
 
-                with torch.no_grad():
-                    _, _, _, loss = self.model.forward(img_anchor, img_pos, img_neg)
-                    loss_val = loss.cpu().detach().numpy()
-                    losses_batch.append(loss_val)
+            loss_batch_mean = np.mean(losses_batch)
+            logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_batch_mean:.4f}")
+            losses_epoch.append(loss_batch_mean)
 
-                loss_batch_mean = np.mean(losses_batch)
-                logger.info(f"MSG - epoch {epoch_str}, batch {step_id:d}, loss {loss_batch_mean:.4f}")
-                losses_epoch.append(loss_batch_mean)
+        loss_epoch_mean = np.mean(losses_epoch)
+        logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.4f}")
 
-            loss_epoch_mean = np.mean(losses_epoch)
-            logger.info(f"MSG - epoch {epoch_str}, loss mean {loss_epoch_mean:.4f}")
-
-        # Record the mean loss of the last epoch...
-        final_loss = loss_epoch_mean
-
-        return final_loss if is_return_loss else None
+        return loss_epoch_mean if is_return_loss else None
 
 
 
@@ -121,43 +115,38 @@ class PairValidator:
     def validate(self):
         """ The testing loop.  """
 
-        # Load model and testing configuration
+        # Load model and testing configuration...
         model, config_test = self.model, self.config_test
 
-        # Train each epoch
-        for epoch in tqdm.tqdm(range(config_test.max_epochs)):
-            # Load model state
-            model.eval()
+        # Train an epoch...
+        # Load model state
+        model.eval()
+        dataset_test = self.dataset_test
+        loader_test  = DataLoader( dataset_test, shuffle     = config_test.shuffle, 
+                                                 pin_memory  = config_test.pin_memory, 
+                                                 batch_size  = config_test.batch_size,
+                                                 num_workers = config_test.num_workers )
 
-            dataset_test = self.dataset_test
-            loader_test  = DataLoader( dataset_test, shuffle     = config_test.shuffle, 
-                                                     pin_memory  = config_test.pin_memory, 
-                                                     batch_size  = config_test.batch_size,
-                                                     num_workers = config_test.num_workers )
+        # Train each batch...
+        batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test))
+        for step_id, entry in batch:
+            rmsds = []
 
-            # Debug purpose
-            self.loader_test = loader_test
+            img_anchor, img_second, label_anchor, title_anchor, title_second = entry
 
-            # Train each batch
-            batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test))
-            for step_id, entry in batch:
-                rmsds = []
+            img_anchor = img_anchor.to(self.device)
+            img_second = img_second.to(self.device)
 
-                img_anchor, img_second, label_anchor, title_anchor, title_second = entry
+            with torch.no_grad():
+                # Look at each example in a batch...
+                for i in range(len(label_anchor)):
+                    # Biolerplate unsqueeze due to the design of PyTorch Conv2d, no idea how to improve yet...
+                    if config_test.isflat:
+                        _, _, rmsd = self.model.forward(img_anchor[i], img_second[i])
+                    else:
+                        ## print(title_anchor[i], title_second[i])
+                        _, _, rmsd = self.model.forward(img_anchor[i].unsqueeze(0), img_second[i].unsqueeze(0))
 
-                img_anchor = img_anchor.to(self.device)
-                img_second = img_second.to(self.device)
-
-                with torch.no_grad():
-                    # Look at each example in a batch...
-                    for i in range(len(label_anchor)):
-                        # Biolerplate unsqueeze due to the design of PyTorch Conv2d, no idea how to improve yet...
-                        if config_test.isflat:
-                            _, _, rmsd = self.model.forward(img_anchor[i], img_second[i])
-                        else:
-                            ## print(title_anchor[i], title_second[i])
-                            _, _, rmsd = self.model.forward(img_anchor[i].unsqueeze(0), img_second[i].unsqueeze(0))
-
-                        rmsd_val = rmsd.cpu().detach().numpy()
-                        rmsds.append(rmsd_val)
-                        logger.info(f"DATA - {title_anchor[i]}, {title_second[i]}, {rmsd_val:7.4f}")
+                    rmsd_val = rmsd.cpu().detach().numpy()
+                    rmsds.append(rmsd_val)
+                    logger.info(f"DATA - {title_anchor[i]}, {title_second[i]}, {rmsd_val:7.4f}")

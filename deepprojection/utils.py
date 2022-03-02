@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import random
 import torch
 import numpy as np
@@ -26,34 +29,86 @@ class EpochManager:
         return None
 
 
-    def preset(self):
-        # Ensure only one epoch at a time for training and validation...
-        self.trainer.config_train.max_epochs  = 1
-        self.validator.config_test.max_epochs = 1
-
-        return None
-
-
     def run(self):
-        # Apply preset...
-        self.preset()
-
+        # Track the min of loss from inf...
         loss_min = float('inf')
 
         # Start trainig and validation...
         for epoch in tqdm.tqdm(range(self.max_epochs)):
             # Run one epoch of training...
-            self.trainer.train(is_save_checkpoint = False, main_epoch = epoch)
+            self.trainer.train(is_save_checkpoint = False, epoch = epoch)
 
             # Pass the model to validator for immediate validation...
             self.validator.model = self.trainer.model
 
             # Run one epoch of training...
-            loss_validate = self.validator.validate(is_return_loss = True, main_epoch = epoch)
+            loss_validate = self.validator.validate(is_return_loss = True, epoch = epoch)
 
             # Save checkpoint whenever validation loss gets smaller...
             # Notice it doesn't imply early stopping
             if loss_validate < loss_min: self.trainer.save_checkpoint()
+
+        return None
+
+
+
+
+class ConvVolume:
+    """ Derive the output size of a conv net. """
+
+    def __init__(self, size_y, size_x, channels, conv_dict):
+        self.size_y      = size_y
+        self.size_x      = size_x
+        self.channels    = channels
+        self.conv_dict   = conv_dict
+        self.method_dict = { 'conv' : self._get_shape_from_conv2d, 
+                             'pool' : self._get_shape_from_pool    }
+
+        return None
+
+
+    def shape(self):
+        for layer_name in self.conv_dict["order"]:
+            # Obtain the method name...
+            method, _ = layer_name.split()
+
+            # Unpack layer params...
+            layer_params = self.conv_dict[layer_name]
+
+            #  Obtain the size of the new volume...
+            self.channels, self.size_y, self.size_x = \
+                self.method_dict[method](**layer_params)
+
+        return self.channels, self.size_y, self.size_x
+
+
+    def _get_shape_from_conv2d(self, **kwargs):
+        """ Returns the dimension of the output volumne. """
+        size_y       = self.size_y
+        size_x       = self.size_x
+        out_channels = kwargs["out_channels"]
+        kernel_size  = kwargs["kernel_size"]
+        stride       = kwargs["stride"]
+        padding      = kwargs["padding"]
+
+        out_size_y = (size_y - kernel_size + 2 * padding) // stride + 1
+        out_size_x = (size_x - kernel_size + 2 * padding) // stride + 1
+
+        return out_channels, out_size_y, out_size_x
+
+
+    def _get_shape_from_pool(self, **kwargs):
+        """ Return the dimension of the output volumen. """
+        size_y       = self.size_y
+        size_x       = self.size_x
+        out_channels = self.channels
+        kernel_size  = kwargs["kernel_size"]
+        stride       = kwargs["stride"]
+
+        out_size_y = (size_y - kernel_size) // stride + 1
+        out_size_x = (size_x - kernel_size) // stride + 1
+
+        return out_channels, out_size_y, out_size_x
 
 
 
@@ -102,80 +157,3 @@ def read_log(file):
     ret_dict = { "kv" : kv_dict, "data" : tuple(data_dict.keys()) }
 
     return ret_dict
-
-
-def get_shape_from_conv2d(size_y, size_x, out_channels, 
-                                          kernel_size, 
-                                          stride,
-                                          padding):
-    """ Returns the dimension of the output volumne. """
-    size_y_out = (size_y - kernel_size + 2 * padding) // stride + 1
-    size_x_out = (size_x - kernel_size + 2 * padding) // stride + 1
-
-    return size_y_out, size_x_out, out_channels
-
-
-def get_shape_from_pool(size_y, size_x, in_channels, 
-                                        kernel_size,
-                                        stride):
-    """ Return the dimension of the output volumen. """
-    size_y_out = (size_y - kernel_size) // stride + 1
-    size_x_out = (size_x - kernel_size) // stride + 1
-
-    return size_y_out, size_x_out, in_channels
-
-
-class ConvVolume:
-    """ Derive the output size of a conv net. """
-
-    def __init__(self, size_y, size_x, channels, conv_dict):
-        self.size_y      = size_y
-        self.size_x      = size_x
-        self.channels    = channels
-        self.conv_dict   = conv_dict
-        self.method_dict = { 'conv' : self._get_shape_from_conv2d, 
-                             'pool' : self._get_shape_from_pool    }
-
-
-    def shape(self):
-        for layer_name in self.conv_dict["order"]:
-            # Obtain the method name...
-            method, _ = layer_name.split()
-
-            # Unpack layer params...
-            layer_params = self.conv_dict[layer_name]
-
-            #  Obtain the size of the new volume...
-            self.channels, self.size_y, self.size_x = \
-                self.method_dict[method](**layer_params)
-
-        return self.channels, self.size_y, self.size_x
-
-
-    def _get_shape_from_conv2d(self, **kwargs):
-        """ Returns the dimension of the output volumne. """
-        size_y       = self.size_y
-        size_x       = self.size_x
-        out_channels = kwargs["out_channels"]
-        kernel_size  = kwargs["kernel_size"]
-        stride       = kwargs["stride"]
-        padding      = kwargs["padding"]
-
-        out_size_y = (size_y - kernel_size + 2 * padding) // stride + 1
-        out_size_x = (size_x - kernel_size + 2 * padding) // stride + 1
-
-        return out_channels, out_size_y, out_size_x
-
-
-    def _get_shape_from_pool(self, **kwargs):
-        """ Return the dimension of the output volumen. """
-        size_y       = self.size_y
-        size_x       = self.size_x
-        out_channels = self.channels
-        kernel_size  = kwargs["kernel_size"]
-        stride       = kwargs["stride"]
-
-        out_size_y = (size_y - kernel_size) // stride + 1
-        out_size_x = (size_x - kernel_size) // stride + 1
-
-        return out_channels, out_size_y, out_size_x

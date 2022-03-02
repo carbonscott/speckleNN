@@ -49,52 +49,49 @@ class Trainer:
         torch.save(model.state_dict(), self.config_train.path_chkpt)
 
 
-    def train(self, is_save_checkpoint = True, main_epoch = None):
+    def train(self, is_save_checkpoint = True, epoch = None):
         """ The training loop.  """
 
-        # Load model and training configuration
+        # Load model and training configuration...
         model, config_train = self.model, self.config_train
         model_raw           = model.module if hasattr(model, "module") else model
         optimizer           = model_raw.configure_optimizers(config_train)
 
-        # Train each epoch
-        for epoch in tqdm.tqdm(range(config_train.max_epochs)):
-            epoch_str = f"{main_epoch:d}:{epoch:d}" if main_epoch is not None else "{epoch:d}"
+        # Train an epoch...
+        model.train()
+        dataset_train = self.dataset_train
+        loader_train = DataLoader( dataset_train, shuffle     = config_train.shuffle, 
+                                                  pin_memory  = config_train.pin_memory, 
+                                                  batch_size  = config_train.batch_size,
+                                                  num_workers = config_train.num_workers )
+        losses_epoch = []
 
-            model.train()
-            dataset_train = self.dataset_train
-            loader_train = DataLoader( dataset_train, shuffle     = config_train.shuffle, 
-                                                      pin_memory  = config_train.pin_memory, 
-                                                      batch_size  = config_train.batch_size,
-                                                      num_workers = config_train.num_workers )
-            losses_epoch = []
+        # Train each batch...
+        batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train), disable = config_train.tqdm_disable)
+        for step_id, entry in batch:
+            img_anchor, img_pos, img_neg, label_anchor, \
+            title_anchor, title_pos, title_neg = entry
 
-            # Train each batch
-            batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train), disable = config_train.tqdm_disable)
-            for step_id, entry in batch:
-                img_anchor, img_pos, img_neg, label_anchor, \
-                title_anchor, title_pos, title_neg = entry
+            for i in range(len(label_anchor)):
+                logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}")
 
-                for i in range(len(label_anchor)):
-                    logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}")
+            img_anchor = img_anchor.to(self.device)
+            img_pos    = img_pos.to(self.device)
+            img_neg    = img_neg.to(self.device)
 
-                img_anchor = img_anchor.to(self.device)
-                img_pos    = img_pos.to(self.device)
-                img_neg    = img_neg.to(self.device)
+            _, _, _, loss = self.model.forward(img_anchor, img_pos, img_neg)
 
-                _, _, _, loss = self.model.forward(img_anchor, img_pos, img_neg)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+            loss_val = loss.cpu().detach().numpy()
+            losses_epoch.append(loss_val)
 
-                loss_val = loss.cpu().detach().numpy()
-                losses_epoch.append(loss_val)
+            logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_val:.4f}")
 
-                logger.info(f"MSG - epoch {epoch_str}, batch {step_id:d}, loss {loss_val:.4f}")
+        loss_epoch_mean = np.mean(losses_epoch)
+        logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.4f}")
 
-            loss_epoch_mean = np.mean(losses_epoch)
-            logger.info(f"MSG - epoch {epoch_str}, loss mean {loss_epoch_mean:.4f}")
-
-            # Save the model state
-            if is_save_checkpoint: self.save_checkpoint()
+        # Save the model state
+        if is_save_checkpoint: self.save_checkpoint()
