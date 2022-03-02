@@ -53,6 +53,7 @@ class Trainer:
         """ The training loop.  """
 
         # Load model and training configuration...
+        # Optimizer can be reconfigured next epoch
         model, config_train = self.model, self.config_train
         model_raw           = model.module if hasattr(model, "module") else model
         optimizer           = model_raw.configure_optimizers(config_train)
