@@ -1,6 +1,7 @@
 import random
 import torch
 import numpy as np
+import tqdm
 import skimage.measure as sm
 
 
@@ -11,6 +12,50 @@ def set_seed(seed):
     torch.cuda.manual_seed_all(seed)
 
     return None
+
+
+
+
+class EpochManager:
+
+    def __init__(self, trainer, validator, max_epochs = 1):
+        self.trainer    = trainer
+        self.validator  = validator
+        self.max_epochs = max_epochs
+
+        return None
+
+
+    def preset(self):
+        # Ensure only one epoch at a time for training and validation...
+        self.trainer.config_train.max_epochs  = 1
+        self.validator.config_test.max_epochs = 1
+
+        return None
+
+
+    def run(self):
+        # Apply preset...
+        self.preset()
+
+        loss_min = float('inf')
+
+        # Start trainig and validation...
+        for epoch in tqdm.tqdm(range(self.max_epochs)):
+            # Run one epoch of training...
+            self.trainer.train(is_save_checkpoint = False)
+
+            # Pass the model to validator for immediate validation...
+            self.validator.model = self.trainer.model
+
+            # Run one epoch of training...
+            loss_validate = self.validator.validate(is_return_loss = True)
+
+            # Save checkpoint whenever validation loss gets smaller...
+            # Notice it doesn't imply early stopping
+            if loss_validate < loss_min: self.trainer.save_checkpoint()
+
+
 
 
 def downsample(assem, bin_row=2, bin_col=2, mask=None):

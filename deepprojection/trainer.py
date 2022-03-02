@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import os
 
 import torch
 from torch.utils.data.dataloader import DataLoader
@@ -11,11 +12,12 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 class ConfigTrainer:
-    path_chkpt  = None
-    num_workers = 4
-    batch_size  = 64
-    max_epochs  = 10
-    lr          = 0.001
+    path_chkpt   = None
+    num_workers  = 4
+    batch_size   = 64
+    max_epochs   = 10
+    lr           = 0.001
+    tqdm_disable = False
 
     def __init__(self, **kwargs):
         logger.info(f"___/ Configure Trainer \___")
@@ -47,7 +49,7 @@ class Trainer:
         torch.save(model.state_dict(), self.config_train.path_chkpt)
 
 
-    def train(self):
+    def train(self, is_save_checkpoint = True):
         """ The training loop.  """
 
         # Load model and training configuration
@@ -63,10 +65,10 @@ class Trainer:
                                                       pin_memory  = config_train.pin_memory, 
                                                       batch_size  = config_train.batch_size,
                                                       num_workers = config_train.num_workers )
-            ## losses = []
+            losses_epoch = []
 
             # Train each batch
-            batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train))
+            batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train), disable = config_train.tqdm_disable)
             for step_id, entry in batch:
                 img_anchor, img_pos, img_neg, label_anchor, \
                 title_anchor, title_pos, title_neg = entry
@@ -85,11 +87,12 @@ class Trainer:
                 optimizer.step()
 
                 loss_val = loss.cpu().detach().numpy()
-                ## losses.append(loss_val)
+                losses_epoch.append(loss_val)
 
                 logger.info(f"MSG - epoch {epoch:d}, batch {step_id:d}, loss {loss_val:.4f}")
 
-            ## print(f"Epoch: {epoch + 1}/{config_train.max_epochs} - Loss: {np.mean(loss.cpu().detach().numpy()):.4f}")
+            loss_epoch_mean = np.mean(losses_epoch)
+            logger.info(f"MSG - epoch {epoch:d}, loss mean {loss_epoch_mean:.4f}")
 
             # Save the model state
-            self.save_checkpoint()
+            if is_save_checkpoint: self.save_checkpoint()

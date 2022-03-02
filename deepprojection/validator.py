@@ -11,15 +11,16 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 class ConfigValidator:
-    path_chkpt  = None
-    num_workers = 4
-    batch_size  = 64
-    max_epochs  = 10
-    lr          = 0.001
+    path_chkpt   = None
+    num_workers  = 4
+    batch_size   = 64
+    max_epochs   = 10
+    lr           = 0.001
+    tqdm_disable = False
 
     def __init__(self, **kwargs):
         logger.info(f"__/ Configure Validator \___")
-        # Set values of attributes that are not known when obj is created
+        # Set values of attributes that are not known when obj is created...
         for k, v in kwargs.items():
             setattr(self, k, v)
             logger.info(f"{k:16s} : {v}")
@@ -33,9 +34,9 @@ class LossValidator:
         self.dataset_test = dataset_test
         self.config_test  = config_test
 
-        # Load data to gpus if available
+        # Load data to gpus if available...
         self.device = 'cpu'
-        if torch.cuda.is_available():
+        if self.config_test.path_chkpt is not None and torch.cuda.is_available():
             self.device = torch.cuda.current_device()
 
             chkpt = torch.load(self.config_test.path_chkpt)
@@ -45,15 +46,15 @@ class LossValidator:
         return None
 
 
-    def validate(self):
+    def validate(self, is_return_loss = False):
         """ The testing loop.  """
 
-        # Load model and testing configuration
+        # Load model and testing configuration...
         model, config_test = self.model, self.config_test
 
-        # Train each epoch
+        # Train each epoch...
         for epoch in tqdm.tqdm(range(config_test.max_epochs)):
-            # Load model state
+            # Load model state...
             model.eval()
             dataset_test = self.dataset_test
             loader_test  = DataLoader( dataset_test, shuffle     = True, 
@@ -61,10 +62,11 @@ class LossValidator:
                                                      batch_size  = config_test.batch_size,
                                                      num_workers = config_test.num_workers )
 
-            # Train each batch
-            batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test))
+            # Train each batch...
+            losses_epoch = []
+            batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test), disable = config_test.tqdm_disable)
             for step_id, entry in batch:
-                losses = []
+                losses_batch = []
 
                 img_anchor, img_pos, img_neg, label_anchor, \
                 title_anchor, title_pos, title_neg = entry
@@ -73,15 +75,26 @@ class LossValidator:
                 img_pos    = img_pos.to(self.device)
                 img_neg    = img_neg.to(self.device)
 
-                with torch.no_grad():
-                    # Look at each example in a batch...
-                    for i in range(len(label_anchor)):
-                        _, _, _, loss = self.model.forward(img_anchor[i], img_pos[i], img_neg[i])
-                        loss_val = loss.cpu().detach().numpy()
-                        losses.append(loss_val)
-                        logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}, {loss_val:7.4f}")
+                for i in range(len(label_anchor)):
+                    logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}")
 
-                logger.info(f"MSG - epoch {epoch:d}, batch {step_id:d}, loss {np.mean(losses):.4f}")
+                with torch.no_grad():
+                    _, _, _, loss = self.model.forward(img_anchor, img_pos, img_neg)
+                    loss_val = loss.cpu().detach().numpy()
+                    losses_batch.append(loss_val)
+                    logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}, {loss_val:7.4f}")
+
+                loss_batch_mean = np.mean(losses_batch)
+                logger.info(f"MSG - epoch {epoch:d}, batch {step_id:d}, loss {loss_batch_mean:.4f}")
+                losses_epoch.append(loss_batch_mean)
+
+            loss_epoch_mean = np.mean(losses_epoch)
+            logger.info(f"MSG - epoch {epoch:d}, loss mean {loss_epoch_mean:.4f}")
+
+        # Record the mean loss of the last epoch...
+        final_loss = loss_epoch_mean
+
+        return final_loss if is_return_loss else None
 
 
 
