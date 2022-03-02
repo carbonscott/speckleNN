@@ -59,8 +59,8 @@ class LossValidator:
             # Load model state...
             model.eval()
             dataset_test = self.dataset_test
-            loader_test  = DataLoader( dataset_test, shuffle     = True, 
-                                                     pin_memory  = True, 
+            loader_test  = DataLoader( dataset_test, shuffle     = config_test.shuffle, 
+                                                     pin_memory  = config_test.pin_memory, 
                                                      batch_size  = config_test.batch_size,
                                                      num_workers = config_test.num_workers )
 
