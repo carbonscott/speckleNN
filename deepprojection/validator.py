@@ -84,7 +84,6 @@ class LossValidator:
                     _, _, _, loss = self.model.forward(img_anchor, img_pos, img_neg)
                     loss_val = loss.cpu().detach().numpy()
                     losses_batch.append(loss_val)
-                    logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}, {loss_val:7.4f}")
 
                 loss_batch_mean = np.mean(losses_batch)
                 logger.info(f"MSG - epoch {epoch_str}, batch {step_id:d}, loss {loss_batch_mean:.4f}")
