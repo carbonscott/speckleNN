@@ -150,3 +150,68 @@ class PairValidator:
                     rmsd_val = rmsd.cpu().detach().numpy()
                     rmsds.append(rmsd_val)
                     logger.info(f"DATA - {title_anchor[i]}, {title_second[i]}, {rmsd_val:7.4f}")
+
+
+
+
+class MultiwayQueryValidator:
+    def __init__(self, model, dataset_test, config_test):
+        self.model        = model
+        self.dataset_test = dataset_test
+        self.config_test  = config_test
+
+        # Load data to gpus if available
+        self.device = 'cpu'
+        if torch.cuda.is_available():
+            self.device = torch.cuda.current_device()
+
+            chkpt = torch.load(self.config_test.path_chkpt)
+            self.model.load_state_dict(chkpt)
+            self.model = torch.nn.DataParallel(self.model).to(self.device)
+
+        return None
+
+
+    def validate(self):
+        """ The testing loop.  """
+
+        # Load model and testing configuration...
+        model, config_test = self.model, self.config_test
+
+        # Train an epoch...
+        # Load model state
+        model.eval()
+        dataset_test = self.dataset_test
+        loader_test  = DataLoader( dataset_test, shuffle     = config_test.shuffle, 
+                                                 pin_memory  = config_test.pin_memory, 
+                                                 batch_size  = config_test.batch_size,
+                                                 num_workers = config_test.num_workers )
+
+        # Train each batch...
+        batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test))
+        for step_id, entry in batch:
+            img_list   = entry[                 : len(entry) // 2 ]
+            title_list = entry[ len(entry) // 2 :                 ]
+
+            img_query  , imgs_test   = img_list[0]  , img_list[1:]
+            title_query, titles_test = title_list[0], title_list[1:]
+
+            img_query = img_query.to(self.device)
+            imgs_test = [ img_test.to(self.device) for img_test in imgs_test ]
+
+            with torch.no_grad():
+                # Look at each example in a batch...
+                for i in range(len(img_query)):
+                    # Compare the query against EACH test image...
+                    msg = []
+                    for img_test, title_test in zip(imgs_test, titles_test):
+                        _, _, dist = self.model.forward(img_query[i].unsqueeze(0), img_test[i].unsqueeze(0))
+
+                        dist_val = dist.cpu().detach().numpy()
+                        msg.append(f"{title_test[i]} : {dist_val:7.4f}")
+
+
+                    # Return a line for each batch...
+                    log_header = f"DATA - {title_query[i]}, "
+                    log_msg = log_header + ", ".join(msg)
+                    logger.info(log_msg)

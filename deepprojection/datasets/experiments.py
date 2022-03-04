@@ -350,6 +350,89 @@ class SiameseTestset(Siamese):
 
 
 
+class MultiwayQueryset(Siamese):
+    """
+    Siamese testset for multi-way classification.
+
+    This implementation is mainly designed to measure true/false positve/negative.  
+    """
+
+    def __init__(self, config):
+        super().__init__(config)
+
+        label_seqi_dict = self.label_seqi_dict
+
+        # Form triplet for ML training...
+        self.queryset = self._form_queryset(label_seqi_dict)
+
+        return None
+
+
+    def __len__(self):
+        return self.size_sample
+
+
+    def __getitem__(self, idx):
+        query_tuple = self.queryset[idx]
+        id_query, ids_test = query_tuple[0], query_tuple[1:]
+
+        # Read the query and test images...
+        img_query, _ = super().__getitem__(id_query)
+        imgs_test = []
+        for id_test in ids_test:
+            img_test, _ = super().__getitem__(id_test)
+            imgs_test.append(img_test)
+
+        res = [img_query, ] + imgs_test
+
+        # Append (exp, run, event_num, label) to the result
+        for i in query_tuple: 
+            title = self.imglabel_list[i]
+            res += [' '.join(title), ]
+
+        return res
+
+
+    def _form_queryset(self, label_seqi_dict):
+        """ 
+        Creating `size_sample` queryset that consists of one query image and 
+        other random images selected from each label.
+
+        Used for model validation only.  
+        """
+        # Select two list of random labels following uniform distribution...
+        # For queryed image
+        size_sample       = self.size_sample
+        label_query_list = random.choices(self.labels, k = size_sample)
+
+        # Form a queryset...
+        queryset = []
+        for label_query in label_query_list:
+            # Fetch a bucket of query images...
+            query_bucket = label_seqi_dict[label_query]
+
+            # Randomly sample one query...
+            id_query = random.choice(query_bucket)
+
+            # Find a test image from each label...
+            ids_test = []
+            for label_test in self.labels:
+                # Fetch a bucket of images for this label only...
+                test_bucket = label_seqi_dict[label_test]
+
+                # Randomly sample one test image...
+                id_test = random.choice(test_bucket)
+                ids_test.append(id_test)
+
+            # Combine the query id with test ids...
+            query_and_test = [id_query, ] + ids_test
+            queryset.append( query_and_test )
+
+        return queryset
+
+
+
+
 class ImgLabelFileParser:
     """
     It parses a label file associated with a run in an experiment.  The label 
