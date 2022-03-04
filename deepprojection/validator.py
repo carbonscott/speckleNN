@@ -192,7 +192,7 @@ class MultiwayQueryValidator:
         for step_id, entry in batch:
             # Unpack entry...
             # Not a good design, but it's okay for now (03/03/2020)
-            # Shape of entry: (unpack_category, batch, internal_shape)
+            # Shape of entry: (unpack_dim, batch, internal_shape)
             # Internal shape of image is 2d, string is 1d
             img_list   = entry[                 : len(entry) // 2 ]
             title_list = entry[ len(entry) // 2 :                 ]
