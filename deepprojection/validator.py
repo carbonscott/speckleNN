@@ -190,19 +190,25 @@ class MultiwayQueryValidator:
         # Train each batch...
         batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test))
         for step_id, entry in batch:
+            # Unpack entry...
+            # Not a good design, but it's okay for now (03/03/2020)
+            # Shape of entry: (return_category, batch, internal_shape)
+            # Internal shape of image is 2d, string is 1d
             img_list   = entry[                 : len(entry) // 2 ]
             title_list = entry[ len(entry) // 2 :                 ]
 
+            # Assign returned subcategory for img and title...
             img_query  , imgs_test   = img_list[0]  , img_list[1:]
             title_query, titles_test = title_list[0], title_list[1:]
 
+            # Load imgs to gpu...
             img_query = img_query.to(self.device)
             imgs_test = [ img_test.to(self.device) for img_test in imgs_test ]
 
             with torch.no_grad():
                 # Look at each example in a batch...
                 for i in range(len(img_query)):
-                    # Compare the query against EACH test image...
+                    # Compare the query against EACH test image in the subcategory (each label)...
                     msg = []
                     for img_test, title_test in zip(imgs_test, titles_test):
                         _, _, dist = self.model.forward(img_query[i].unsqueeze(0), img_test[i].unsqueeze(0))
