@@ -44,23 +44,25 @@ class ConfigDataset:
 
 
 
-class SPIImgDataset(Dataset):
+class SPIPanelDataset(Dataset):
     """
-    SPI images are collected from multiple datasets specified in the input csv
+    SPI panels are collected from multiple datasets specified in the input csv
     file. All images are organized in a plain list.  
     """
 
     def __init__(self, config):
-        fl_csv          = config.fl_csv
-        exclude_labels  = config.exclude_labels
-        self.resize     = config.resize
-        self.isflat     = config.isflat
-        self.mode       = config.mode
-        self.mask       = config.mask
-        self.istrain    = config.istrain
-        self.frac_train = config.frac_train    # Proportion/Fraction of training examples
-        self.seed       = config.seed
-        self.trans      = config.trans
+        fl_csv                 = config.fl_csv
+        exclude_labels         = config.exclude_labels
+        self.resize            = config.resize
+        self.isflat            = config.isflat
+        self.mode              = config.mode
+        self.mask              = config.mask
+        self.istrain           = config.istrain
+        self.frac_train        = config.frac_train    # Proportion/Fraction of training examples
+        self.seed              = config.seed
+        self.trans_random      = config.trans_random
+        self.trans_standardize = config.trans_standardize
+        self.num_panels        = config.num_panels
 
         self._dataset_dict        = {}
         self.psana_imgreader_dict = {}
@@ -86,7 +88,7 @@ class SPIImgDataset(Dataset):
                 basename = (exp, run)
 
                 # Initiate image accessing layer
-                self.psana_imgreader_dict[basename] = PsanaImg(exp, run, mode, detector_name)
+                self.psana_imgreader_dict[basename] = PsanaPanel(exp, run, mode, detector_name)
 
                 # Obtain image labels from this dataset
                 imglabel_fileparser = ImgLabelFileParser(exp, run, drc_root, exclude_labels)
@@ -98,7 +100,8 @@ class SPIImgDataset(Dataset):
             exp, run = dataset_id
 
             for event_num, label in dataset_content.items():
-                self.imglabel_orig_list.append( (exp, run, f"{event_num:>6s}", label) )
+                for id_panel in range(self.num_panels):
+                    self.imglabel_orig_list.append( (exp, run, f"{event_num:>6s}", f"{id_panel:1d}", label) )
 
         # Split the original image list into training set and test set...
         num_list  = len(self.imglabel_orig_list)
@@ -120,15 +123,20 @@ class SPIImgDataset(Dataset):
         return len(self.imglabel_list)
 
 
-    def get_img_and_label(self, idx):
+    def get_panel_and_label(self, idx):
         # Read image...
-        exp, run, event_num, label = self.imglabel_list[idx]
+        exp, run, event_num, id_panel, label = self.imglabel_list[idx]
         basename = (exp, run)
-        img = self.psana_imgreader_dict[basename].get(int(event_num), mode = self.mode, mask = self.mask)
+        img = self.psana_imgreader_dict[basename].get(int(event_num), id_panel, mode = self.mode, mask = self.mask)
 
-        # Apply transform if available???
-        if isinstance(self.trans, (tuple, list)):
-            for trans in self.trans:
+        # Apply transformation for standardizing image: low-right corner is the center...
+        if isinstance(self.trans_standardize, dict):
+            if id_panel in self.trans_standardize: 
+                img = self.trans_standardize[id_panel](img)
+
+        # Apply random transform if available???
+        if isinstance(self.trans_random, (tuple, list)):
+            for trans in self.trans_random:
                 img = trans(img)
 
         # Resize images...
@@ -140,7 +148,7 @@ class SPIImgDataset(Dataset):
 
 
     def __getitem__(self, idx):
-        img, label = self.get_img_and_label(idx)
+        img, label = self.get_panel_and_label(idx)
 
         # Normalize input image...
         img_mean = np.mean(img)
@@ -155,7 +163,7 @@ class SPIImgDataset(Dataset):
 
 
 
-class Siamese(SPIImgDataset):
+class Siamese(SPIPanelDataset):
 
     def __init__(self, config):
         super().__init__(config)
@@ -164,7 +172,7 @@ class Siamese(SPIImgDataset):
 
         # Create a lookup table for locating the sequence number (seqi) based on a label...
         label_seqi_dict = {}
-        for seqi, (_, _, _, label) in enumerate(self.imglabel_list):
+        for seqi, (_, _, _, _, label) in enumerate(self.imglabel_list):
             # Keep track of label and its seqi
             if not label in label_seqi_dict: label_seqi_dict[label] = [seqi]
             else                           : label_seqi_dict[label].append(seqi)
@@ -218,7 +226,7 @@ class SiameseDataset(Siamese):
 
         res = img_anchor, img_pos, img_neg, label_anchor
 
-        # Append (exp, run, event_num, label) to the result
+        # Append (exp, run, event_num, id_panel, label) to the result
         for i in (id_anchor, id_pos, id_neg): 
             ## title = [ str(j) for j in self.imglabel_list[i] ]
             title = self.imglabel_list[i]
@@ -504,7 +512,7 @@ class ImgLabelFileParser:
 
 
 
-class PsanaImg:
+class PsanaPanel:
     """
     It serves as an image accessing layer based on the data management system
     psana in LCLS.  
@@ -522,21 +530,20 @@ class PsanaImg:
         self.detector = psana.Detector(detector_name)
 
 
-    def get(self, event_num, mode = "image", mask = None):
+    def get(self, event_num, id_panel, mode = "image", mask = None):
         # Fetch the timestamp according to event number...
         timestamp = self.timestamps[int(event_num)]
 
         # Access each event based on timestamp...
         event = self.run_current.event(timestamp)
 
-        # Only three modes are supported...
-        assert mode in ("raw", "image", "calib"), f"Mode {mode} is not allowed!!!  Only 'raw' or 'image' are supported."
+        # Only two modes are supported...
+        assert mode in ("raw", "calib"), f"Mode {mode} is not allowed!!!  Only 'raw' or 'image' are supported."
 
         # Fetch image data based on timestamp from detector...
-        read = { "image" : self.detector.image,
-                 "raw"   : self.detector.raw,
+        read = { "raw"   : self.detector.raw,
                  "calib" : self.detector.calib,}
-        img = read[mode](event)
+        img = read[mode](event)[int(id_panel)]
 
         # Apply mask...
         if isinstance(mask, np.ndarray): img *= mask

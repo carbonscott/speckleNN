@@ -99,3 +99,13 @@ class RandomRotate:
             self.angle = np.random.uniform(low = 0, high = 360)
 
         return rotate(img, angle = self.angle, center = self.center)
+
+
+
+
+def vflip(img): return np.flip(img, axis = 0)
+
+
+
+
+def hflip(img): return np.flip(img, axis = 1)
