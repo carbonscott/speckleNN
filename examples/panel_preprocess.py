@@ -17,7 +17,7 @@ class DatasetPreprocess:
 
         # Get panel size...
         spipanel = SPIPanelDataset(config_dataset)
-        panel    = spipanel.get_panel_and_label(0)[0]
+        panel = spipanel.get_panel_and_label(0)[0]
 
         self.spipanel = spipanel
         self.panel    = panel
@@ -38,14 +38,10 @@ class DatasetPreprocess:
         # Create a raw mask...
         mask = np.ones_like(panel)
 
-        # Mask out the top 10%...
-        top = 0.1
+        # Mask out the top 20%...
+        top = 0.2
         h_false = int(top * size_y)
         mask_false_area = (slice(0, h_false), slice(0, size_x))
-        mask[mask_false_area[0], mask_false_area[1]] = 0
-
-        # Mask out the oversaturated panel in 102...
-        mask_false_area = (slice(510, None), slice(541, 670))
         mask[mask_false_area[0], mask_false_area[1]] = 0
 
         # Fetch the value...
@@ -55,18 +51,19 @@ class DatasetPreprocess:
 
 
     def apply_augmentation(self):
-        # Random rotation...
-        angle = None
-        center = (524, 506)
-        trans_random_rotate = transform.RandomRotate(angle = angle, center = center)
+        ## # Random rotation...
+        ## angle = None
+        ## center = (524, 506)
+        ## trans_random_rotate = transform.RandomRotate(angle = angle, center = center)
 
         # Random patching...
         num_patch = 5
-        size_patch_y, size_patch_x = 70, 500
+        size_patch_y, size_patch_x = 70, 200
         trans_random_patch  = transform.RandomPatch(num_patch             , size_patch_y     , size_patch_x, 
                                                     var_patch_y    = 0.2  , var_patch_x    = 0.2, 
                                                     is_return_mask = False, is_random_flip = True)
-        trans_list = [trans_random_rotate, trans_random_patch]
+        ## trans_list = [trans_random_rotate, trans_random_patch]
+        trans_list = [trans_random_patch]
 
         # Add augmentation to dataset configuration...
         self.config_dataset.trans_random = trans_list
@@ -90,10 +87,9 @@ class DatasetPreprocess:
 
 
     def apply(self):
-        ## self.apply_mask()
-        ## self.apply_augmentation()
+        self.apply_mask()
+        self.apply_augmentation()
         self.apply_standardize()
         self.apply_downsample()
 
         return None
-

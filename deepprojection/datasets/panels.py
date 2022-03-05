@@ -35,6 +35,7 @@ class ConfigDataset:
         self.kwargs = kwargs
         for k, v in kwargs.items(): setattr(self, k, v)
 
+
     def report(self):
         logger.info(f"___/ Configure Dataset \___")
         for k, v in self.__dict__.items():
@@ -62,7 +63,7 @@ class SPIPanelDataset(Dataset):
         self.seed              = config.seed
         self.trans_random      = config.trans_random
         self.trans_standardize = config.trans_standardize
-        self.num_panels        = config.num_panels
+        self.panels        = config.panels
 
         self._dataset_dict        = {}
         self.psana_imgreader_dict = {}
@@ -100,7 +101,7 @@ class SPIPanelDataset(Dataset):
             exp, run = dataset_id
 
             for event_num, label in dataset_content.items():
-                for id_panel in range(self.num_panels):
+                for id_panel in self.panels:
                     self.imglabel_orig_list.append( (exp, run, f"{event_num:>6s}", f"{id_panel:1d}", label) )
 
         # Split the original image list into training set and test set...

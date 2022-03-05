@@ -40,13 +40,14 @@ logger = logging.getLogger(__name__)
 # [[[ DATASET ]]]
 # Config the dataset...
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
+panels         = [ 0, 1 ,2 ]    # Exclude panel 3 that has sick panel from run 102
 config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
-                                size_sample       = 2000 * 4, 
+                                size_sample       = 2000, 
                                 mode              = 'calib',
                                 mask              = None,
                                 resize            = None,
                                 seed              = 0,
-                                num_panels        = 4,
+                                panels            = panels,
                                 isflat            = False,
                                 istrain           = True,
                                 trans_random      = None,
@@ -82,7 +83,7 @@ encoder = Hirotaka0122(config_encoder)
 
 # [[[ MODEL ]]]
 # Config the model...
-alpha = 2.0
+alpha = 0.5
 config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
 model = SiameseModel(config_siamese)
 
@@ -116,7 +117,7 @@ trainer = Trainer(model, dataset_train, config_train)
 # [[[ VALIDATOR ]]]
 config_validator = ConfigValidator( path_chkpt  = None,
                                     num_workers = 1,
-                                    batch_size  = 40 * 4,
+                                    batch_size  = 40,
                                     pin_memory  = True,
                                     shuffle     = False,
                                     lr          = 1e-3, 
