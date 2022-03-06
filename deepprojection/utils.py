@@ -145,7 +145,7 @@ def read_log(file):
             # Collect kv information...
             if kw_kv in line:
                 info = line[line.rfind(kw_kv) + len(kw_kv):]
-                k, v = info.split(":")
+                k, v = info.split(":", maxsplit = 1)
                 if not k in kv_dict: kv_dict[k.strip()] = v.strip()
 
             # Collect data information...
