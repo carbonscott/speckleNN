@@ -51,16 +51,16 @@ class SPIImgDataset(Dataset):
     """
 
     def __init__(self, config):
-        fl_csv          = config.fl_csv
-        exclude_labels  = config.exclude_labels
-        self.resize     = config.resize
-        self.isflat     = config.isflat
-        self.mode       = config.mode
-        self.mask       = config.mask
-        self.istrain    = config.istrain
-        self.frac_train = config.frac_train    # Proportion/Fraction of training examples
-        self.seed       = config.seed
-        self.trans      = config.trans
+        fl_csv          = getattr(config, 'fl_csv'        , None)
+        exclude_labels  = getattr(config, 'exclude_labels', None)
+        self.resize     = getattr(config, 'resize'        , None)
+        self.isflat     = getattr(config, 'isflat'        , None)
+        self.mode       = getattr(config, 'mode'          , None)
+        self.mask       = getattr(config, 'mask'          , None)
+        self.istrain    = getattr(config, 'istrain'       , None)
+        self.frac_train = getattr(config, 'frac_train'    , None)    # Proportion/Fraction of training examples
+        self.seed       = getattr(config, 'seed'          , None)
+        self.trans      = getattr(config, 'trans'         , None)
 
         self._dataset_dict        = {}
         self.psana_imgreader_dict = {}
