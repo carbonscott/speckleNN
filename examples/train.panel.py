@@ -52,6 +52,7 @@ config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
                                 istrain           = True,
                                 trans_random      = None,
                                 trans_standardize = None,
+                                trans_crop        = None,
                                 frac_train        = 0.7,
                                 exclude_labels    = exclude_labels, )
 
@@ -83,7 +84,7 @@ encoder = Hirotaka0122(config_encoder)
 
 # [[[ MODEL ]]]
 # Config the model...
-alpha = 0.5
+alpha = 2.0
 config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
 model = SiameseModel(config_siamese)
 
@@ -127,6 +128,6 @@ validator = LossValidator(model, dataset_validate, config_validator)
 
 
 # [[[ EPOCH MANAGER ]]]
-max_epochs = 40
+max_epochs = 60
 epoch_manager = EpochManager(trainer = trainer, validator = validator, max_epochs = max_epochs)
 epoch_manager.run()

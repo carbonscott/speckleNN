@@ -83,6 +83,23 @@ class RandomPatch:
 
 
 
+class Crop:
+    def __init__(self, crop_orig, crop_end):
+        self.crop_orig = crop_orig
+        self.crop_end  = crop_end
+
+
+    def __call__(self, img):
+        y_orig, x_orig = self.crop_orig
+        y_end , x_end  = self.crop_end
+
+        img_crop = img[y_orig:y_end, x_orig:x_end]
+
+        return img_crop
+
+
+
+
 class RandomRotate:
     """ Apply random rotation to an image around the beam center.
     """

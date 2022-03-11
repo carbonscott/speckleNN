@@ -4,7 +4,6 @@
 # Load PyTorch
 import torch
 from torch.utils.data import Dataset
-import skimage.transform
 
 # Load LCLS data management and LCLS data access (through detector) module
 import psana
@@ -15,10 +14,12 @@ import random
 import json
 import csv
 import os
+import inspect
 
 import logging
 
 from deepprojection.utils import downsample, set_seed
+from deepprojection.datasets import transform
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ class SPIPanelDataset(Dataset):
         self.seed              = config.seed
         self.trans_random      = config.trans_random
         self.trans_standardize = config.trans_standardize
+        self.trans_crop        = config.trans_crop
         self.panels        = config.panels
 
         self._dataset_dict        = {}
@@ -124,26 +126,41 @@ class SPIPanelDataset(Dataset):
         return len(self.imglabel_list)
 
 
-    def get_panel_and_label(self, idx):
-        # Read image...
-        exp, run, event_num, id_panel, label = self.imglabel_list[idx]
-        basename = (exp, run)
-        img = self.psana_imgreader_dict[basename].get(int(event_num), id_panel, mode = self.mode, mask = self.mask)
+    def transform(self, img, **kwargs):
+        # Apply mask...
+        if isinstance(self.mask, np.ndarray): img *= self.mask
 
         # Apply transformation for standardizing image: low-right corner is the center...
+        id_panel = kwargs.get("id_panel")
         if isinstance(self.trans_standardize, dict):
             if id_panel in self.trans_standardize: 
-                img = self.trans_standardize[id_panel](img)
+                trans = self.trans_standardize[id_panel]
+                if inspect.isfunction(trans): img = trans(img)
 
         # Apply random transform if available???
         if isinstance(self.trans_random, (tuple, list)):
             for trans in self.trans_random:
-                img = trans(img)
+                if isinstance(trans, (transform.RandomRotate, transform.RandomPatch)): img = trans(img)
+
+        # Apply crop...
+        if isinstance(self.trans_crop, transform.Crop): img = self.trans_crop(img)
 
         # Resize images...
-        if self.resize:
+        if isinstance(self.resize, (tuple, list)):
             bin_row, bin_col = self.resize
             img = downsample(img, bin_row, bin_col, mask = None)
+
+        return img
+
+
+    def get_panel_and_label(self, idx):
+        # Read image...
+        exp, run, event_num, id_panel, label = self.imglabel_list[idx]
+        basename = (exp, run)
+        img = self.psana_imgreader_dict[basename].get(int(event_num), id_panel, mode = self.mode)
+
+        # Apply any possible transformation...
+        img = self.transform(img, id_panel = id_panel)
 
         return img, label
 
@@ -531,7 +548,7 @@ class PsanaPanel:
         self.detector = psana.Detector(detector_name)
 
 
-    def get(self, event_num, id_panel, mode = "image", mask = None):
+    def get(self, event_num, id_panel, mode = "image"):
         # Fetch the timestamp according to event number...
         timestamp = self.timestamps[int(event_num)]
 
@@ -545,8 +562,5 @@ class PsanaPanel:
         read = { "raw"   : self.detector.raw,
                  "calib" : self.detector.calib,}
         img = read[mode](event)[int(id_panel)]
-
-        # Apply mask...
-        if isinstance(mask, np.ndarray): img *= mask
 
         return img

@@ -57,8 +57,8 @@ class DatasetPreprocess:
         ## trans_random_rotate = transform.RandomRotate(angle = angle, center = center)
 
         # Random patching...
-        num_patch = 5
-        size_patch_y, size_patch_x = 70, 200
+        num_patch = 2
+        size_patch_y, size_patch_x = 40, 200
         trans_random_patch  = transform.RandomPatch(num_patch             , size_patch_y     , size_patch_x, 
                                                     var_patch_y    = 0.2  , var_patch_x    = 0.2, 
                                                     is_return_mask = False, is_random_flip = True)
@@ -71,8 +71,21 @@ class DatasetPreprocess:
         return None
 
 
+    def apply_crop(self):
+        panel = self.panel
+        crop_orig = 250, 250
+        crop_end  = panel.shape
+
+        trans_crop = transform.Crop(crop_orig, crop_end)
+
+        self.config_dataset.trans_crop = trans_crop
+
+        return None
+
+
+
     def apply_downsample(self):
-        resize_y, resize_x = 6, 6
+        resize_y, resize_x = 2, 2
         resize = (resize_y, resize_x) if not None in (resize_y, resize_x) else ()
 
         self.config_dataset.resize = resize
@@ -87,9 +100,10 @@ class DatasetPreprocess:
 
 
     def apply(self):
-        self.apply_mask()
-        self.apply_augmentation()
+        ## self.apply_mask()
         self.apply_standardize()
+        ## self.apply_augmentation()
+        self.apply_crop()
         self.apply_downsample()
 
         return None

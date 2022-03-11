@@ -45,27 +45,29 @@ class DisplaySPIImg():
 
 
     def create_panels(self):
-        nrows, ncols = 1, 2
+        nrows, ncols = 2, 2
         fig = plt.figure(figsize = self.figsize)
-        gspec =  fig.add_gridspec(nrows, ncols)
-        ax_img  = fig.add_subplot(gspec[0,0])
-        ax_mask = fig.add_subplot(gspec[0,1])
+        gspec =  fig.add_gridspec(nrows, ncols, height_ratios = [1, 1/20])
+        ax_img  = fig.add_subplot(gspec[0,0], aspect = 1)
+        ax_mask = fig.add_subplot(gspec[0,1], aspect = 1)
+        ax_bar_img  = fig.add_subplot(gspec[1,0], aspect = 1/20)
+        ax_bar_mask = fig.add_subplot(gspec[1,1], aspect = 1/20)
 
-        return fig, (ax_img, ax_mask)
+        return fig, (ax_img, ax_mask, ax_bar_img, ax_bar_mask)
 
 
     def plot_img(self, title = ""): 
         img = self.img
         im = self.ax_img.imshow(img, norm = self.divnorm)
         im.set_cmap('seismic')
-        plt.colorbar(im, ax = self.ax_img, orientation="horizontal", pad = 0.05)
+        plt.colorbar(im, cax = self.ax_bar_img, orientation="horizontal", pad = 0.05)
 
 
     def plot_mask(self, title = ""): 
         mask = self.mask
         im = self.ax_mask.imshow(mask, norm = self.divnorm)
         im.set_cmap('seismic')
-        plt.colorbar(im, ax = self.ax_mask, orientation="horizontal", pad = 0.05)
+        plt.colorbar(im, cax = self.ax_bar_mask, orientation="horizontal", pad = 0.05)
 
 
     def plot_center(self, center = (0, 0), angle = 0):
@@ -82,7 +84,7 @@ class DisplaySPIImg():
 
 
     def show(self, center = None, angle = None, title = '', is_save = False): 
-        self.fig, (self.ax_img, self.ax_mask) = self.create_panels()
+        self.fig, (self.ax_img, self.ax_mask, self.ax_bar_img, self.ax_bar_mask) = self.create_panels()
 
         self.plot_img()
         if isinstance(center, tuple): self.plot_center(center, angle)
@@ -111,18 +113,20 @@ class DisplaySPIImg():
 
 
 # Config the dataset...
+panels = [0, 1, 2]
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
 config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
-                                size_sample       = 2000 * 4, 
+                                size_sample       = 2000, 
                                 mode              = 'calib',
                                 mask              = None,
                                 resize            = None,
                                 seed              = 0,
-                                num_panels        = 4,
+                                panels            = panels,
                                 isflat            = False,
                                 istrain           = True,
                                 trans_random      = None,
                                 trans_standardize = None,
+                                trans_crop        = None,
                                 frac_train        = 0.7,
                                 exclude_labels    = exclude_labels, )
 
@@ -135,11 +139,13 @@ dataset_preproc = DatasetPreprocess(config_dataset)
 dataset_preproc.apply()
 
 # Read an image...
-for idx in [0, 23, 14]:
+for idx in [0, 23, 14, 100]:
     # Don't apply those changes from configuration...
     spiimg.mask              = None
     spiimg.trans_standardize = None
     spiimg.trans_random      = None
+    spiimg.trans_crop        = None
+    spiimg.resize            = None
     img, _ = spiimg[idx]
     img = img.squeeze(axis = 0)
 
@@ -149,6 +155,8 @@ for idx in [0, 23, 14]:
     spiimg.mask              = config_dataset.mask
     spiimg.trans_standardize = config_dataset.trans_standardize
     spiimg.trans_random      = config_dataset.trans_random
+    spiimg.trans_crop        = config_dataset.trans_crop
+    spiimg.resize            = config_dataset.resize
 
     # Get transed image...
     img_masked, _ = spiimg[idx]
