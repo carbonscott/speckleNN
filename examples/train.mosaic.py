@@ -51,7 +51,6 @@ config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
                                 trans_random      = None,
                                 trans_standardize = None,
                                 trans_crop        = None,
-                                is_mosaic         = True,
                                 frac_train        = 0.7,
                                 exclude_labels    = exclude_labels, )
 
@@ -59,8 +58,7 @@ config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
 dataset_preproc = DatasetPreprocess(config_dataset)
 dataset_preproc.apply()
-size_y, size_x = dataset_preproc.get_panelsize()
-size_y *= 4    # Workaround for now, to improve
+size_y, size_x = dataset_preproc.get_mosaicsize()
 
 # Define training set...
 config_dataset.report()
@@ -84,7 +82,7 @@ encoder = Hirotaka0122(config_encoder)
 
 # [[[ MODEL ]]]
 # Config the model...
-alpha = 1.0
+alpha = 0.5
 config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
 model = SiameseModel(config_siamese)
 

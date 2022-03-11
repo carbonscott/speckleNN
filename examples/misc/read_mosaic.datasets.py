@@ -122,7 +122,6 @@ config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
                                 trans_random      = None,
                                 trans_standardize = None,
                                 trans_crop        = None,
-                                is_mosaic         = False,
                                 frac_train        = 0.7,
                                 exclude_labels    = exclude_labels, )
 
@@ -142,7 +141,7 @@ for idx in [0, 23, 14, 100]:
     spiimg.trans_random      = None
     spiimg.trans_crop        = None
     spiimg.resize            = None
-    spiimg.is_mosaic         = False
+    spiimg.IS_MOSAIC         = False
     imgs, _ = spiimg[idx]
     imgs = imgs.squeeze(axis = 0)
 
@@ -154,7 +153,7 @@ for idx in [0, 23, 14, 100]:
     spiimg.trans_random      = config_dataset.trans_random
     spiimg.trans_crop        = config_dataset.trans_crop
     spiimg.resize            = config_dataset.resize
-    spiimg.is_mosaic         = True
+    spiimg.IS_MOSAIC         = True
 
     # Get transed image...
     img_mosaic, _ = spiimg[idx]

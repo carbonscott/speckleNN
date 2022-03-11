@@ -10,6 +10,7 @@ class DatasetPreprocess:
     def __init__(self, config_dataset): 
         self.config_dataset = config_dataset
         self.get_panel()
+        self.get_mosaic()
 
 
     def get_panel(self):
@@ -17,13 +18,25 @@ class DatasetPreprocess:
 
         # Get panel size...
         spipanel = SPIMosaicDataset(config_dataset)
-        spipanel.is_mosaic = False
-        panels, _ = spipanel.get_panel_and_label(0)
+        spipanel.IS_MOSAIC = False
+        panels, _ = spipanel.get_img_and_label(0)
 
         panel = panels[0]
 
-        self.spipanel = spipanel
         self.panel    = panel
+
+        return None
+
+
+    def get_mosaic(self):
+        config_dataset = self.config_dataset
+
+        # Get panel size...
+        spipanel = SPIMosaicDataset(config_dataset)
+        spipanel.IS_MOSAIC = True
+        img_mosaic, _ = spipanel.get_img_and_label(0)
+
+        self.img_mosaic = img_mosaic
 
         return None
 
@@ -32,6 +45,12 @@ class DatasetPreprocess:
         self.get_panel()
 
         return self.panel.shape
+
+
+    def get_mosaicsize(self):
+        self.get_mosaic()
+
+        return self.img_mosaic.shape
 
 
     def apply_mask(self):

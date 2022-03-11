@@ -65,7 +65,7 @@ class SPIMosaicDataset(Dataset):
         self.trans_random      = config.trans_random
         self.trans_standardize = config.trans_standardize
         self.trans_crop        = config.trans_crop
-        self.is_mosaic         = config.is_mosaic
+        self.IS_MOSAIC         = True                 # It should be true in any case except when visualization of panels is really required.
 
         self._dataset_dict        = {}
         self.psana_imgreader_dict = {}
@@ -166,7 +166,7 @@ class SPIMosaicDataset(Dataset):
 
 
 
-    def get_panel_and_label(self, idx):
+    def get_img_and_label(self, idx):
         # Read image...
         exp, run, event_num, label = self.imglabel_list[idx]
         basename = (exp, run)
@@ -176,13 +176,13 @@ class SPIMosaicDataset(Dataset):
         imgs = self.transform(imgs)
 
         # Form a mosaic...
-        img_mosaic = self.form_mosaic(imgs) if self.is_mosaic else imgs
+        img_mosaic = self.form_mosaic(imgs) if self.IS_MOSAIC else imgs
 
         return img_mosaic, label
 
 
     def __getitem__(self, idx):
-        img, label = self.get_panel_and_label(idx)
+        img, label = self.get_img_and_label(idx)
 
         # Normalize input image...
         img_mean = np.mean(img)
