@@ -65,6 +65,7 @@ class SPIMosaicDataset(Dataset):
         self.trans_random      = getattr(config, 'trans_random'     , None)
         self.trans_standardize = getattr(config, 'trans_standardize', None)
         self.trans_crop        = getattr(config, 'trans_crop'       , None)
+        self.panels_ordered    = getattr(config, 'panels_ordered'   , None)
         self.IS_MOSAIC         = True                 # It should be true in any case except when visualization of panels is really required.
 
         self._dataset_dict        = {}
@@ -165,12 +166,22 @@ class SPIMosaicDataset(Dataset):
         return img_mosaic
 
 
+    def filter_panels(self, imgs, **kwargs):
+        imgs_filtered = imgs
+        if self.panels_ordered is not None:
+            imgs_filtered = [ imgs[i] for i in self.panels_ordered ]
+
+        return imgs_filtered
+
 
     def get_img_and_label(self, idx):
         # Read image...
         exp, run, event_num, label = self.imglabel_list[idx]
         basename = (exp, run)
         imgs = self.psana_imgreader_dict[basename].get(int(event_num), mode = self.mode)
+
+        # Filter imgs...
+        imgs = self.filter_panels(imgs)
 
         # Apply any possible transformation...
         imgs = self.transform(imgs)

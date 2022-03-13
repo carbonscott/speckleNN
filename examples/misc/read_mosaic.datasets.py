@@ -46,14 +46,15 @@ class DisplaySPIImg():
 
 
     def create_panels(self):
-        nrows, ncols = 5, 2
+        num_imgs = len(self.imgs)
+        nrows, ncols = num_imgs + 1, 2
         fig          = plt.figure(figsize = self.figsize)
         gspec        = fig.add_gridspec(nrows, ncols, width_ratios = [1, 1])
-        ax_panels    = [ fig.add_subplot(gspec[i, 0], aspect = 1) for i in range(4) ]
-        ax_bar_img   = fig.add_subplot(gspec[4,   0], aspect = 1/10)
+        ax_panels    = [ fig.add_subplot(gspec[i, 0], aspect = 1) for i in range(num_imgs) ]
+        ax_bar_img   = fig.add_subplot(gspec[-1,   0], aspect = 1/10)
 
-        ax_mosaic     = fig.add_subplot(gspec[0:4, 1], aspect = 1)
-        ax_bar_mosaic = fig.add_subplot(gspec[4,   1], aspect = 1/10)
+        ax_mosaic     = fig.add_subplot(gspec[0:num_imgs, 1], aspect = 1)
+        ax_bar_mosaic = fig.add_subplot(gspec[-1,   1], aspect = 1/10)
 
         return fig, (ax_panels, ax_bar_img, ax_mosaic, ax_bar_mosaic)
 
@@ -110,6 +111,7 @@ class DisplaySPIImg():
 
 
 # Config the dataset...
+panels_ordered = [0, 2]
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
 config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
                                 size_sample       = 2000, 
@@ -122,6 +124,7 @@ config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
                                 trans_random      = None,
                                 trans_standardize = None,
                                 trans_crop        = None,
+                                panels_ordered    = panels_ordered,
                                 frac_train        = 0.7,
                                 exclude_labels    = exclude_labels, )
 
@@ -170,6 +173,6 @@ for idx in [0, 23, 14, 100]:
 
     # Dispaly an image...
     title = f'imagemosaic.{idx:06d}'
-    disp_manager = DisplaySPIImg(imgs, img_mosaic, figsize = (8, 16))
+    disp_manager = DisplaySPIImg(imgs, img_mosaic, figsize = (8, 10))
     disp_manager.show(center = center, angle = angle, title = title, is_save = False)
     disp_manager.show(center = center, angle = angle, title = title, is_save = True)

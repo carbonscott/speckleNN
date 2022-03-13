@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 # [[[ DATASET ]]]
 # Config the dataset...
+panels_ordered = [1, 0]
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
 config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
                                 size_sample       = 2000, 
@@ -51,6 +52,7 @@ config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
                                 trans_random      = None,
                                 trans_standardize = None,
                                 trans_crop        = None,
+                                panels_ordered    = panels_ordered,
                                 frac_train        = 0.7,
                                 exclude_labels    = exclude_labels, )
 
@@ -82,7 +84,7 @@ encoder = Hirotaka0122(config_encoder)
 
 # [[[ MODEL ]]]
 # Config the model...
-alpha = 0.5
+alpha = 2.0
 config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
 model = SiameseModel(config_siamese)
 
