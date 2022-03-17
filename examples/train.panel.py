@@ -9,9 +9,22 @@ from deepprojection.model            import SiameseModel  , ConfigSiameseModel
 from deepprojection.trainer          import Trainer       , ConfigTrainer
 from deepprojection.validator        import LossValidator , ConfigValidator
 from deepprojection.encoders.convnet import Hirotaka0122  , ConfigEncoder
-from deepprojection.utils            import EpochManager
+from deepprojection.utils            import EpochManager  , MetaLog
 from datetime import datetime
 from panel_preprocess import DatasetPreprocess
+import socket
+
+# Clarify the purpose of this experiment...
+hostname = socket.gethostname()
+comments = f"""
+            Hostname: {hostname}.
+            Study if crop with a bin of 6 could beat the performance of the same setting but without cropping.  
+            resize = 6
+            Standardization is applied.  
+            size_sample = 2000.
+            alpha       = 2.
+            cropping is applied.  
+            """
 
 # [[[ LOGGING ]]]
 # Create a timestamp to name the log file...
@@ -35,6 +48,10 @@ logging.basicConfig( filename = path_log,
                      datefmt="%m/%d/%Y %H:%M:%S",
                      level=logging.INFO, )
 logger = logging.getLogger(__name__)
+
+# Create a metalog to the log file, explaining the purpose of this run...
+metalog = MetaLog( comments = comments )
+metalog.report()
 
 
 # [[[ DATASET ]]]

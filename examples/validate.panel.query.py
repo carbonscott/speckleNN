@@ -9,10 +9,24 @@ from deepprojection.model            import SiameseModelCompare   , ConfigSiames
 from deepprojection.validator        import MultiwayQueryValidator, ConfigValidator
 from deepprojection.encoders.convnet import Hirotaka0122          , ConfigEncoder
 from deepprojection.datasets         import transform
+from deepprojection.utils            import MetaLog
 from panel_preprocess                import DatasetPreprocess
+import socket
+
+# Comment this verification...
+hostname = socket.gethostname()
+comments = f""" 
+            Hostname: {hostname}.
+            Study if crop with a bin of 6 could beat the performance of the same setting but without cropping.  
+            resize = 6
+            Standardization is applied.  
+            size_sample = 2000.
+            alpha       = 2.
+            cropping is applied.  
+            """
 
 # Create a timestamp to name the log file...
-timestamp = "20220305145111"    # 2000, 1.0
+timestamp = "20220316134804"
 
 # Validate mode...
 istrain = False
@@ -35,6 +49,11 @@ logging.basicConfig( filename = path_log,
                      datefmt="%m/%d/%Y %H:%M:%S",
                      level=logging.INFO, )
 logger = logging.getLogger(__name__)
+
+# Create a metalog to the log file, explaining the purpose of this run...
+metalog = MetaLog( comments = comments )
+metalog.report()
+
 
 # Config the dataset...
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]

@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import logging
 import random
 import torch
 import numpy as np
 import tqdm
 import skimage.measure as sm
+
+logger = logging.getLogger(__name__)
 
 
 def set_seed(seed):
@@ -109,6 +112,21 @@ class ConvVolume:
         out_size_x = (size_x - kernel_size) // stride + 1
 
         return out_channels, out_size_y, out_size_x
+
+
+
+
+class MetaLog:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        for k, v in kwargs.items(): setattr(self, k, v)
+
+
+    def report(self):
+        logger.info(f"___/ MetaLog \___")
+        for k, v in self.__dict__.items():
+            if k == 'kwargs': continue
+            logger.info(f"KV - {k:16s} : {v}")
 
 
 
