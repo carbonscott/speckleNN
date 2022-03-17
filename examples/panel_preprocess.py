@@ -25,7 +25,7 @@ class DatasetPreprocess:
         return None
 
 
-    def get_panelsize(self): 
+    def get_panelsize(self):
         self.get_panel()
 
         return self.panel.shape
@@ -57,8 +57,9 @@ class DatasetPreprocess:
         ## trans_random_rotate = transform.RandomRotate(angle = angle, center = center)
 
         # Random patching...
-        num_patch = 2
-        size_patch_y, size_patch_x = 40, 200
+        num_patch = 5
+        ## size_patch_y, size_patch_x = 40, 200
+        size_patch_y, size_patch_x = 20, 80
         trans_random_patch  = transform.RandomPatch(num_patch             , size_patch_y     , size_patch_x, 
                                                     var_patch_y    = 0.2  , var_patch_x    = 0.2, 
                                                     is_return_mask = False, is_random_flip = True)
@@ -85,7 +86,7 @@ class DatasetPreprocess:
 
 
     def apply_downsample(self):
-        resize_y, resize_x = 2, 2
+        resize_y, resize_x = 6, 6
         resize = (resize_y, resize_x) if not None in (resize_y, resize_x) else ()
 
         self.config_dataset.resize = resize
