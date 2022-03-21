@@ -24,9 +24,9 @@ class MacroMetric:
 
         # Obtain true positive...
         tp = len(res_dict[label][label])
-        fp = sum( [ len(res_dict[i][label]) for i in labels_rest ] )
+        fp = sum( [ len(res_dict[label][i]) for i in labels_rest ] )
         tn = sum( sum( len(res_dict[i][j]) for j in labels_rest ) for i in labels_rest )
-        fn = sum( [ len(res_dict[label][i]) for i in labels_rest ] )
+        fn = sum( [ len(res_dict[i][label]) for i in labels_rest ] )
 
         return tp, fp, tn, fn
 
