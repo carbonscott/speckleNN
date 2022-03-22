@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from deepprojection.datasets.panels import SPIPanelDataset
-from deepprojection.datasets        import transform
+from deepprojection.datasets.simulated_panels import SPIPanelDataset
+from deepprojection.datasets                  import transform
 
 class DatasetPreprocess:
 
@@ -16,11 +16,10 @@ class DatasetPreprocess:
         config_dataset = self.config_dataset
 
         # Get panel size...
-        spipanel = SPIPanelDataset(config_dataset)
-        panel = spipanel.get_panel_and_label(0)[0]
+        with SPIPanelDataset(config_dataset) as spipanel:
+            panel = spipanel.get_panel_and_label(0)[0]
 
-        self.spipanel = spipanel
-        self.panel    = panel
+        self.panel = panel
 
         return None
 
