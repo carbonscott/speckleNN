@@ -13,6 +13,7 @@ import numpy as np
 import random
 import json
 import csv
+import h5py
 import os
 import inspect
 
@@ -53,11 +54,10 @@ class SPIPanelDataset(Dataset):
     """
 
     def __init__(self, config):
-        fl_csv                 = getattr(config, 'fl_csv'           , None)
-        exclude_labels         = getattr(config, 'exclude_labels'   , None)
+        self.fl_csv            = getattr(config, 'fl_csv'           , None)
+        self.exclude_labels    = getattr(config, 'exclude_labels'   , None)
         self.resize            = getattr(config, 'resize'           , None)
         self.isflat            = getattr(config, 'isflat'           , None)
-        self.mode              = getattr(config, 'mode'             , None)
         self.mask              = getattr(config, 'mask'             , None)
         self.istrain           = getattr(config, 'istrain'          , None)
         self.frac_train        = getattr(config, 'frac_train'       , None)    # Proportion/Fraction of training examples
@@ -67,44 +67,43 @@ class SPIPanelDataset(Dataset):
         self.trans_crop        = getattr(config, 'trans_crop'       , None)
         self.panels            = getattr(config, 'panels'           , None)
 
-        self._dataset_dict        = {}
+        self.h5_handle_dict       = {}
         self.psana_imgreader_dict = {}
         self.imglabel_orig_list   = []
+
+        # Constants
+        self.KEY_TO_IMG = 'photons'
 
         # Set the seed...
         # Debatable whether seed should be set in the dataset or in the running code
         if not self.seed is None: set_seed(self.seed)
 
-        # Read csv file of datasets
-        with open(fl_csv, 'r') as fh:
+        # Read the csv and collect files to read...
+        self.h5_handle_dict = {}
+        with open(self.fl_csv, 'r') as fh: 
             lines = csv.reader(fh)
 
-            # Skip the header
             next(lines)
 
-            # Read each line/dataset
             for line in lines:
-                # Fetch metadata of a dataset 
-                exp, run, mode, detector_name, drc_root = line
+                fl_base, label, drc_root = line
+                basename = (fl_base, label)
 
-                # Form a minimal basename to describe a dataset
-                basename = (exp, run)
+                fl_h5 = f"{fl_base}.h5"
+                path_h5 = os.path.join(drc_root, fl_h5)
+                if not basename in self.h5_handle_dict:
+                    self.h5_handle_dict[basename] = h5py.File(path_h5, 'r')    # !!!Remember to close it
 
-                # Initiate image accessing layer
-                self.psana_imgreader_dict[basename] = PsanaPanel(exp, run, mode, detector_name)
+        # Enumerate each image from all datasets, saved in h5 handles, w/o reading it...
+        for basename, h5_handle in self.h5_handle_dict.items():
+            fl_base, label = basename
 
-                # Obtain image labels from this dataset
-                imglabel_fileparser = ImgLabelFileParser(exp, run, drc_root, exclude_labels)
-                self._dataset_dict[basename] = imglabel_fileparser.imglabel_dict
+            num_imgs, num_panel, _, _ = h5_handle.get(self.KEY_TO_IMG).shape
 
-        # Enumerate each image from all datasets
-        for dataset_id, dataset_content in self._dataset_dict.items():
-            # Get the exp and run
-            exp, run = dataset_id
-
-            for event_num, label in dataset_content.items():
+            # Traverse every images in a synthetic dataset (it's okay to be slow)...
+            for id_frame in range(num_imgs):
                 for id_panel in self.panels:
-                    self.imglabel_orig_list.append( (exp, run, int(event_num), int(id_panel), label) )
+                    self.imglabel_orig_list.append( (fl_base, id_frame, id_panel, label) )
 
         # Split the original image list into training set and test set...
         num_list  = len(self.imglabel_orig_list)
@@ -120,6 +119,13 @@ class SPIPanelDataset(Dataset):
         self.imglabel_list = imglabel_train_list if self.istrain else imglabel_test_list
 
         return None
+
+
+    def __enter__(self): return self
+
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        for h5_handle in self.h5_handle_dict.values(): h5_handle.close()
 
 
     def __len__(self):
@@ -155,9 +161,9 @@ class SPIPanelDataset(Dataset):
 
     def get_panel_and_label(self, idx):
         # Read image...
-        exp, run, event_num, id_panel, label = self.imglabel_list[idx]
-        basename = (exp, run)
-        img = self.psana_imgreader_dict[basename].get(event_num, id_panel, mode = self.mode)
+        fl_base, id_frame, id_panel, label = self.imglabel_list[idx]
+        basename = (fl_base, label)
+        img = self.h5_handle_dict[basename].get(self.KEY_TO_IMG)[id_frame, id_panel]
 
         # Apply any possible transformation...
         img = self.transform(img, id_panel = id_panel)
@@ -190,7 +196,7 @@ class Siamese(SPIPanelDataset):
 
         # Create a lookup table for locating the sequence number (seqi) based on a label...
         label_seqi_dict = {}
-        for seqi, (_, _, _, _, label) in enumerate(self.imglabel_list):
+        for seqi, (_, _, _, label) in enumerate(self.imglabel_list):
             # Keep track of label and its seqi
             if not label in label_seqi_dict: label_seqi_dict[label] = [seqi]
             else                           : label_seqi_dict[label].append(seqi)
@@ -237,17 +243,17 @@ class SiameseDataset(Siamese):
     def __getitem__(self, idx):
         id_anchor, id_pos, id_neg = self.triplets[idx]
 
-        # Read the anchor, pos, neg
+        # Read the anchor, pos, neg...
         img_anchor, label_anchor = super().__getitem__(id_anchor)
         img_pos, _ = super().__getitem__(id_pos)
         img_neg, _ = super().__getitem__(id_neg)
 
         res = img_anchor, img_pos, img_neg, label_anchor
 
-        # Append (exp, run, event_num, id_panel, label) to the result
+        # Append (fl_base, id_frame, id_panel, label) to the result...
         for i in (id_anchor, id_pos, id_neg): 
-            exp, run, event_num, id_panel, label = self.imglabel_list[i]
-            title = f"{exp} {run} {event_num:>06d} {id_panel} {label}"
+            fl_base, id_frame, id_panel, label = self.imglabel_list[i]
+            title = f"{fl_base} {id_frame:>06d} {id_panel} {label}"
             res += (title, )
 
         return res
@@ -324,16 +330,16 @@ class SiameseTestset(Siamese):
     def __getitem__(self, idx):
         id_anchor, id_second = self.doublets[idx]
 
-        # Read the anchor, pos, neg
+        # Read the anchor, pos, neg...
         img_anchor, label_anchor = super().__getitem__(id_anchor)
         img_second, _ = super().__getitem__(id_second)
 
         res = img_anchor, img_second, label_anchor
 
-        # Append (exp, run, event_num, label) to the result
+        # Append (fl_base, id_frame, id_panel, label) to the result...
         for i in (id_anchor, id_second): 
-            exp, run, event_num, id_panel, label = self.imglabel_list[i]
-            title = f"{exp} {run} {event_num:>06d} {id_panel} {label}"
+            fl_base, id_frame, id_panel, label = self.imglabel_list[i]
+            title = f"{fl_base} {id_frame:>06d} {id_panel} {label}"
             res += (title, )
 
         return res
@@ -410,10 +416,10 @@ class MultiwayQueryset(Siamese):
 
         res = [img_query, ] + imgs_test
 
-        # Append (exp, run, event_num, label) to the result
+        # Append (fl_base, id_frame, id_panel, label) to the result...
         for i in query_tuple: 
-            exp, run, event_num, id_panel, label = self.imglabel_list[i]
-            title = f"{exp} {run} {event_num:>06d} {id_panel} {label}"
+            fl_base, id_frame, id_panel, label = self.imglabel_list[i]
+            title = f"{fl_base} {id_frame:>06d} {id_panel} {label}"
             res += (title, )
 
         return res
@@ -527,41 +533,3 @@ class ImgLabelFileParser:
             print(f"File doesn't exist!!! Missing {self.path_labelfile}.")
 
         return None
-
-
-
-
-class PsanaPanel:
-    """
-    It serves as an image accessing layer based on the data management system
-    psana in LCLS.  
-    """
-
-    def __init__(self, exp, run, mode, detector_name):
-        # Biolerplate code to access an image
-        # Set up data source
-        self.datasource_id = f"exp={exp}:run={run}:{mode}"
-        self.datasource    = psana.DataSource( self.datasource_id )
-        self.run_current   = next(self.datasource.runs())
-        self.timestamps    = self.run_current.times()
-
-        # Set up detector
-        self.detector = psana.Detector(detector_name)
-
-
-    def get(self, event_num, id_panel, mode = "image"):
-        # Fetch the timestamp according to event number...
-        timestamp = self.timestamps[event_num]
-
-        # Access each event based on timestamp...
-        event = self.run_current.event(timestamp)
-
-        # Only two modes are supported...
-        assert mode in ("raw", "calib"), f"Mode {mode} is not allowed!!!  Only 'raw' or 'image' are supported."
-
-        # Fetch image data based on timestamp from detector...
-        read = { "raw"   : self.detector.raw,
-                 "calib" : self.detector.calib,}
-        img = read[mode](event)[int(id_panel)]
-
-        return img

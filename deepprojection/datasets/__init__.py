@@ -1,7 +1,7 @@
-from . import simulated, experiments, transform
+from . import simulated_panels, experiments, transform
 
 __all__ = [
-    "simulated",
+    "simulated_panels",
     "experiments"
     "transform",
 ]
