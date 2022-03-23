@@ -1,4 +1,4 @@
-## Install with pip
+## Install deepprojection with pip
 
 ### From github
 
@@ -28,6 +28,41 @@ export PYTHONPATH="<path_to_this_package>:$PYTHONPATH"
 
 The `<path_to_this_package>` will be referred to as `$PACKAGE` in the following
 discussion.
+
+
+## Install dependencies with conda
+
+### Create an environment at a custom location for the project
+
+```
+conda create --prefix <path> python=3.7
+```
+
+### Install `psana`
+
+```
+conda install -c lcls-rhel7 psana-conda
+```
+
+### Install other packages
+
+#### `pytorch`
+
+```
+conda install pytorch=1.4.0=py3.7_cuda10.1.243_cudnn7.6.3_0 -c pytorch
+```
+
+#### `tqdm`
+
+```
+conda install tqdm=4.56.2=pyhd8ed1ab_0 -c conda-forge
+```
+
+#### `skimage`
+
+```
+conda install scikit-image=0.18.1=py37hdc94413_0 -c conda-forge
+```
 
 
 ## Which python environment to use on `psana`?
