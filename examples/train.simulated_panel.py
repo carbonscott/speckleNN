@@ -22,6 +22,14 @@ comments = f"""
             Train models to recognize scattering patterns simulated from
             particles defined in simulated_datasets.csv.
 
+            One goal is to test the new way of transformation.  
+
+            Meanwhile, random zoom is applied.  Detector distance shouldn't be an issue.  
+
+            Others to monitor:
+            - size_sample = 4000, 
+            - batch_size  = 200
+
             """
 
 # [[[ LOGGING ]]]
@@ -57,17 +65,14 @@ metalog.report()
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
 panels         = [ 0, 1 ,2, 3 ]
 config_dataset = ConfigDataset( fl_csv            = 'simulated_datasets.csv',
-                                size_sample       = 2000, 
-                                mask              = None,
+                                size_sample       = 4000, 
                                 resize            = None,
                                 seed              = 0,
                                 panels            = panels,
                                 isflat            = False,
                                 istrain           = True,
-                                trans_random      = None,
-                                trans_standardize = None,
-                                trans_crop        = None,
                                 frac_train        = 0.7,
+                                trans             = None,
                                 exclude_labels    = exclude_labels, )
 
 # Preprocess dataset...
@@ -78,7 +83,6 @@ size_y, size_x = dataset_preproc.get_panelsize()
 
 # Define training set...
 config_dataset.report()
-## dataset_train = SiameseDataset(config_dataset)
 with SiameseDataset(config_dataset) as dataset_train:
     # Define validation set...
     config_dataset.istrain = False
@@ -120,7 +124,7 @@ with SiameseDataset(config_dataset) as dataset_train:
     # Config the trainer...
     config_train = ConfigTrainer( path_chkpt  = path_chkpt,
                                   num_workers = 1,
-                                  batch_size  = 40,
+                                  batch_size  = 200,
                                   pin_memory  = True,
                                   shuffle     = False,
                                   lr          = 1e-3, )
@@ -132,7 +136,7 @@ with SiameseDataset(config_dataset) as dataset_train:
     # [[[ VALIDATOR ]]]
     config_validator = ConfigValidator( path_chkpt  = None,
                                         num_workers = 1,
-                                        batch_size  = 40,
+                                        batch_size  = 200,
                                         pin_memory  = True,
                                         shuffle     = False,
                                         lr          = 1e-3, 

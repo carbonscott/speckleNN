@@ -9,21 +9,19 @@ import matplotlib.transforms   as mtransforms
 import matplotlib.font_manager as font_manager
 import numpy as np
 import os
-from deepprojection.datasets.mosaic import SPIMosaicDataset, ConfigDataset
-from deepprojection.datasets.transform import hflip
-from mosaic_preprocess import DatasetPreprocess
+from deepprojection.datasets.images import SPIImgDataset, ConfigDataset
+from image_preprocess import DatasetPreprocess
 
 class DisplaySPIImg():
 
-    def __init__(self, imgs, img_mosaic, figsize, **kwargs):
-        self.imgs       = imgs
-        self.img_mosaic = img_mosaic
-        self.figsize    = figsize
+    def __init__(self, img, mask, figsize, **kwargs):
+        self.img = img
+        self.mask = mask
+        self.figsize = figsize
         for k, v in kwargs.items(): setattr(self, k, v)
 
         self.config_fonts()
         self.config_colorbar()
-
 
     def config_fonts(self):
         # Where to load external font...
@@ -46,35 +44,37 @@ class DisplaySPIImg():
 
 
     def create_panels(self):
-        num_imgs = len(self.imgs)
-        nrows, ncols = num_imgs + 1, 2
-        fig          = plt.figure(figsize = self.figsize)
-        gspec        = fig.add_gridspec(nrows, ncols, width_ratios = [1, 1])
-        ax_panels    = [ fig.add_subplot(gspec[i, 0], aspect = 1) for i in range(num_imgs) ]
-        ax_bar_img   = fig.add_subplot(gspec[-1,   0], aspect = 1/10)
+        nrows, ncols = 2, 2
+        fig = plt.figure(figsize = self.figsize)
+        gspec =  fig.add_gridspec(nrows, ncols, height_ratios = [1, 1/20])
+        ax_img  = fig.add_subplot(gspec[0,0], aspect = 1)
+        ax_mask = fig.add_subplot(gspec[0,1], aspect = 1)
+        ax_bar_img  = fig.add_subplot(gspec[1,0], aspect = 1/20)
+        ax_bar_mask = fig.add_subplot(gspec[1,1], aspect = 1/20)
 
-        ax_mosaic     = fig.add_subplot(gspec[0:num_imgs, 1], aspect = 1)
-        ax_bar_mosaic = fig.add_subplot(gspec[-1,   1], aspect = 1/10)
-
-        return fig, (ax_panels, ax_bar_img, ax_mosaic, ax_bar_mosaic)
+        return fig, (ax_img, ax_mask, ax_bar_img, ax_bar_mask)
 
 
     def plot_img(self, title = ""): 
-        imgs      = self.imgs
-        ax_panels = self.ax_panels
-        for ax_img, img in zip(ax_panels, imgs):
-            im = ax_img.imshow(img, norm = self.divnorm)
-            im.set_cmap('seismic')
-        cbar = plt.colorbar(im, cax = self.ax_bar_img, orientation="horizontal", pad = 0.05)
-        cbar.set_ticks(cbar.get_ticks()[::2])
-
-
-    def plot_mosaic(self, title = ""): 
-        img_mosaic = self.img_mosaic
-        im = self.ax_mosaic.imshow(img_mosaic, norm = self.divnorm)
+        img = self.img
+        im = self.ax_img.imshow(img, norm = self.divnorm)
         im.set_cmap('seismic')
-        cbar = plt.colorbar(im, cax = self.ax_bar_mosaic, orientation="horizontal", pad = 0.05)
-        cbar.set_ticks(cbar.get_ticks()[::2])
+        plt.colorbar(im, cax = self.ax_bar_img, orientation="horizontal", pad = 0.05)
+
+
+    def plot_mask(self, title = ""): 
+        mask = self.mask
+        im = self.ax_mask.imshow(mask, norm = self.divnorm)
+        im.set_cmap('seismic')
+        plt.colorbar(im, cax = self.ax_bar_mask, orientation="horizontal", pad = 0.05)
+
+
+    def plot_center(self, center = (0, 0), angle = 0):
+        x, y = center
+        marker_obj = mpl.markers.MarkerStyle(marker = "+")
+        if not angle == None: marker_obj._transform = marker_obj.get_transform().rotate_deg(angle)
+        ## self.ax_img.plot(x, y, marker = marker_obj, markersize = 18, color = 'black', markeredgewidth = 4)
+        self.ax_mask.plot(x, y, marker = marker_obj, markersize = 18, color = 'black', markeredgewidth = 4)
 
 
     def config_colorbar(self, vmin = -1, vcenter = 0, vmax = 1):
@@ -83,10 +83,11 @@ class DisplaySPIImg():
 
 
     def show(self, center = None, angle = None, title = '', is_save = False): 
-        self.fig, (self.ax_panels, self.ax_bar_img, self.ax_mosaic, self.ax_bar_mosaic) = self.create_panels()
+        self.fig, (self.ax_img, self.ax_mask, self.ax_bar_img, self.ax_bar_mask) = self.create_panels()
 
         self.plot_img()
-        self.plot_mosaic()
+        if isinstance(center, tuple): self.plot_center(center, angle)
+        self.plot_mask()
 
         if not is_save: 
             plt.show()
@@ -111,57 +112,54 @@ class DisplaySPIImg():
 
 
 # Config the dataset...
-panels_ordered = [0, 2]
+panels = [ 0, 1, 2 ]
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
 config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
                                 size_sample       = 2000, 
-                                mode              = 'calib',
+                                mode              = 'image',
                                 resize            = None,
                                 seed              = 0,
                                 isflat            = False,
                                 istrain           = True,
                                 trans             = None,
-                                panels_ordered    = panels_ordered,
                                 frac_train        = 0.7,
                                 exclude_labels    = exclude_labels, )
+
+# Create image manager...
+spiimg = SPIImgDataset(config_dataset)
 
 # Preprocess dataset...
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
 dataset_preproc = DatasetPreprocess(config_dataset)
 dataset_preproc.apply()
 
-# Create image manager...
-spiimg = SPIMosaicDataset(config_dataset)
-
 # Read an image...
 for idx in [0, 23, 14, 100]:
     # Don't apply those changes from configuration...
-    spiimg.trans     = None
-    spiimg.IS_MOSAIC = False
-    imgs, _ = spiimg[idx]
-    imgs = imgs.squeeze(axis = 0)
+    spiimg.trans = None
+    img, _ = spiimg[idx]
+    img = img.squeeze(axis = 0)
 
     exp, run, event_num, label = spiimg.imglabel_list[idx]
 
     # Apply those changes from configuration...
-    spiimg.trans = config_dataset.trans
-    spiimg.IS_MOSAIC = True
+    spiimg.trans = dataset_preproc.trans
 
     # Get transed image...
-    img_mosaic, _ = spiimg[idx]
-    img_mosaic = img_mosaic.squeeze(axis = 0)
+    img_masked, _ = spiimg[idx]
+    img_masked = img_masked.squeeze(axis = 0)
 
     # None rotation...
     center = None
     angle  = None
 
-    title = f'mosaic.{exp}.{int(run):04d}.{int(event_num):06d}'
+    title = f'panelset.{exp}.{int(run):04d}.{int(event_num):06d}'
 
     # Normalize image...
-    img_mosaic = (img_mosaic - np.mean(img_mosaic)) / np.std(img_mosaic)
+    img_masked = (img_masked - np.mean(img_masked)) / np.std(img_masked)
 
     # Dispaly an image...
-    title = f'imagemosaic.{idx:06d}'
-    disp_manager = DisplaySPIImg(imgs, img_mosaic, figsize = (8, 10))
+    title = f'image.{idx:06d}'
+    disp_manager = DisplaySPIImg(img, img_masked, figsize = (18, 8))
     disp_manager.show(center = center, angle = angle, title = title, is_save = False)
     disp_manager.show(center = center, angle = angle, title = title, is_save = True)

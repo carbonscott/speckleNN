@@ -4,23 +4,14 @@
 import os
 import logging
 import torch
-from deepprojection.datasets.panels  import SiameseDataset, ConfigDataset
+from deepprojection.datasets.images  import SiameseDataset, ConfigDataset
 from deepprojection.model            import SiameseModel  , ConfigSiameseModel
 from deepprojection.trainer          import Trainer       , ConfigTrainer
 from deepprojection.validator        import LossValidator , ConfigValidator
 from deepprojection.encoders.convnet import Hirotaka0122  , ConfigEncoder
-from deepprojection.utils            import EpochManager  , MetaLog
+from deepprojection.utils            import EpochManager
 from datetime import datetime
-from panel_preprocess import DatasetPreprocess
-import socket
-
-# Clarify the purpose of this experiment...
-hostname = socket.gethostname()
-comments = f"""
-            Hostname: {hostname}.
-
-            Test if the new way of transformation is valid.  
-            """
+from image_preprocess import DatasetPreprocess
 
 # [[[ LOGGING ]]]
 # Create a timestamp to name the log file...
@@ -45,32 +36,27 @@ logging.basicConfig( filename = path_log,
                      level=logging.INFO, )
 logger = logging.getLogger(__name__)
 
-# Create a metalog to the log file, explaining the purpose of this run...
-metalog = MetaLog( comments = comments )
-metalog.report()
-
 
 # [[[ DATASET ]]]
 # Config the dataset...
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
-panels         = [ 0, 1 ,2 ]    # Exclude panel 3 that has sick panel from run 102
-config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
-                                size_sample       = 2000, 
-                                mode              = 'calib',
-                                resize            = None,
-                                seed              = 0,
-                                panels            = panels,
-                                isflat            = False,
-                                istrain           = True,
-                                trans             = None,
-                                frac_train        = 0.7,
-                                exclude_labels    = exclude_labels, )
+config_dataset = ConfigDataset( fl_csv         = 'datasets.csv',
+                                size_sample    = 2000, 
+                                mode           = 'image',
+                                mask           = None,
+                                resize         = None,
+                                seed           = 0,
+                                isflat         = False,
+                                istrain        = True,
+                                trans          = None,
+                                frac_train     = 0.7,
+                                exclude_labels = exclude_labels, )
 
 # Preprocess dataset...
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
 dataset_preproc = DatasetPreprocess(config_dataset)
 dataset_preproc.apply()
-size_y, size_x = dataset_preproc.get_panelsize()
+size_y, size_x = dataset_preproc.get_imgsize()
 
 # Define training set...
 config_dataset.report()
@@ -94,7 +80,7 @@ encoder = Hirotaka0122(config_encoder)
 
 # [[[ MODEL ]]]
 # Config the model...
-alpha = 2.0
+alpha = 0.5
 config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
 model = SiameseModel(config_siamese)
 
@@ -138,6 +124,6 @@ validator = LossValidator(model, dataset_validate, config_validator)
 
 
 # [[[ EPOCH MANAGER ]]]
-max_epochs = 60
+max_epochs = 40
 epoch_manager = EpochManager(trainer = trainer, validator = validator, max_epochs = max_epochs)
 epoch_manager.run()

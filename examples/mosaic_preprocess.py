@@ -4,6 +4,7 @@
 import numpy as np
 from deepprojection.datasets.mosaic import SPIMosaicDataset
 from deepprojection.datasets        import transform
+from deepprojection.utils           import downsample
 
 class DatasetPreprocess:
 
@@ -23,7 +24,7 @@ class DatasetPreprocess:
 
         panel = panels[0]
 
-        self.panel    = panel
+        self.panel = panel
 
         return None
 
@@ -67,7 +68,7 @@ class DatasetPreprocess:
         mask[mask_false_area[0], mask_false_area[1]] = 0
 
         # Fetch the value...
-        self.config_dataset.mask = mask
+        self.mask = mask
 
         return None
 
@@ -82,14 +83,14 @@ class DatasetPreprocess:
         # Random patching...
         num_patch = 2
         size_patch_y, size_patch_x = 40, 200
-        trans_random_patch  = transform.RandomPatch(num_patch             , size_patch_y     , size_patch_x, 
+        trans_random_patch  = transform.RandomPatch(num_patch             , size_patch_y        , size_patch_x, 
                                                     var_patch_y    = 0.2  , var_patch_x    = 0.2, 
                                                     is_return_mask = False, is_random_flip = True)
         ## trans_list = [trans_random_rotate, trans_random_patch]
         trans_list = [trans_random_patch]
 
         # Add augmentation to dataset configuration...
-        self.config_dataset.trans_random = trans_list
+        self.trans_random = trans_list
 
         return None
 
@@ -102,7 +103,7 @@ class DatasetPreprocess:
 
         trans_crop = transform.Crop(crop_orig, crop_end)
 
-        self.config_dataset.trans_crop = trans_crop
+        self.trans_crop = trans_crop
 
         return None
 
@@ -112,15 +113,40 @@ class DatasetPreprocess:
         resize_y, resize_x = 6, 6
         resize = (resize_y, resize_x) if not None in (resize_y, resize_x) else ()
 
-        self.config_dataset.resize = resize
+        self.resize = resize
 
         return None
 
 
     def apply_standardize(self):
-        self.config_dataset.trans_standardize = { "1" : transform.hflip, "3" : transform.hflip }
+        self.trans_standardize = { "1" : transform.hflip, "3" : transform.hflip }
 
         return None
+
+
+    def trans(self, imgs, **kwargs):
+        imgs_trans = []
+        for img in imgs:
+            # Apply mask...
+            if getattr(self, "mask", None) is not None: img *= self.mask
+
+            # Apply random transform if available???
+            if getattr(self, "trans_random", None) is not None:
+                for trans in self.trans_random:
+                    if isinstance(trans, (transform.RandomRotate, transform.RandomPatch)): img = trans(img)
+
+            # Apply crop...
+            if getattr(self, "trans_crop", None) is not None: img = self.trans_crop(img)
+
+            # Resize images...
+            if getattr(self, "resize", None) is not None:
+                bin_row, bin_col = self.resize
+                img = downsample(img, bin_row, bin_col, mask = None)
+
+            imgs_trans.append(img)
+
+        return imgs_trans
+
 
 
     def apply(self):
@@ -129,5 +155,7 @@ class DatasetPreprocess:
         ## self.apply_augmentation()
         ## self.apply_crop()
         self.apply_downsample()
+
+        self.config_dataset.trans = self.trans
 
         return None

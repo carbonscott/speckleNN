@@ -4,6 +4,8 @@
 import numpy as np
 from deepprojection.datasets.simulated_panels import SPIPanelDataset
 from deepprojection.datasets                  import transform
+from deepprojection.utils                     import downsample
+import inspect
 
 class DatasetPreprocess:
 
@@ -44,7 +46,7 @@ class DatasetPreprocess:
         mask[mask_false_area[0], mask_false_area[1]] = 0
 
         # Fetch the value...
-        self.config_dataset.mask = mask
+        self.mask = mask
 
         return None
 
@@ -66,7 +68,7 @@ class DatasetPreprocess:
         trans_list = [trans_random_patch]
 
         # Add augmentation to dataset configuration...
-        self.config_dataset.trans_random = trans_list
+        self.trans_random = trans_list
 
         return None
 
@@ -78,7 +80,7 @@ class DatasetPreprocess:
 
         trans_crop = transform.Crop(crop_orig, crop_end)
 
-        self.config_dataset.trans_crop = trans_crop
+        self.trans_crop = trans_crop
 
         return None
 
@@ -88,22 +90,74 @@ class DatasetPreprocess:
         resize_y, resize_x = 6, 6
         resize = (resize_y, resize_x) if not None in (resize_y, resize_x) else ()
 
-        self.config_dataset.resize = resize
+        self.resize = resize
 
         return None
 
 
     def apply_standardize(self):
-        self.config_dataset.trans_standardize = { 1 : transform.hflip, 3 : transform.hflip }
+        self.trans_standardize = { 1 : transform.hflip, 3 : transform.hflip }
 
         return None
+
+
+    def apply_zoom(self):
+        panel = self.panel
+        size_y, size_x = panel.shape
+
+        low = 0
+        high = int(0.6 * size_y)
+
+        trans_zoom = transform.RandomPanelZoom(low = low, high = high)
+
+        self.trans_zoom = trans_zoom
+
+        return None
+
+
+    def trans(self, img, **kwargs):
+        """ The function consumed by dataset class.  
+        """
+        # Apply mask...
+        if getattr(self, "mask", None) is not None: img *= self.mask
+
+        # Apply transformation for standardizing image: low-right corner is the center...
+        id_panel = kwargs.get("id_panel")
+        if getattr(self, "trans_standardize", None) is not None:
+            if id_panel in self.trans_standardize:
+                trans = self.trans_standardize[id_panel]
+                if inspect.isfunction(trans): img = trans(img)
+
+        # Apply random transform if available???
+        if getattr(self, "trans_random", None) is not None:
+            for trans in self.trans_random:
+                if isinstance(trans, (transform.RandomRotate, transform.RandomPatch)): img = trans(img)
+
+        # Apply crop...
+        if getattr(self, "trans_crop", None) is not None: img = self.trans_crop(img)
+
+        # Apply zoom...
+        if getattr(self, "trans_zoom", None) is not None: img = self.trans_zoom(img)
+        if getattr(self, "RandomPanelZoom", None) is not None: img = self.trans_zoom(img)
+
+        # Resize images...
+        if getattr(self, "resize", None) is not None:
+            bin_row, bin_col = self.resize
+            img = downsample(img, bin_row, bin_col, mask = None)
+
+        return img
 
 
     def apply(self):
         ## self.apply_mask()
         self.apply_standardize()
         ## self.apply_augmentation()
-        self.apply_crop()
+        ## self.apply_crop()
+        self.apply_zoom()
         self.apply_downsample()
 
+        self.config_dataset.trans = self.trans
+
         return None
+
+

@@ -9,11 +9,11 @@ import matplotlib.transforms   as mtransforms
 import matplotlib.font_manager as font_manager
 import numpy as np
 import os
-from deepprojection.datasets.panels import SPIPanelDataset, ConfigDataset
+from deepprojection.datasets.simulated_panels import SPIPanelDataset, ConfigDataset
 from deepprojection.datasets.transform import hflip
-from panel_preprocess import DatasetPreprocess
+from simulated_panel_preprocess import DatasetPreprocess
 
-class DisplaySPIImg():
+class DisplaySPIImg:
 
     def __init__(self, img, mask, figsize, **kwargs):
         self.img = img
@@ -56,14 +56,14 @@ class DisplaySPIImg():
         return fig, (ax_img, ax_mask, ax_bar_img, ax_bar_mask)
 
 
-    def plot_img(self, title = ""): 
+    def plot_img(self): 
         img = self.img
         im = self.ax_img.imshow(img, norm = self.divnorm)
         im.set_cmap('seismic')
         plt.colorbar(im, cax = self.ax_bar_img, orientation="horizontal", pad = 0.05)
 
 
-    def plot_mask(self, title = ""): 
+    def plot_mask(self): 
         mask = self.mask
         im = self.ax_mask.imshow(mask, norm = self.divnorm)
         im.set_cmap('seismic')
@@ -90,6 +90,8 @@ class DisplaySPIImg():
         if isinstance(center, tuple): self.plot_center(center, angle)
         self.plot_mask()
 
+        if isinstance(title, str) and len(title) > 0: plt.suptitle(title)
+
         if not is_save: 
             plt.show()
         else:
@@ -113,54 +115,53 @@ class DisplaySPIImg():
 
 
 # Config the dataset...
-panels = [ 0, 1, 2 ]
+panels = [0, 1, 2, 3]
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
-config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
+config_dataset = ConfigDataset( fl_csv            = 'simulated_datasets.csv',
                                 size_sample       = 2000, 
-                                mode              = 'calib',
                                 resize            = None,
                                 seed              = 0,
                                 panels            = panels,
                                 isflat            = False,
                                 istrain           = True,
+                                trans             = None,
                                 frac_train        = 0.7,
                                 exclude_labels    = exclude_labels, )
-
-# Create image manager...
-spiimg = SPIPanelDataset(config_dataset)
 
 # Preprocess dataset...
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
 dataset_preproc = DatasetPreprocess(config_dataset)
 dataset_preproc.apply()
 
-# Read an image...
-for idx in [0, 23, 14, 100]:
-    # Don't apply those changes from configuration...
-    spiimg.trans = None
-    img, _ = spiimg[idx]
-    img = img.squeeze(axis = 0)
+# Create image manager...
+with SPIPanelDataset(config_dataset) as spiimg:
+    # Read an image...
+    for idx in range(10):
+        # Don't apply those changes from configuration...
+        spiimg.trans = None
+        img, _ = spiimg[idx]
+        img = img.squeeze(axis = 0)
 
-    exp, run, event_num, id_panel, label = spiimg.imglabel_list[idx]
+        fl_base, id_frame, id_panel, label = spiimg.imglabel_list[idx]
 
-    # Apply those changes from configuration...
-    spiimg.trans = dataset_preproc.trans
+        # Apply those changes from configuration...
+        spiimg.trans = dataset_preproc.trans
 
-    # Get transed image...
-    img_masked, _ = spiimg[idx]
-    img_masked = img_masked.squeeze(axis = 0)
+        # Get transed image...
+        img_masked, _ = spiimg[idx]
+        img_masked = img_masked.squeeze(axis = 0)
 
-    # None rotation...
-    center = None
-    angle  = None
+        # None rotation...
+        center = None
+        angle  = None
 
-    title = f'panelset.{exp}.{int(run):04d}.{int(event_num):06d}.{int(id_panel):1d}'
+        title = f'panel_simulated.{fl_base}.{id_frame}.{id_panel}.{label}'
 
-    # Normalize image...
-    img_masked = (img_masked - np.mean(img_masked)) / np.std(img_masked)
+        # Normalize image...
+        img_masked = (img_masked - np.mean(img_masked)) / np.std(img_masked)
 
-    # Dispaly an image...
-    title = f'imagemask.{idx:06d}'
-    disp_manager = DisplaySPIImg(img, img_masked, figsize = (18, 8))
-    disp_manager.show(center = center, angle = angle, title = title, is_save = False)
-    disp_manager.show(center = center, angle = angle, title = title, is_save = True)
+        # Dispaly an image...
+        ## title = f'imagemask.{idx:06d}'
+        disp_manager = DisplaySPIImg(img, img_masked, figsize = (18, 8))
+        disp_manager.show(center = center, angle = angle, title = title, is_save = False)
+        disp_manager.show(center = center, angle = angle, title = title, is_save = True)

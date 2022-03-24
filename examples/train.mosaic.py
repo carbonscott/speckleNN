@@ -22,7 +22,7 @@ timestamp = now.strftime("%Y%m%d%H%M%S")
 drc_cwd = os.getcwd()
 
 # Set up the log file...
-fl_log         = f"{timestamp}.train.log"
+fl_log         = f"{timestamp}.train.log.testonly"
 DRCLOG         = "logs"
 prefixpath_log = os.path.join(drc_cwd, DRCLOG)
 if not os.path.exists(prefixpath_log): os.makedirs(prefixpath_log)
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 # [[[ DATASET ]]]
 # Config the dataset...
-panels_ordered = [1, 0]
+panels_ordered = [3]
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
 config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
                                 size_sample       = 2000, 
