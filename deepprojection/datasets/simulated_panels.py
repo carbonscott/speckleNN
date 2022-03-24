@@ -19,8 +19,7 @@ import inspect
 
 import logging
 
-from deepprojection.utils import downsample, set_seed
-from deepprojection.datasets import transform
+from deepprojection.utils import set_seed
 
 logger = logging.getLogger(__name__)
 
@@ -58,14 +57,11 @@ class SPIPanelDataset(Dataset):
         self.exclude_labels    = getattr(config, 'exclude_labels'   , None)
         self.resize            = getattr(config, 'resize'           , None)
         self.isflat            = getattr(config, 'isflat'           , None)
-        self.mask              = getattr(config, 'mask'             , None)
         self.istrain           = getattr(config, 'istrain'          , None)
         self.frac_train        = getattr(config, 'frac_train'       , None)    # Proportion/Fraction of training examples
         self.seed              = getattr(config, 'seed'             , None)
-        self.trans_random      = getattr(config, 'trans_random'     , None)
-        self.trans_standardize = getattr(config, 'trans_standardize', None)
-        self.trans_crop        = getattr(config, 'trans_crop'       , None)
         self.panels            = getattr(config, 'panels'           , None)
+        self.trans             = getattr(config, 'trans'            , None)
 
         self.h5_handle_dict       = {}
         self.psana_imgreader_dict = {}
@@ -132,33 +128,6 @@ class SPIPanelDataset(Dataset):
         return len(self.imglabel_list)
 
 
-    def transform(self, img, **kwargs):
-        # Apply mask...
-        if isinstance(self.mask, np.ndarray): img *= self.mask
-
-        # Apply transformation for standardizing image: low-right corner is the center...
-        id_panel = kwargs.get("id_panel")
-        if isinstance(self.trans_standardize, dict):
-            if id_panel in self.trans_standardize: 
-                trans = self.trans_standardize[id_panel]
-                if inspect.isfunction(trans): img = trans(img)
-
-        # Apply random transform if available???
-        if isinstance(self.trans_random, (tuple, list)):
-            for trans in self.trans_random:
-                if isinstance(trans, (transform.RandomRotate, transform.RandomPatch)): img = trans(img)
-
-        # Apply crop...
-        if isinstance(self.trans_crop, transform.Crop): img = self.trans_crop(img)
-
-        # Resize images...
-        if isinstance(self.resize, (tuple, list)):
-            bin_row, bin_col = self.resize
-            img = downsample(img, bin_row, bin_col, mask = None)
-
-        return img
-
-
     def get_panel_and_label(self, idx):
         # Read image...
         fl_base, id_frame, id_panel, label = self.imglabel_list[idx]
@@ -166,7 +135,11 @@ class SPIPanelDataset(Dataset):
         img = self.h5_handle_dict[basename].get(self.KEY_TO_IMG)[id_frame, id_panel]
 
         # Apply any possible transformation...
-        img = self.transform(img, id_panel = id_panel)
+        # How to define a custom transform function?
+        # Input : img, **kwargs 
+        # Output: img_transfromed
+        if self.trans is not None:
+            img = self.trans(img, id_panel = id_panel)
 
         return img, label
 

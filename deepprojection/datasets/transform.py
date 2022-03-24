@@ -3,7 +3,7 @@
 
 import random
 import numpy as np
-from skimage.transform import rotate
+from skimage.transform import rotate, resize
 
 
 class RandomPatch:
@@ -84,6 +84,9 @@ class RandomPatch:
 
 
 class Crop:
+    """ Crop an image given area defined by its top-left corner (crop_orig)
+        and bottom-right corner (crop_end).
+    """
     def __init__(self, crop_orig, crop_end):
         self.crop_orig = crop_orig
         self.crop_end  = crop_end
@@ -92,6 +95,11 @@ class Crop:
     def __call__(self, img):
         y_orig, x_orig = self.crop_orig
         y_end , x_end  = self.crop_end
+
+        # Prevent end point goes out of bound...
+        size_img_y, size_img_x = img.shape
+        y_end = min(y_end, size_img_y)
+        x_end = min(x_end, size_img_x)
 
         img_crop = img[y_orig:y_end, x_orig:x_end]
 
@@ -113,9 +121,67 @@ class RandomRotate:
     def __call__(self, img): 
         if self.angle is None:
             # Sample an angle from 0 to 360 uniformly...
-            self.angle = np.random.uniform(low = 0, high = 360)
+            angle = np.random.uniform(low = 0, high = 360)
 
-        return rotate(img, angle = self.angle, center = self.center)
+        return rotate(img, angle = angle, center = self.center)
+
+
+
+
+class PanelZoom:
+    """ Zoom in an area of the same aspect ratio as the original panel.  
+        It returns an zoom-in image with the same size.
+
+        Side effect: distortion occurs when the cropping aspect ratio is
+        markedly different from the one of the input image.
+    """
+    def __init__(self, crop_orig, crop_end):
+        self.crop = Crop(crop_orig, crop_end)
+
+        return None
+
+
+    def __call__(self, img):
+        size_img_y, size_img_x = img.shape
+
+        img_crop = self.crop(img)
+
+        img_zoom = resize(img_crop, (size_img_y, size_img_x), anti_aliasing = True)
+
+        return img_zoom
+
+
+
+
+class RandomPanelZoom:
+    """ WARNING!!! It's a hard-coded zoom, bottom right corner is fixated.  
+        Zoom in an area of the same aspect ratio as the original panel.  
+        It returns an zoom-in image with the same size.
+
+        Side effect: distortion occurs when the cropping aspect ratio is
+        markedly different from the one of the input image.
+    """
+    def __init__(self, low, high):
+        self.low  = low
+        self.high = high
+
+        return None
+
+
+    def __call__(self, img):
+        size_img_y, size_img_x = img.shape
+
+        pos_y = np.random.randint(low = self.low, high = self.high)
+        pos_x = int(pos_y * size_img_x / size_img_y)
+        crop_orig = (pos_y, pos_x)
+        crop_end  = (size_img_y, size_img_x)
+
+        crop     = Crop(crop_orig, crop_end)
+        img_crop = crop(img)
+
+        img_zoom = resize(img_crop, (size_img_y, size_img_x), anti_aliasing = True)
+
+        return img_zoom
 
 
 

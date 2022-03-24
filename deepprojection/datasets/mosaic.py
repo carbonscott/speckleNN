@@ -18,8 +18,7 @@ import inspect
 
 import logging
 
-from deepprojection.utils import downsample, set_seed
-from deepprojection.datasets import transform
+from deepprojection.utils import set_seed
 
 logger = logging.getLogger(__name__)
 
@@ -58,15 +57,12 @@ class SPIMosaicDataset(Dataset):
         self.resize            = getattr(config, 'resize'           , None)
         self.isflat            = getattr(config, 'isflat'           , None)
         self.mode              = getattr(config, 'mode'             , None)
-        self.mask              = getattr(config, 'mask'             , None)
         self.istrain           = getattr(config, 'istrain'          , None)
         self.frac_train        = getattr(config, 'frac_train'       , None)    # Proportion/Fraction of training examples
         self.seed              = getattr(config, 'seed'             , None)
-        self.trans_random      = getattr(config, 'trans_random'     , None)
-        self.trans_standardize = getattr(config, 'trans_standardize', None)
-        self.trans_crop        = getattr(config, 'trans_crop'       , None)
         self.panels_ordered    = getattr(config, 'panels_ordered'   , None)
-        self.IS_MOSAIC         = True                 # It should be true in any case except when visualization of panels is really required.
+        self.trans             = getattr(config, 'trans'            , None)
+        self.IS_MOSAIC         = True                                          # It should be true in any case except when visualization of panels is really required.
 
         self._dataset_dict        = {}
         self.psana_imgreader_dict = {}
@@ -126,30 +122,6 @@ class SPIMosaicDataset(Dataset):
         return len(self.imglabel_list)
 
 
-    def transform(self, imgs, **kwargs):
-        imgs_trans = []
-        for img in imgs:
-            # Apply mask...
-            if isinstance(self.mask, np.ndarray): img *= self.mask
-
-            # Apply random transform if available???
-            if isinstance(self.trans_random, (tuple, list)):
-                for trans in self.trans_random:
-                    if isinstance(trans, (transform.RandomRotate, transform.RandomPatch)): img = trans(img)
-
-            # Apply crop...
-            if isinstance(self.trans_crop, transform.Crop): img = self.trans_crop(img)
-
-            # Resize images...
-            if isinstance(self.resize, (tuple, list)):
-                bin_row, bin_col = self.resize
-                img = downsample(img, bin_row, bin_col, mask = None)
-
-            imgs_trans.append(img)
-
-        return imgs_trans
-
-
     def form_mosaic(self, imgs, **kwargs):
         ''' Stitch images in imgs to form a single mosaic.
         '''
@@ -184,7 +156,11 @@ class SPIMosaicDataset(Dataset):
         imgs = self.filter_panels(imgs)
 
         # Apply any possible transformation...
-        imgs = self.transform(imgs)
+        # How to define a custom transform function?
+        # Input : imgs, **kwargs 
+        # Output: imgs_transfromed
+        if self.trans is not None:
+            imgs = self.trans(imgs)
 
         # Form a mosaic...
         img_mosaic = self.form_mosaic(imgs) if self.IS_MOSAIC else imgs
