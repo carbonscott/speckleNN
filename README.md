@@ -1,91 +1,146 @@
-## Install deepprojection with pip
+# Deepprojection
 
-### From github
+![](./figures/deepprojection.github.00.png)
 
-```
-pip install git+https://github.com/carbonscott/deepprojection --upgrade --user
-```
+Deepprojection is a X-ray scattering pattern classifier for the detection of
+"single hit" in single particle imaging (SPI) experiments.  
 
-### From a local directory (suitable for development)
+## Installation
 
-```
-cd <path_to_this_package>    # e.g. cd $HOME/codes/deepprojection
+- Direct from github with `pip`
 
-pip install . --user
-```
+  ```bash
+  pip install git+https://github.com/carbonscott/deepprojection --upgrade --user
+  ```
 
-To apply any updates, simply rerun the above `pip` command.  
+- Download and pip
 
+  ```bash
+  cd <path_to_deepprojection>    # e.g. cd $HOME/codes/deepprojection
 
-### Using `PYTHONPATH`
+  pip install . --user
+  ```
 
-```
-export PYTHONPATH="<path_to_this_package>:$PYTHONPATH"
-#
-# e.g. 
-# export PYTHONPATH="$HOME/codes/deepprojection:$PYTHONPATH"
-```
+- Download and change `PYTHONPATH`
 
-The `<path_to_this_package>` will be referred to as `$PACKAGE` in the following
-discussion.
+  ```bash
+  export PYTHONPATH="<path_to_deepprojection>:$PYTHONPATH"
+  ```
 
 
-## Install dependencies with conda
+## Install dependencies with `conda`
 
 ### Create an environment at a custom location for the project
 
-```
+```bash
 conda create --prefix <path> python=3.7
 ```
 
 ### Install `psana`
 
-```
+```bash
 conda install -c lcls-rhel7 psana-conda
 ```
 
 ### Install other packages
 
-#### `pytorch`
+- `pytorch`
 
-```
-conda install pytorch=1.4.0=py3.7_cuda10.1.243_cudnn7.6.3_0 -c pytorch
-```
+  ```bash
+  conda install pytorch=1.4.0=py3.7_cuda10.1.243_cudnn7.6.3_0 -c pytorch
+  ```
 
-#### `tqdm`
+- `tqdm`
 
-```
-conda install tqdm=4.56.2=pyhd8ed1ab_0 -c conda-forge
-```
+  ```bash
+  conda install tqdm=4.56.2=pyhd8ed1ab_0 -c conda-forge
+  ```
 
-#### `skimage`
+- `skimage`
 
-```
-conda install scikit-image=0.18.1=py37hdc94413_0 -c conda-forge
-```
-
-
-## Which python environment to use on `psana`?
-
-Python enivronment on `psana`
-
-```
-# Source the base Python environment on psana...
-source /reg/g/psdm/etc/psconda.sh -py3
-
-# Source the ML environment on psana ...
-# I set it up in the following address, you can source your own ML environment.
-conda activate /reg/data/ana03/scratch/cwang31/conda/ana-py3
-```
+  ```bash
+  conda install scikit-image=0.18.1=py37hdc94413_0 -c conda-forge
+  ```
 
 
-## Project directory
+## Datasets
 
-A project directory would be required for training and validation.  For example, 
-I use `/reg/data/ana03/scratch/cwang31/spi` on `psanagpu` nodes.  This project
-directory will be referred to as `$PROJECT` throughout this document.  
+### Three scenarios
+
+Each scattering image, captured by a PnCCD detector, consists of four panels.
+Deepprojection classifier is able to perform training and inference on
+**panels**, **stacks of panels**, and **whole images**, respectively.  
+
+### Experiment vs Simulation
+
+The classifier has been tested on both **experimental** and **simulated**
+images.  In particular, simulation is performed by [skopi](https://github.com/chuckie82/skopi).  
 
 
+## Run examples
+
+All three scenarios in the above section are supported.  **Panels** of
+**simulated** images are used in the following demo.  
+
+- Specify metadata, e.g. basename, path and labels associated with SPI image files, in
+  a `.csv` file.  
+
+  ```bash
+  basename,label,path
+  5A1A.1_hit,1,/reg/data/ana03/scratch/cwang31/scratch/skopi/h5s
+  6KPI.3_hit,2,/reg/data/ana03/scratch/cwang31/scratch/skopi/h5s
+  6M54.1_hit,1,/reg/data/ana03/scratch/cwang31/scratch/skopi/h5s
+  6TSH.3_hit,2,/reg/data/ana03/scratch/cwang31/scratch/skopi/h5s
+  6XLU.1_hit,1,/reg/data/ana03/scratch/cwang31/scratch/skopi/h5s
+  6ZK9.4_hit,2,/reg/data/ana03/scratch/cwang31/scratch/skopi/h5s
+  7DDE.1_hit,1,/reg/data/ana03/scratch/cwang31/scratch/skopi/h5s
+  7FIE.2_hit,2,/reg/data/ana03/scratch/cwang31/scratch/skopi/h5s
+  7K3W.3_hit,2,/reg/data/ana03/scratch/cwang31/scratch/skopi/h5s
+  ```
+
+- Train.
+
+  ```bash
+  python train.simulated_panel.py
+  ```
+
+  A log file with a time stamp will be generated under `logs`, such as
+  `<timestamp>.train.log`
+
+- Check learning curves during training.  Open `alog.learncurve.py` and change
+  the time stamp in the example file.  
+
+  ```bash
+  python alog.learncurve.py
+  ```
+
+- Validate.  Open `validate.simulated_panel.query.py` and change the time stamp
+  in the example file.  
+
+  ```
+  python validate.simulated_panel.query.py
+  ```
+
+  Query is one way of validating model performance, which is threshold free.  
+
+- Print confusion matrix.  Open `alog.validate.query.py` and change the time stamp
+  in the example file.
+
+  ```bash
+  python alog.validate.query.py
+  ```
+
+  Sample output (Two categories in simulated datasets, four in experimental datasets):
+
+  ```bash
+                 single hit   multi hit    accuracy   precision      recall specificity          f1
+  -------------------------------------------------------------------------------------------------
+  single hit  |        1845         174        0.92        0.91        0.92        0.91        0.92
+   multi hit  |         159        1822        0.92        0.92        0.91        0.92        0.92
+  ```
+
+
+<!--
 ## Training/validation workflow
 
 As a prerequisite, go to the project folder.  
@@ -241,3 +296,4 @@ ln -s /reg/data/ana03/scratch/cwang31/scratch/spi/amo06516/cwang31/psocake/r0094
 ln -s /reg/data/ana03/scratch/cwang31/scratch/spi/amo06516/cwang31/psocake/r0102 \
       $PSOCAKE_PROJECT/amo06516/$USERNAME/psocake/r0102
 ```
+-->
