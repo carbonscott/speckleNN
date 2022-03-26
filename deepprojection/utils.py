@@ -49,7 +49,12 @@ class EpochManager:
 
             # Save checkpoint whenever validation loss gets smaller...
             # Notice it doesn't imply early stopping
-            if loss_validate < loss_min: self.trainer.save_checkpoint()
+            if loss_validate < loss_min: 
+                # Save a checkpoint file...
+                self.trainer.save_checkpoint()
+
+                # Update the new loss...
+                loss_min = loss_validate
 
         return None
 
