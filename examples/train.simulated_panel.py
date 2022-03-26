@@ -19,16 +19,10 @@ hostname = socket.gethostname()
 comments = f"""
             Hostname: {hostname}.
 
-            Train models to recognize scattering patterns simulated from
-            particles defined in simulated_datasets.csv.
-
-            One goal is to test the new way of transformation.  
-
-            Meanwhile, random zoom is applied.  Detector distance shouldn't be an issue.  
-
-            Others to monitor:
-            - size_sample = 4000, 
-            - batch_size  = 200
+            Sample size : 100000
+            Batch  size : 200
+            Alpha       : 2
+            Random zoom : True
 
             """
 
@@ -64,16 +58,16 @@ metalog.report()
 # Config the dataset...
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
 panels         = [ 0, 1 ,2, 3 ]
-config_dataset = ConfigDataset( fl_csv            = 'simulated_datasets.csv',
-                                size_sample       = 4000, 
-                                resize            = None,
-                                seed              = 0,
-                                panels            = panels,
-                                isflat            = False,
-                                istrain           = True,
-                                frac_train        = 0.7,
-                                trans             = None,
-                                exclude_labels    = exclude_labels, )
+config_dataset = ConfigDataset( fl_csv         = 'simulated_datasets.csv',
+                                size_sample    = 100000, 
+                                resize         = None,
+                                seed           = 0,
+                                panels         = panels,
+                                isflat         = False,
+                                istrain        = True,
+                                frac_train     = 0.7,
+                                trans          = None,
+                                exclude_labels = exclude_labels, )
 
 # Preprocess dataset...
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
@@ -146,6 +140,6 @@ with SiameseDataset(config_dataset) as dataset_train:
 
 
     # [[[ EPOCH MANAGER ]]]
-    max_epochs = 60
+    max_epochs = 120
     epoch_manager = EpochManager(trainer = trainer, validator = validator, max_epochs = max_epochs)
     epoch_manager.run()

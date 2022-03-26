@@ -6,12 +6,18 @@ from deepprojection.datasets.simulated_panels import SPIPanelDataset
 from deepprojection.datasets                  import transform
 from deepprojection.utils                     import downsample
 import inspect
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class DatasetPreprocess:
 
     def __init__(self, config_dataset): 
         self.config_dataset = config_dataset
         self.get_panel()
+
+        logger.info(f"___/ Preprocess Settings \___")
 
 
     def get_panel(self):
@@ -48,6 +54,8 @@ class DatasetPreprocess:
         # Fetch the value...
         self.mask = mask
 
+        logger.info(f"Apply mask.")
+
         return None
 
 
@@ -70,6 +78,8 @@ class DatasetPreprocess:
         # Add augmentation to dataset configuration...
         self.trans_random = trans_list
 
+        logger.info(f"Apply random patching.")
+
         return None
 
 
@@ -82,6 +92,8 @@ class DatasetPreprocess:
 
         self.trans_crop = trans_crop
 
+        logger.info(f"Apply cropping.")
+
         return None
 
 
@@ -92,11 +104,15 @@ class DatasetPreprocess:
 
         self.resize = resize
 
+        logger.info(f"Apply downsampling.")
+
         return None
 
 
     def apply_standardize(self):
         self.trans_standardize = { 1 : transform.hflip, 3 : transform.hflip }
+
+        logger.info(f"Apply standardization.")
 
         return None
 
@@ -111,6 +127,8 @@ class DatasetPreprocess:
         trans_zoom = transform.RandomPanelZoom(low = low, high = high)
 
         self.trans_zoom = trans_zoom
+
+        logger.info(f"Apply random zooming.")
 
         return None
 
