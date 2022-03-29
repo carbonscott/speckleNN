@@ -221,3 +221,82 @@ class MultiwayQueryValidator:
                     log_header = f"DATA - {title_query[i]}, "
                     log_msg = log_header + ", ".join(msg)
                     logger.info(log_msg)
+
+
+
+
+class SimpleEmbeddingChecker:
+    def __init__(self, model, dataset_test, config_test):
+        self.model        = model
+        self.dataset_test = dataset_test
+        self.config_test  = config_test
+
+        # Load data to gpus if available
+        self.device = 'cpu'
+        if torch.cuda.is_available():
+            self.device = torch.cuda.current_device()
+
+            if self.config_test.path_chkpt is not None:
+                chkpt = torch.load(self.config_test.path_chkpt)
+                self.model.load_state_dict(chkpt)
+            else:
+                # Initialize weights...
+                def init_weights(module):
+                    if isinstance(module, (torch.nn.Embedding, torch.nn.Linear)):
+                        module.weight.data.normal_(mean = 0.0, std = 0.02)
+                self.model.apply(init_weights)
+            self.model = torch.nn.DataParallel(self.model).to(self.device)
+
+        return None
+
+
+    def run(self):
+        """ The testing loop.  """
+
+        # Load model and testing configuration...
+        model, config_test = self.model, self.config_test
+
+        # Train an epoch...
+        # Load model state
+        model.eval()
+        dataset_test = self.dataset_test
+        loader_test  = DataLoader( dataset_test, shuffle     = config_test.shuffle, 
+                                                 pin_memory  = config_test.pin_memory, 
+                                                 batch_size  = config_test.batch_size,
+                                                 num_workers = config_test.num_workers )
+
+        # Train each batch...
+        batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test))
+        for batch_id, entry in batch:
+            # Unpack entry...
+            # Not a good design, but it's okay for now (03/03/2020)
+            # Shape of entry: (unpack_dim, batch, internal_shape)
+            # Internal shape of image is 2d, string is 1d
+            img_single = entry[0]
+            title      = entry[1]
+
+            # Load imgs to gpu...
+            img_single = img_single.to(self.device)
+
+            with torch.no_grad():
+                # Look at each example in a batch...
+                for i in range(len(img_single)):
+                    # Inference...
+                    img_embed = self.model.forward(img_single[i].unsqueeze(0))
+
+                    # Fetch the descriptor...
+                    msg = title[i]
+
+                    # Return a line for each batch...
+                    log_header = f"DATA - {batch_id * len(img_single) + i:06d} - "
+                    log_msg = log_header + msg
+                    logger.info(log_msg)
+
+                    # Save the embedding...
+                    if batch_id + i == 0:
+                        size_y, size_x = img_embed.shape
+                        num_imgs       = len(img_single) * len(batch)
+                        imgs = torch.zeros(num_imgs, size_y, size_x)
+                    imgs[i + batch_id * len(img_single)] = img_embed
+
+        return imgs

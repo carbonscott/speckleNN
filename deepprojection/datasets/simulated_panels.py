@@ -434,3 +434,65 @@ class MultiwayQueryset(Siamese):
             queryset.append( query_and_test )
 
         return queryset
+
+
+
+
+class SimpleSet(Siamese):
+    """
+    Simple set feeds one example to model at a time.  The purpose is simply to
+    encode each example for downstream analysis.  
+    """
+
+    def __init__(self, config):
+        super().__init__(config)
+
+        label_seqi_dict = self.label_seqi_dict
+
+        # Form triplet for ML training...
+        self.simpleset = self._form_simpleset(label_seqi_dict)
+
+        return None
+
+
+    def __len__(self):
+        return self.size_sample
+
+
+    def __getitem__(self, idx):
+        single_tuple = self.simpleset[idx]
+        id_single    = single_tuple
+
+        # Read the single image...
+        img_single, _ = super().__getitem__(id_single)
+        res = (img_single, )
+
+        # Append (fl_base, id_frame, id_panel, label) to the result...
+        fl_base, id_frame, id_panel, label = self.imglabel_list[id_single]
+        title = f"{fl_base} {id_frame:>06d} {id_panel} {label}"
+        res += (title, )
+
+        return res
+
+
+    def _form_simpleset(self, label_seqi_dict):
+        """ 
+        Creating `size_sample` simple set that consists of one image only. 
+        """
+        # Select two list of random labels following uniform distribution...
+        # For a single image
+        size_sample = self.size_sample
+        label_list  = random.choices(self.labels, k = size_sample)
+
+        # Form a simple set...
+        simpleset = []
+        for label in label_list:
+            # Fetch a bucket of images...
+            bucket = label_seqi_dict[label]
+
+            # Randomly sample one...
+            id = random.choice(bucket)
+
+            simpleset.append(id)
+
+        return simpleset

@@ -77,3 +77,17 @@ class SiameseModelCompare(nn.Module):
         rmsd_anchor_second = torch.sum(img_diff * img_diff, dim = -1)
 
         return img_anchor_embed, img_second_embed, rmsd_anchor_second.mean()
+
+
+
+
+class SimpleEmbedding(nn.Module):
+    """ Embedding independent triplet loss. """
+
+    def __init__(self, config):
+        super().__init__()
+        self.encoder = config.encoder
+
+
+    def forward(self, img):
+        return self.encoder.encode(img)
