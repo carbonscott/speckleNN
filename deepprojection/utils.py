@@ -180,3 +180,24 @@ def read_log(file):
     ret_dict = { "kv" : kv_dict, "data" : tuple(data_dict.keys()) }
 
     return ret_dict
+
+
+def calc_dmat(emb1_list, emb2_list, is_sqrt = True):
+    ''' Return a 2D distance matrix.
+
+        emb1.shape: len(emb1_list), len(emb1_list[0])
+        emb2.shape: len(emb2_list), len(emb2_list[0])
+    '''
+    # Calculate the difference vector...
+    # emb1[:, None] has a dim of [ num1, 1   , dim ], equivalent to [num1, num2, dim] by stretching/replicating axis=1 num2 times.  
+    # emb2[None, :] has a dim of [ 1   , num2, dim ], equivalent to [num1, num2, dim] by stretching/replicating axis=0 num2 times.  
+    # subtraction returns dim of [ num1, num2, dim ]
+    delta_distance_vector = emb1[:, None] - emb2[None, :]
+
+    # Calculate the squared distance matrix...
+    dmat = torch.sum( delta_distance_vector * delta_distance_vector, dim = -1 )
+
+    # Apply square-root is necessary???
+    if is_sqrt: dmat = torch.sqrt(dmat)
+
+    return dmat
