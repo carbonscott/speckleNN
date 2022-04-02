@@ -21,9 +21,9 @@ comments = f"""
 
             Online training.
 
-            Sample size : 2000
+            Sample size : 1000
             Batch  size : 200
-            Alpha       : 2.0
+            Alpha       : 1.0
             Random zoom : True
 
             lr          : 1e-3
@@ -63,7 +63,7 @@ metalog.report()
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
 panels         = [ 0, 1 ,2, 3 ]
 config_dataset = ConfigDataset( fl_csv         = 'simulated_datasets.csv',
-                                size_sample    = 2000, 
+                                size_sample    = 1000, 
                                 resize         = None,
                                 seed           = 0,
                                 panels         = panels,
@@ -100,7 +100,7 @@ with OnlineDataset(config_dataset) as dataset_train:
 
     # [[[ MODEL ]]]
     # Config the model...
-    alpha = 2.0
+    alpha = 1.0
     config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
     model = OnlineSiameseModel(config_siamese)
 
@@ -125,6 +125,7 @@ with OnlineDataset(config_dataset) as dataset_train:
                                   batch_size  = 200,
                                   pin_memory  = True,
                                   shuffle     = False,
+                                  is_logging  = False,
                                   lr          = 1e-3, )
 
     # Training...
@@ -137,6 +138,7 @@ with OnlineDataset(config_dataset) as dataset_train:
                                         batch_size  = 200,
                                         pin_memory  = True,
                                         shuffle     = False,
+                                        is_logging  = False,
                                         lr          = 1e-3, 
                                         isflat      = False, )  # Conv2d input needs one more dim for batch
 
@@ -144,6 +146,6 @@ with OnlineDataset(config_dataset) as dataset_train:
 
 
     # [[[ EPOCH MANAGER ]]]
-    max_epochs = 120
+    max_epochs = 360
     epoch_manager = EpochManager(trainer = trainer, validator = validator, max_epochs = max_epochs)
     epoch_manager.run()
