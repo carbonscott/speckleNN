@@ -192,7 +192,7 @@ def calc_dmat(emb1_list, emb2_list, is_sqrt = True):
     # emb1[:, None] has a dim of [ num1, 1   , dim ], equivalent to [num1, num2, dim] by stretching/replicating axis=1 num2 times.  
     # emb2[None, :] has a dim of [ 1   , num2, dim ], equivalent to [num1, num2, dim] by stretching/replicating axis=0 num2 times.  
     # subtraction returns dim of [ num1, num2, dim ]
-    delta_distance_vector = emb1[:, None] - emb2[None, :]
+    delta_distance_vector = emb1_list[:, None] - emb2_list[None, :]
 
     # Calculate the squared distance matrix...
     dmat = torch.sum( delta_distance_vector * delta_distance_vector, dim = -1 )

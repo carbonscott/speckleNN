@@ -83,11 +83,70 @@ class LossValidator:
                 losses_batch.append(loss_val)
 
             loss_batch_mean = np.mean(losses_batch)
-            logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_batch_mean:.4f}")
+            logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_batch_mean:.8f}")
             losses_epoch.append(loss_batch_mean)
 
         loss_epoch_mean = np.mean(losses_epoch)
-        logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.4f}")
+        logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.8f}")
+
+        return loss_epoch_mean if is_return_loss else None
+
+
+
+
+class OnlineLossValidator:
+    def __init__(self, model, dataset_test, config_test):
+        self.model        = model
+        self.dataset_test = dataset_test
+        self.config_test  = config_test
+
+        # Load data to gpus if available...
+        self.device = 'cpu'
+        if self.config_test.path_chkpt is not None and torch.cuda.is_available():
+            self.device = torch.cuda.current_device()
+
+            chkpt = torch.load(self.config_test.path_chkpt)
+            self.model.load_state_dict(chkpt)
+            self.model = torch.nn.DataParallel(self.model).to(self.device)
+
+        return None
+
+
+    def validate(self, is_return_loss = False, epoch = None):
+        """ The testing loop.  """
+
+        # Load model and testing configuration...
+        model, config_test = self.model, self.config_test
+
+        # Validate an epoch...
+        # Load model state...
+        model.eval()
+        dataset_test = self.dataset_test
+        loader_test  = DataLoader( dataset_test, shuffle     = config_test.shuffle, 
+                                                 pin_memory  = config_test.pin_memory, 
+                                                 batch_size  = config_test.batch_size,
+                                                 num_workers = config_test.num_workers )
+
+        # Train each batch...
+        losses_epoch = []
+        batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test), disable = config_test.tqdm_disable)
+        for step_id, entry in batch:
+            losses_batch = []
+
+            batch_imgs, batch_labels, batch_titles = entry
+            batch_imgs = batch_imgs.to(self.device)
+
+            with torch.no_grad():
+                loss = self.model.forward(batch_imgs, batch_labels, batch_titles)
+                loss_val = loss.cpu().detach().numpy()
+                losses_batch.append(loss_val)
+
+            loss_batch_mean = np.mean(losses_batch)
+            logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_batch_mean:.8f}")
+            losses_epoch.append(loss_batch_mean)
+
+        loss_epoch_mean = np.mean(losses_epoch)
+        logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.8f}")
 
         return loss_epoch_mean if is_return_loss else None
 
@@ -149,7 +208,7 @@ class PairValidator:
 
                     rmsd_val = rmsd.cpu().detach().numpy()
                     rmsds.append(rmsd_val)
-                    logger.info(f"DATA - {title_anchor[i]}, {title_second[i]}, {rmsd_val:7.4f}")
+                    logger.info(f"DATA - {title_anchor[i]}, {title_second[i]}, {rmsd_val:12.8f}")
 
 
 
@@ -214,7 +273,7 @@ class MultiwayQueryValidator:
                         _, _, dist = self.model.forward(img_query[i].unsqueeze(0), img_test[i].unsqueeze(0))
 
                         dist_val = dist.cpu().detach().numpy()
-                        msg.append(f"{title_test[i]} : {dist_val:7.4f}")
+                        msg.append(f"{title_test[i]} : {dist_val:12.8f}")
 
 
                     # Return a line for each batch...

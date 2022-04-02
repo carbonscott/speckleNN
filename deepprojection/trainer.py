@@ -89,10 +89,76 @@ class Trainer:
             loss_val = loss.cpu().detach().numpy()
             losses_epoch.append(loss_val)
 
-            logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_val:.4f}")
+            logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_val:.8f}")
 
         loss_epoch_mean = np.mean(losses_epoch)
-        logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.4f}")
+        logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.8f}")
+
+        # Save the model state
+        if is_save_checkpoint: self.save_checkpoint()
+
+
+
+
+class OnlineTrainer:
+    def __init__(self, model, dataset_train, config_train):
+        self.model         = model
+        self.dataset_train = dataset_train
+        self.config_train  = config_train
+
+        # Load data to gpus if available
+        self.device = 'cpu'
+        if torch.cuda.is_available():
+            self.device = torch.cuda.current_device()
+            self.model  = torch.nn.DataParallel(self.model).to(self.device)
+
+        return None
+
+
+    def save_checkpoint(self):
+        # Hmmm, DataParallel wrappers keep raw model object in .module attribute
+        model = self.model.module if hasattr(self.model, "module") else self.model
+        logger.info(f"SAVE - {self.config_train.path_chkpt}")
+        torch.save(model.state_dict(), self.config_train.path_chkpt)
+
+
+    def train(self, is_save_checkpoint = True, epoch = None):
+        """ The training loop.  """
+
+        # Load model and training configuration...
+        # Optimizer can be reconfigured next epoch
+        model, config_train = self.model, self.config_train
+        model_raw           = model.module if hasattr(model, "module") else model
+        optimizer           = model_raw.configure_optimizers(config_train)
+
+        # Train an epoch...
+        model.train()
+        dataset_train = self.dataset_train
+        loader_train = DataLoader( dataset_train, shuffle     = config_train.shuffle, 
+                                                  pin_memory  = config_train.pin_memory, 
+                                                  batch_size  = config_train.batch_size,
+                                                  num_workers = config_train.num_workers )
+        losses_epoch = []
+
+        # Train each batch...
+        batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train), disable = config_train.tqdm_disable)
+        for step_id, entry in batch:
+            batch_imgs, batch_labels, batch_titles = entry
+            batch_imgs = batch_imgs.to(self.device)
+
+            loss = self.model.forward(batch_imgs, batch_labels, batch_titles)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            loss_val = loss.cpu().detach().numpy()
+            losses_epoch.append(loss_val)
+
+            logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_val:.8f}")
+
+        loss_epoch_mean = np.mean(losses_epoch)
+        logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.8f}")
 
         # Save the model state
         if is_save_checkpoint: self.save_checkpoint()
