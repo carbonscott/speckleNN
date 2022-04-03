@@ -21,9 +21,9 @@ comments = f"""
 
             Online training.
 
-            Sample size : 1000
-            Batch  size : 200
-            Alpha       : 1.0
+            Sample size : 2000
+            Batch  size : 400
+            Alpha       : 2.0
             Random zoom : True
 
             lr          : 1e-3
@@ -63,7 +63,7 @@ metalog.report()
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
 panels         = [ 0, 1 ,2, 3 ]
 config_dataset = ConfigDataset( fl_csv         = 'simulated_datasets.csv',
-                                size_sample    = 1000, 
+                                size_sample    = 4000, 
                                 resize         = None,
                                 seed           = 0,
                                 panels         = panels,
@@ -100,7 +100,7 @@ with OnlineDataset(config_dataset) as dataset_train:
 
     # [[[ MODEL ]]]
     # Config the model...
-    alpha = 1.0
+    alpha = 2.0
     config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
     model = OnlineSiameseModel(config_siamese)
 
@@ -122,10 +122,11 @@ with OnlineDataset(config_dataset) as dataset_train:
     # Config the trainer...
     config_train = ConfigTrainer( path_chkpt  = path_chkpt,
                                   num_workers = 1,
-                                  batch_size  = 200,
+                                  batch_size  = 400,
                                   pin_memory  = True,
                                   shuffle     = False,
-                                  is_logging  = False,
+                                  is_logging  = True,
+                                  method      = 'random-semi-hard', 
                                   lr          = 1e-3, )
 
     # Training...
@@ -135,10 +136,11 @@ with OnlineDataset(config_dataset) as dataset_train:
     # [[[ VALIDATOR ]]]
     config_validator = ConfigValidator( path_chkpt  = None,
                                         num_workers = 1,
-                                        batch_size  = 200,
+                                        batch_size  = 400,
                                         pin_memory  = True,
                                         shuffle     = False,
-                                        is_logging  = False,
+                                        is_logging  = True,
+                                        method      = 'random-semi-hard', 
                                         lr          = 1e-3, 
                                         isflat      = False, )  # Conv2d input needs one more dim for batch
 
