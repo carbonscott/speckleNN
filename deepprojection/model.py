@@ -77,7 +77,7 @@ class OnlineSiameseModel(nn.Module):
                 shuffle = False):
         # Supposed methods
         select_method_dict = {
-            'batch-hard'       : self.batch_hard,
+            ## 'batch-hard'       : self.batch_hard,
             'semi-hard'        : self.batch_semi_hard,
             'random-semi-hard' : self.batch_random_semi_hard,
             'random'           : self.batch_random,

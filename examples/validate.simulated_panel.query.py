@@ -13,19 +13,30 @@ from deepprojection.utils                      import MetaLog
 from simulated_panel_preprocess                import DatasetPreprocess
 import socket
 
+# Create a timestamp to name the log file...
+## timestamp = "20220401173143"
+## timestamp = "20220402161322"
+## timestamp = "20220402161008"
+## timestamp = "20220402182824"
+## timestamp = "20220402224426"
+timestamp = "20220403124356"
+
+# Set up parameters for an experiment...
+size_sample    = 2000
+size_batch     = 40
+lr             = 1e-3
+## fl_csv         = 'simulated_datasets.csv'
+## frac_train     = 0.7
+fl_csv         = 'simulated_testsets.csv'
+frac_train     = 0.0
+
 # Comment this verification...
 hostname = socket.gethostname()
 comments = f"""
             Hostname: {hostname}.
 
-            Train models to recognize scattering patterns simulated from
-            particles defined in simulated_datasets.csv.
-
+            Apply model to completed datasets, e.g. not in training or testing.
             """
-
-# Create a timestamp to name the log file...
-timestamp = "20220321202629"
-
 # Validate mode...
 istrain = False
 mode_validate = 'train' if istrain else 'test'
@@ -52,21 +63,17 @@ logger = logging.getLogger(__name__)
 metalog = MetaLog( comments = comments )
 metalog.report()
 
-
 # Config the dataset...
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
 panels         = [ 0, 1, 2, 3 ]
-config_dataset = ConfigDataset( fl_csv            = 'simulated_datasets.csv',
-                                size_sample       = 2000, 
-                                mask              = None,
+config_dataset = ConfigDataset( fl_csv            = fl_csv,
+                                size_sample       = size_sample, 
                                 resize            = None,
                                 seed              = 0,
                                 panels            = panels,
                                 isflat            = False,
                                 istrain           = istrain,
-                                trans_random      = None,
-                                trans_standardize = None,
-                                frac_train        = 0.7,
+                                frac_train        = frac_train,
                                 exclude_labels    = exclude_labels, )
 
 # Preprocess dataset...
@@ -78,8 +85,7 @@ size_y, size_x = dataset_preproc.get_panelsize()
 # Define validation set...
 config_dataset.report()
 with MultiwayQueryset(config_dataset) as dataset_validate:
-## dataset_validate = MultiwayQueryset(config_dataset)
-
+    # Fetch checkpoint directory...
     DRCCHKPT = "chkpts"
     prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
 
@@ -100,11 +106,11 @@ with MultiwayQueryset(config_dataset) as dataset_validate:
     path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
     config_validator = ConfigValidator( path_chkpt  = path_chkpt,
                                         num_workers = 1,
-                                        batch_size  = 40,
+                                        batch_size  = size_batch,
                                         pin_memory  = True,
                                         shuffle     = False,
                                         isflat      = False,
-                                        lr          = 1e-3, )
+                                        lr          = lr, )
 
     validator = MultiwayQueryValidator(model, dataset_validate, config_validator)
     validator.validate()

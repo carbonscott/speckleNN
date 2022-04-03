@@ -14,6 +14,13 @@ from datetime import datetime
 from simulated_panel_preprocess import DatasetPreprocess
 import socket
 
+# Set up parameters for an experiment...
+size_sample    = 6000 * 3
+size_batch     = 40
+alpha          = 1.0
+online_shuffle = True
+lr             = 1e-3
+
 # Clarify the purpose of this experiment...
 hostname = socket.gethostname()
 comments = f"""
@@ -21,13 +28,11 @@ comments = f"""
 
             Online training.
 
-            Sample size    : 2000
-            Batch  size    : 40
-            Alpha          : 2.0
-            Random zoom    : True
-            Online shuffle : True
-
-            lr             : 1e-3
+            Sample size    : {size_sample}
+            Batch  size    : {size_batch}
+            Alpha          : {alpha}
+            Online shuffle : {online_shuffle}
+            lr             : {lr}
 
             """
 
@@ -64,7 +69,7 @@ metalog.report()
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
 panels         = [ 0, 1 ,2, 3 ]
 config_dataset = ConfigDataset( fl_csv         = 'simulated_datasets.csv',
-                                size_sample    = 2000, 
+                                size_sample    = size_sample, 
                                 resize         = None,
                                 seed           = 0,
                                 panels         = panels,
@@ -101,7 +106,6 @@ with OnlineDataset(config_dataset) as dataset_train:
 
     # [[[ MODEL ]]]
     # Config the model...
-    alpha = 2.0
     config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
     model = OnlineSiameseModel(config_siamese)
 
@@ -122,16 +126,16 @@ with OnlineDataset(config_dataset) as dataset_train:
     # [[[ TRAINER ]]]
     # Config the trainer...
     config_train = ConfigTrainer( path_chkpt     = path_chkpt,
-                                  num_workers    = 1,
-                                  batch_size     = 40,
+                                  num_workers    = 0,
+                                  batch_size     = size_batch,
                                   pin_memory     = True,
                                   shuffle        = False,
-                                  online_shuffle = True,
+                                  online_shuffle = online_shuffle,
                                   is_logging     = False,
                                   method         = 'semi-hard', 
                                   ## method         = 'random-semi-hard', 
                                   ## method         = 'random', 
-                                  lr             = 1e-3, )
+                                  lr             = lr, )
 
     # Training...
     trainer = OnlineTrainer(model, dataset_train, config_train)
@@ -139,16 +143,16 @@ with OnlineDataset(config_dataset) as dataset_train:
 
     # [[[ VALIDATOR ]]]
     config_validator = ConfigValidator( path_chkpt     = None,
-                                        num_workers    = 1,
-                                        batch_size     = 40,
+                                        num_workers    = 0,
+                                        batch_size     = size_batch,
                                         pin_memory     = True,
                                         shuffle        = False,
-                                        online_shuffle = True,
+                                        online_shuffle = online_shuffle,
                                         is_logging     = False,
                                         method         = 'semi-hard', 
                                         ## method         = 'random-semi-hard', 
                                         ## method         = 'random', 
-                                        lr             = 1e-3, 
+                                        lr             = lr, 
                                         isflat         = False, )  # Conv2d input needs one more dim for batch
 
     validator = OnlineLossValidator(model, dataset_validate, config_validator)
