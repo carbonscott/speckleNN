@@ -137,7 +137,10 @@ class OnlineLossValidator:
             batch_imgs = batch_imgs.to(self.device)
 
             with torch.no_grad():
-                loss = self.model.forward(batch_imgs, batch_labels, batch_titles, is_logging = config_test.is_logging, method = config_test.method)
+                loss = self.model.forward(batch_imgs, batch_labels, batch_titles, 
+                                          is_logging = config_test.is_logging, 
+                                          method     = config_test.method,
+                                          shuffle    = config_test.online_shuffle,)
                 loss_val = loss.cpu().detach().numpy()
                 losses_batch.append(loss_val)
 

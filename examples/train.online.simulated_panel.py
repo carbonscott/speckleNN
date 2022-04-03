@@ -21,12 +21,13 @@ comments = f"""
 
             Online training.
 
-            Sample size : 2000
-            Batch  size : 400
-            Alpha       : 2.0
-            Random zoom : True
+            Sample size    : 2000
+            Batch  size    : 40
+            Alpha          : 2.0
+            Random zoom    : True
+            Online shuffle : True
 
-            lr          : 1e-3
+            lr             : 1e-3
 
             """
 
@@ -63,7 +64,7 @@ metalog.report()
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
 panels         = [ 0, 1 ,2, 3 ]
 config_dataset = ConfigDataset( fl_csv         = 'simulated_datasets.csv',
-                                size_sample    = 4000, 
+                                size_sample    = 2000, 
                                 resize         = None,
                                 seed           = 0,
                                 panels         = panels,
@@ -120,29 +121,35 @@ with OnlineDataset(config_dataset) as dataset_train:
 
     # [[[ TRAINER ]]]
     # Config the trainer...
-    config_train = ConfigTrainer( path_chkpt  = path_chkpt,
-                                  num_workers = 1,
-                                  batch_size  = 400,
-                                  pin_memory  = True,
-                                  shuffle     = False,
-                                  is_logging  = True,
-                                  method      = 'random-semi-hard', 
-                                  lr          = 1e-3, )
+    config_train = ConfigTrainer( path_chkpt     = path_chkpt,
+                                  num_workers    = 1,
+                                  batch_size     = 40,
+                                  pin_memory     = True,
+                                  shuffle        = False,
+                                  online_shuffle = True,
+                                  is_logging     = False,
+                                  method         = 'semi-hard', 
+                                  ## method         = 'random-semi-hard', 
+                                  ## method         = 'random', 
+                                  lr             = 1e-3, )
 
     # Training...
     trainer = OnlineTrainer(model, dataset_train, config_train)
 
 
     # [[[ VALIDATOR ]]]
-    config_validator = ConfigValidator( path_chkpt  = None,
-                                        num_workers = 1,
-                                        batch_size  = 400,
-                                        pin_memory  = True,
-                                        shuffle     = False,
-                                        is_logging  = True,
-                                        method      = 'random-semi-hard', 
-                                        lr          = 1e-3, 
-                                        isflat      = False, )  # Conv2d input needs one more dim for batch
+    config_validator = ConfigValidator( path_chkpt     = None,
+                                        num_workers    = 1,
+                                        batch_size     = 40,
+                                        pin_memory     = True,
+                                        shuffle        = False,
+                                        online_shuffle = True,
+                                        is_logging     = False,
+                                        method         = 'semi-hard', 
+                                        ## method         = 'random-semi-hard', 
+                                        ## method         = 'random', 
+                                        lr             = 1e-3, 
+                                        isflat         = False, )  # Conv2d input needs one more dim for batch
 
     validator = OnlineLossValidator(model, dataset_validate, config_validator)
 

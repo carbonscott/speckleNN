@@ -146,7 +146,10 @@ class OnlineTrainer:
             batch_imgs, batch_labels, batch_titles = entry
             batch_imgs = batch_imgs.to(self.device)
 
-            loss = self.model.forward(batch_imgs, batch_labels, batch_titles, is_logging = config_train.is_logging, method = config_train.method)
+            loss = self.model.forward(batch_imgs, batch_labels, batch_titles, 
+                                      is_logging = config_train.is_logging, 
+                                      method     = config_train.method,
+                                      shuffle    = config_train.online_shuffle,)
 
             optimizer.zero_grad()
             loss.backward()

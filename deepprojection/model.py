@@ -71,12 +71,16 @@ class OnlineSiameseModel(nn.Module):
         self.encoder = config.encoder
 
 
-    def forward(self, batch_imgs, batch_labels, batch_titles, is_logging = True, method = 'semi-hard'):
+    def forward(self, batch_imgs, batch_labels, batch_titles, 
+                is_logging = True, 
+                method = 'semi-hard',
+                shuffle = False):
         # Supposed methods
         select_method_dict = {
             'batch-hard'       : self.batch_hard,
             'semi-hard'        : self.batch_semi_hard,
             'random-semi-hard' : self.batch_random_semi_hard,
+            'random'           : self.batch_random,
         }
 
         # Assert a valid method...
@@ -84,7 +88,8 @@ class OnlineSiameseModel(nn.Module):
 
         # Select triplets...
         select_method = select_method_dict[method]
-        triplets = select_method(batch_imgs, batch_labels, batch_titles, is_logging = is_logging)
+        triplets = select_method(batch_imgs, batch_labels, batch_titles, is_logging = is_logging, shuffle = shuffle)
+
         img_anchor = batch_imgs[ [ triplet[0] for triplet in triplets ] ]
         img_pos    = batch_imgs[ [ triplet[1] for triplet in triplets ] ]
         img_neg    = batch_imgs[ [ triplet[2] for triplet in triplets ] ]
@@ -109,7 +114,60 @@ class OnlineSiameseModel(nn.Module):
         return loss_triplet.mean()
 
 
-    def batch_random_semi_hard(self, batch_imgs, batch_labels, batch_titles, is_logging = True, **kwargs):
+    def batch_random(self, batch_imgs, batch_labels, batch_titles, is_logging = True, shuffle = False, **kwargs):
+        ''' Totally random shuffled triplet.  
+        '''
+        # Convert batch labels to dictionary for fast lookup...
+        batch_label_dict = {}
+        batch_label_list = batch_labels.cpu().numpy()
+        for i, v in enumerate(batch_label_list):
+            if not v in batch_label_dict: batch_label_dict[v] = [i]
+            else                        : batch_label_dict[v].append(i)
+
+        # ___/ NEGATIVE MINIG \___
+        # Go through each image in the batch and form triplets...
+        # Prepare for logging
+        triplets = []
+        for batch_idx_achr, img in enumerate(batch_imgs):
+            # Get the label of the image...
+            batch_label_achr = batch_label_list[batch_idx_achr]
+
+            # Create a bucket of positive cases...
+            batch_idx_pos_list = batch_label_dict[batch_label_achr]
+
+            # Select a positive case from positive bucket...
+            batch_idx_pos = random.choice(batch_idx_pos_list)
+
+            # Create a bucket of negative cases...
+            idx_neg_list = []
+            for batch_label, idx_list in batch_label_dict.items():
+                if batch_label == batch_label_achr: continue
+                idx_neg_list += idx_list
+
+            # Randomly choose one negative example...
+            idx_reduced   = random.choice(range(len(idx_neg_list)))
+            batch_idx_neg = idx_neg_list[idx_reduced]
+
+            # Track triplet...
+            triplets.append((batch_idx_achr, batch_idx_pos, batch_idx_neg))
+
+        if shuffle: 
+            idx_shuffle_list = random.sample(range(len(triplets)), k = len(triplets))
+            triplets = [ triplets[i] for i in idx_shuffle_list ]
+
+        if is_logging:
+            # Logging all cases...
+            for idx, triplet in enumerate(triplets):
+                batch_idx_achr, batch_idx_pos, batch_idx_neg = triplet
+                title_achr = batch_titles[batch_idx_achr]
+                title_pos  = batch_titles[batch_idx_pos]
+                title_neg  = batch_titles[batch_idx_neg]
+                logger.info(f"DATA - {title_achr} {title_pos} {title_neg}")
+
+        return triplets
+
+
+    def batch_random_semi_hard(self, batch_imgs, batch_labels, batch_titles, is_logging = True, shuffle = False, **kwargs):
         ''' Only supply batch_size of image triplet for training.  This is in
             contrast to the all positive method.  Each image in the batch has
             the chance of playing an anchor.  Negative mining is applied.  
@@ -130,12 +188,7 @@ class OnlineSiameseModel(nn.Module):
 
         # ___/ NEGATIVE MINIG \___
         # Go through each image in the batch and form triplets...
-        # Prepare img containers...
-        batch_achr = []
-        batch_pos  = []
-        batch_neg  = []
-
-        # Prepare for logging...
+        # Prepare for logging
         triplets = []
         dist_log = []
         for batch_idx_achr, img in enumerate(batch_imgs):
@@ -195,8 +248,13 @@ class OnlineSiameseModel(nn.Module):
                 dist_neg      = dist_neg_list[idx_reduced]
 
             # Track triplet...
-            triplets.append((batch_idx_achr, batch_idx_pos, batch_idx_neg))
+            triplets.append((batch_idx_achr, batch_idx_pos, batch_idx_neg.tolist()))
             dist_log.append((dist_pos, dist_neg))
+
+        if shuffle: 
+            idx_shuffle_list = random.sample(range(len(triplets)), k = len(triplets))
+            triplets = [ triplets[i] for i in idx_shuffle_list ]
+            dist_log = [ dist_log[i] for i in idx_shuffle_list ]
 
         if is_logging:
             # Logging all cases...
@@ -213,7 +271,7 @@ class OnlineSiameseModel(nn.Module):
 
 
 
-    def batch_semi_hard(self, batch_imgs, batch_labels, batch_titles, is_logging = True, **kwargs):
+    def batch_semi_hard(self, batch_imgs, batch_labels, batch_titles, is_logging = True, shuffle = False, **kwargs):
         ''' The idea is to go through each one in batch_imgs and find all
             positive images, and then following it up with selecting a negative
             case that still satisfyies dn > dp (semi hard cases).  
@@ -298,8 +356,13 @@ class OnlineSiameseModel(nn.Module):
                     dist_neg      = dist_neg_list[idx_reduced]
 
                 # Track triplet...
-                triplets.append((batch_idx_achr, batch_idx_pos, batch_idx_neg))
+                triplets.append((batch_idx_achr, batch_idx_pos, batch_idx_neg.tolist()))
                 dist_log.append((dist_pos, dist_neg))
+
+        if shuffle: 
+            idx_shuffle_list = random.sample(range(len(triplets)), k = len(triplets))
+            triplets = [ triplets[i] for i in idx_shuffle_list ]
+            dist_log = [ dist_log[i] for i in idx_shuffle_list ]
 
         if is_logging:
             # Logging all cases...
