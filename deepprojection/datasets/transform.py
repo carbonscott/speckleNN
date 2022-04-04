@@ -186,9 +186,25 @@ class RandomPanelZoom:
 
 
 
-def vflip(img): return np.flip(img, axis = 0)
+def vflip(img): 
+    return np.flip(img, axis = 0)
 
 
 
 
-def hflip(img): return np.flip(img, axis = 1)
+def hflip(img): 
+    return np.flip(img, axis = 1)
+
+
+
+
+def noise_poisson(img):
+    # np.floa32 is a work around
+    return np.float32(np.random.poisson(img))
+
+
+
+
+def noise_gaussian(img, sigma):
+    # np.floa32 is a work around
+    return np.float32(img + sigma * np.random.randn(*img.shape))

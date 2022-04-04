@@ -133,6 +133,27 @@ class DatasetPreprocess:
         return None
 
 
+    def apply_noise_poisson(self):
+        self.noise_poisson = transform.noise_poisson
+
+        logger.info("Apply Poisson noise.")
+
+        return None
+
+
+    def apply_noise_gaussian(self):
+        sigma = 0.15
+
+        def _noise_gaussian(img):
+            return transform.noise_gaussian(img, sigma)
+
+        self.noise_gaussian = _noise_gaussian
+
+        logger.info("Apply Gaussian noise.")
+
+        return None
+
+
     def trans(self, img, **kwargs):
         """ The function consumed by dataset class.  
         """
@@ -163,10 +184,21 @@ class DatasetPreprocess:
             bin_row, bin_col = self.resize
             img = downsample(img, bin_row, bin_col, mask = None)
 
+        # Apply Poisson noise...
+        if getattr(self, "noise_poisson", None) is not None:
+            img = self.noise_poisson(img)
+
+        # Apply Guassian noise...
+        if getattr(self, "noise_gaussian", None) is not None:
+            img = self.noise_gaussian(img)
+
         return img
 
 
     def apply(self):
+        self.apply_noise_poisson()
+        self.apply_noise_gaussian()
+
         ## self.apply_mask()
         self.apply_standardize()
         ## self.apply_augmentation()
