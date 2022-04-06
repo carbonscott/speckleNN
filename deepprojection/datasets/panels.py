@@ -584,7 +584,11 @@ class PsanaPanel:
         self.detector = psana.Detector(detector_name)
 
 
-    def get(self, event_num, id_panel, mode = "image"):
+    def __len__(self):
+        return len(self.timestamps)
+
+
+    def get(self, event_num, id_panel = None, mode = "calib"):
         # Fetch the timestamp according to event number...
         timestamp = self.timestamps[event_num]
 
@@ -597,6 +601,7 @@ class PsanaPanel:
         # Fetch image data based on timestamp from detector...
         read = { "raw"   : self.detector.raw,
                  "calib" : self.detector.calib,}
-        img = read[mode](event)[int(id_panel)]
+        panels = read[mode](event)
+        img    = panels[int(id_panel)] if id_panel is not None else panels
 
         return img
