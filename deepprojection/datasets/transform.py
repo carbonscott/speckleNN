@@ -200,7 +200,7 @@ def hflip(img):
 
 def noise_poisson(img):
     # np.floa32 is a work around
-    return np.float32(np.random.poisson(img))
+    return np.float32(img + np.random.poisson(img))
 
 
 
