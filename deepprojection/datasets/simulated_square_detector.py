@@ -53,16 +53,16 @@ class SPIPanelDataset(Dataset):
     """
 
     def __init__(self, config):
-        self.fl_csv            = getattr(config, 'fl_csv'           , None)
-        self.exclude_labels    = getattr(config, 'exclude_labels'   , None)
-        self.resize            = getattr(config, 'resize'           , None)
-        self.isflat            = getattr(config, 'isflat'           , None)
-        self.istrain           = getattr(config, 'istrain'          , None)
-        self.frac_train        = getattr(config, 'frac_train'       , None)    # Proportion/Fraction of training examples
-        self.seed              = getattr(config, 'seed'             , None)
-        self.trans             = getattr(config, 'trans'            , None)
+        self.fl_csv           = getattr(config, 'fl_csv'           , None)
+        self.exclude_labels   = getattr(config, 'exclude_labels'   , None)
+        self.resize           = getattr(config, 'resize'           , None)
+        self.isflat           = getattr(config, 'isflat'           , None)
+        self.istrain          = getattr(config, 'istrain'          , None)
+        self.frac_train       = getattr(config, 'frac_train'       , None)    # Proportion/Fraction of training examples
+        self.seed             = getattr(config, 'seed'             , None)
+        self.trans            = getattr(config, 'trans'            , None)
 
-        self.h5_handle_dict       = {}
+        self.h5_path_dict         = {}
         self.psana_imgreader_dict = {}
         self.imglabel_orig_list   = []
 
@@ -74,29 +74,40 @@ class SPIPanelDataset(Dataset):
         if not self.seed is None: set_seed(self.seed)
 
         # Read the csv and collect files to read...
-        self.h5_handle_dict = {}
+        self.h5_path_dict = {}
+        hit_type_dict     = {}
         with open(self.fl_csv, 'r') as fh: 
             lines = csv.reader(fh)
 
             next(lines)
 
-            for line in lines:
+            for i, line in enumerate(lines):
                 fl_base, label, drc_root = line
                 basename = (fl_base, label)
 
                 fl_h5 = f"{fl_base}.h5"
                 path_h5 = os.path.join(drc_root, fl_h5)
-                if not basename in self.h5_handle_dict:
-                    self.h5_handle_dict[basename] = h5py.File(path_h5, 'r')    # !!!Remember to close it
+                if not basename in self.h5_path_dict:
+                    self.h5_path_dict[basename] = path_h5
+
+                # Accumulate hit types and num of images associated...
+                # [WORKAROUND] This works only if the same hit type implies the
+                # same number of images.  
+                hit_type = fl_base[fl_base.find('.') + 1 : ]
+                if not hit_type in hit_type_dict: 
+                    with h5py.File(path_h5, 'r') as fh:
+                        num_imgs, _, _, _ = fh.get(self.KEY_TO_IMG).shape
+
+                    hit_type_dict[hit_type] = num_imgs
 
         # Enumerate each image from all datasets, saved in h5 handles, w/o reading it...
-        for basename, h5_handle in self.h5_handle_dict.items():
+        for basename, h5_path in self.h5_path_dict.items():
             fl_base, label = basename
 
-            num_imgs, _, _, _ = h5_handle.get(self.KEY_TO_IMG).shape
+            hit_type = fl_base[fl_base.find('.') + 1 : ]
 
             # Traverse every images in a synthetic dataset (it's okay to be slow)...
-            for id_frame in range(num_imgs):
+            for id_frame in range(hit_type_dict[hit_type]):
                 self.imglabel_orig_list.append( (fl_base, id_frame, label) )
 
         # Split the original image list into training set and test set...
@@ -115,13 +126,6 @@ class SPIPanelDataset(Dataset):
         return None
 
 
-    def __enter__(self): return self
-
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        for h5_handle in self.h5_handle_dict.values(): h5_handle.close()
-
-
     def __len__(self):
         return len(self.imglabel_list)
 
@@ -130,7 +134,10 @@ class SPIPanelDataset(Dataset):
         # Read image...
         fl_base, id_frame, label = self.imglabel_list[idx]
         basename = (fl_base, label)
-        img = self.h5_handle_dict[basename].get(self.KEY_TO_IMG)[id_frame][0]
+
+        h5_path = self.h5_path_dict[basename]
+        with h5py.File(h5_path, 'r') as fh:
+            img = fh.get(self.KEY_TO_IMG)[id_frame][0]
 
         # Apply any possible transformation...
         # How to define a custom transform function?
