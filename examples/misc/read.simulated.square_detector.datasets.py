@@ -115,7 +115,7 @@ class DisplaySPIImg:
 
 # Config the dataset...
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
-config_dataset = ConfigDataset( fl_csv            = 'simulated.square_detector.reduced.datasets.csv',
+config_dataset = ConfigDataset( fl_csv            = 'simulated.square_detector.datasets.csv',
                                 size_sample       = 2000, 
                                 resize            = None,
                                 seed              = 0,
@@ -131,34 +131,36 @@ dataset_preproc = DatasetPreprocess(config_dataset)
 dataset_preproc.apply()
 
 # Create image manager...
-with SPIPanelDataset(config_dataset) as spiimg:
-    # Read an image...
-    for idx in range(10):
-        # Don't apply those changes from configuration...
-        spiimg.trans = None
-        img, _ = spiimg[idx]
-        img = img.squeeze(axis = 0)
+spiimg = SPIPanelDataset(config_dataset)
 
-        fl_base, id_frame, label = spiimg.imglabel_list[idx]
+# Read an image...
+for idx in range(10):
+    fl_base, id_frame, label = spiimg.imglabel_list[idx]
+    ## print(fl_base, id_frame)
 
-        # Apply those changes from configuration...
-        spiimg.trans = dataset_preproc.trans
+    # Don't apply those changes from configuration...
+    spiimg.trans = None
+    img, _ = spiimg[idx]
+    img = img.squeeze(axis = 0)
 
-        # Get transed image...
-        img_masked, _ = spiimg[idx]
-        img_masked = img_masked.squeeze(axis = 0)
+    # Apply those changes from configuration...
+    spiimg.trans = dataset_preproc.trans
 
-        # None rotation...
-        center = None
-        angle  = None
+    # Get transed image...
+    img_masked, _ = spiimg[idx]
+    img_masked = img_masked.squeeze(axis = 0)
 
-        title = f'simulated.{fl_base}.{id_frame}.{label}'
+    # None rotation...
+    center = None
+    angle  = None
 
-        # Normalize image...
-        img_masked = (img_masked - np.mean(img_masked)) / np.std(img_masked)
+    title = f'simulated.{fl_base}.{id_frame}.{label}'
 
-        # Dispaly an image...
-        ## title = f'imagemask.{idx:06d}'
-        disp_manager = DisplaySPIImg(img, img_masked, figsize = (18, 8))
-        disp_manager.show(center = center, angle = angle, title = title, is_save = False)
-        ## disp_manager.show(center = center, angle = angle, title = title, is_save = True)
+    # Normalize image...
+    img_masked = (img_masked - np.mean(img_masked)) / np.std(img_masked)
+
+    # Dispaly an image...
+    ## title = f'imagemask.{idx:06d}'
+    disp_manager = DisplaySPIImg(img, img_masked, figsize = (18, 8))
+    disp_manager.show(center = center, angle = angle, title = title, is_save = False)
+    ## disp_manager.show(center = center, angle = angle, title = title, is_save = True)

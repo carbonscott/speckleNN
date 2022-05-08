@@ -24,8 +24,8 @@ class DatasetPreprocess:
         config_dataset = self.config_dataset
 
         # Get img size...
-        with SPIPanelDataset(config_dataset) as spiimg:
-            img = spiimg.get_img_and_label(0)[0]
+        spiimg = SPIPanelDataset(config_dataset)
+        img = spiimg.get_img_and_label(0)[0]
 
         self.img = img
 
@@ -146,8 +146,8 @@ class DatasetPreprocess:
 
 
     def apply_noise_gaussian(self):
-        ## scale = 1.0
-        scale = 100.0
+        scale = 1.0
+        ## scale = 100.0
         sigma = scale * 0.15
 
         def _noise_gaussian(img):
@@ -195,8 +195,8 @@ class DatasetPreprocess:
 
 
     def apply(self):
-        ## self.apply_noise_poisson()
-        ## self.apply_noise_gaussian()
+        self.apply_noise_poisson()
+        self.apply_noise_gaussian()
 
         ## self.apply_mask()
         ## self.apply_standardize()

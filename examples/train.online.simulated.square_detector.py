@@ -15,12 +15,14 @@ from datetime import datetime
 import socket
 
 # Set up parameters for an experiment...
-fl_csv         = "simulated.square_detector.reduced.datasets.csv"
+## fl_csv         = "simulated.square_detector.reduced.datasets.csv"
+fl_csv         = "simulated.square_detector.datasets.csv"
 size_sample    = 2000
 size_batch     = 40
 alpha          = 2.0
 online_shuffle = True
 lr             = 1e-3
+seed           = 0
 
 # Clarify the purpose of this experiment...
 hostname = socket.gethostname()
@@ -71,7 +73,7 @@ exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.
 config_dataset = ConfigDataset( fl_csv         = fl_csv,
                                 size_sample    = size_sample, 
                                 resize         = None,
-                                seed           = 0,
+                                seed           = seed,
                                 isflat         = False,
                                 istrain        = True,
                                 frac_train     = 0.7,
@@ -86,78 +88,79 @@ size_y, size_x = dataset_preproc.get_imgsize()
 
 # Define training set...
 config_dataset.report()
-with OnlineDataset(config_dataset) as dataset_train:
-    # Define validation set...
-    config_dataset.istrain = False
-    config_dataset.report()
-    dataset_validate = OnlineDataset(config_dataset)
+dataset_train = OnlineDataset(config_dataset)
+
+# Define validation set...
+config_dataset.istrain = False
+config_dataset.report()
+dataset_validate = OnlineDataset(config_dataset)
 
 
-    # [[[ IMAGE ENCODER ]]]
-    # Config the encoder...
-    dim_emb = 128
-    config_encoder = ConfigEncoder( dim_emb = dim_emb,
-                                    size_y  = size_y,
-                                    size_x  = size_x,
-                                    isbias  = True )
-    encoder = Hirotaka0122(config_encoder)
+# [[[ IMAGE ENCODER ]]]
+# Config the encoder...
+dim_emb = 128
+config_encoder = ConfigEncoder( dim_emb = dim_emb,
+                                size_y  = size_y,
+                                size_x  = size_x,
+                                isbias  = True )
+encoder = Hirotaka0122(config_encoder)
 
 
-    # [[[ MODEL ]]]
-    # Config the model...
-    config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
-    model = OnlineSiameseModel(config_siamese)
+# [[[ MODEL ]]]
+# Config the model...
+config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
+model = OnlineSiameseModel(config_siamese)
 
-    # Initialize weights...
-    def init_weights(module):
-        if isinstance(module, (torch.nn.Embedding, torch.nn.Linear)):
-            module.weight.data.normal_(mean = 0.0, std = 0.02)
-    model.apply(init_weights)
-
-
-    # [[[ CHECKPOINT ]]]
-    DRCCHKPT         = "chkpts"
-    prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
-    fl_chkpt         = f"{timestamp}.train.chkpt"
-    path_chkpt       = os.path.join(prefixpath_chkpt, fl_chkpt)
+# Initialize weights...
+def init_weights(module):
+    if isinstance(module, (torch.nn.Embedding, torch.nn.Linear)):
+        module.weight.data.normal_(mean = 0.0, std = 0.02)
+model.apply(init_weights)
 
 
-    # [[[ TRAINER ]]]
-    # Config the trainer...
-    config_train = ConfigTrainer( path_chkpt     = path_chkpt,
-                                  num_workers    = 0,
-                                  batch_size     = size_batch,
-                                  pin_memory     = True,
-                                  shuffle        = False,
-                                  online_shuffle = online_shuffle,
-                                  is_logging     = False,
-                                  method         = 'semi-hard', 
-                                  ## method         = 'random-semi-hard', 
-                                  ## method         = 'random', 
-                                  lr             = lr, )
-
-    # Training...
-    trainer = OnlineTrainer(model, dataset_train, config_train)
+# [[[ CHECKPOINT ]]]
+DRCCHKPT         = "chkpts"
+prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
+fl_chkpt         = f"{timestamp}.train.chkpt"
+path_chkpt       = os.path.join(prefixpath_chkpt, fl_chkpt)
 
 
-    # [[[ VALIDATOR ]]]
-    config_validator = ConfigValidator( path_chkpt     = None,
-                                        num_workers    = 0,
-                                        batch_size     = size_batch,
-                                        pin_memory     = True,
-                                        shuffle        = False,
-                                        online_shuffle = online_shuffle,
-                                        is_logging     = False,
-                                        method         = 'semi-hard', 
-                                        ## method         = 'random-semi-hard', 
-                                        ## method         = 'random', 
-                                        lr             = lr, 
-                                        isflat         = False, )  # Conv2d input needs one more dim for batch
+# [[[ TRAINER ]]]
+# Config the trainer...
+config_train = ConfigTrainer( path_chkpt     = path_chkpt,
+                              num_workers    = 0,
+                              batch_size     = size_batch,
+                              pin_memory     = True,
+                              shuffle        = False,
+                              online_shuffle = online_shuffle,
+                              is_logging     = False,
+                              method         = 'semi-hard', 
+                              ## method         = 'random-semi-hard', 
+                              ## method         = 'random', 
+                              lr             = lr, )
 
-    validator = OnlineLossValidator(model, dataset_validate, config_validator)
+# Training...
+trainer = OnlineTrainer(model, dataset_train, config_train)
 
 
-    # [[[ EPOCH MANAGER ]]]
-    max_epochs = 360
-    epoch_manager = EpochManager(trainer = trainer, validator = validator, max_epochs = max_epochs)
-    epoch_manager.run()
+# [[[ VALIDATOR ]]]
+config_validator = ConfigValidator( path_chkpt     = None,
+                                    num_workers    = 0,
+                                    batch_size     = size_batch,
+                                    pin_memory     = True,
+                                    shuffle        = False,
+                                    online_shuffle = online_shuffle,
+                                    is_logging     = False,
+                                    method         = 'semi-hard', 
+                                    ## method         = 'random-semi-hard', 
+                                    ## method         = 'random', 
+                                    lr             = lr, 
+                                    isflat         = False, )  # Conv2d input needs one more dim for batch
+
+validator = OnlineLossValidator(model, dataset_validate, config_validator)
+
+
+# [[[ EPOCH MANAGER ]]]
+max_epochs = 360
+epoch_manager = EpochManager(trainer = trainer, validator = validator, max_epochs = max_epochs)
+epoch_manager.run()
