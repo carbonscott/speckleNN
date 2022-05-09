@@ -51,14 +51,17 @@ class MacroMetric:
 
 
 # File to analyze...
-timestamp = "20220316134804"
+timestamp   = "2022_0508_2156_54"
+is_testsets = False
 
 # Validate mode...
 istrain = False
 mode_validate = 'train' if istrain else 'test'
 
 # Locate the path of the log file...
-fl_log   = f'{timestamp}.validate.query.{mode_validate}.log'
+fl_log   = f'{timestamp}.validate.query.{mode_validate}'
+if is_testsets: fl_log = f"{fl_log}.testsets"
+fl_log   = f'{fl_log}.log'
 drc_log  = 'logs'
 path_log = os.path.join(drc_log, fl_log)
 
@@ -67,7 +70,7 @@ log_dict = read_log(path_log)
 
 # Fetch all labels...
 record = log_dict["data"][0]
-labels = [ item[:item.strip().find(":")][-1] for item in record[1:] ]
+labels = [ item[:item.strip().find(":")].split()[-1] for item in record[1:] ]
 
 # New container to store validation result (thus res_dict) for each label...
 res_dict = {}
@@ -93,8 +96,8 @@ for i, record in enumerate(log_dict[ "data" ]):
     title_mindist = titles_test[idx_mindist]
 
     # Get the supposed result (match or not)...
-    label_real = title_query[-1]
-    label_pred = title_mindist[-1]
+    label_real = title_query.split()[-1]
+    label_pred = title_mindist.split()[-1]
 
     res_dict[label_pred][label_real].append( (title_query, title_mindist) )
 
@@ -105,7 +108,12 @@ macro_metric = MacroMetric(res_dict)
 disp_dict = { "0" : "not sample",
               "1" : "single hit",
               "2" : " multi hit",
-              "9" : "background",  }
+              "9" : "background",
+              ## "21" : "1-hit",
+              ## "22" : "2-hit",
+              ## "23" : "3-hit",
+              ## "24" : "4-hit",
+            }
 
 # Report multiway classification...
 msgs = []

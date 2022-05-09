@@ -70,7 +70,7 @@ class LearnCurve:
         self.ax_img1.legend(
             edgecolor = "none",
             ncol      = 1,
-            loc       = "upper right"
+            loc       = "best",
         )
 
 
@@ -136,8 +136,7 @@ def get_loss(lines, istrain = True):
 
 
 
-timestamp = "20220324224738"
-## timestamp = "20220324224803"
+timestamp = "2022_0508_2226_47"
 
 drc_log  = 'logs'
 ## fl_log   = f"{timestamp}.train_validate.log"
