@@ -24,10 +24,9 @@ class Hirotaka0122(nn.Module):
         super().__init__()
 
         size_y, size_x = config.size_y, config.size_x
+        dim_img        = size_y * size_x
         isbias         = config.isbias
-
         dim_emb        = config.dim_emb
-        dim_img = size_y * size_x
 
         # Define Conv params...
         # I don't have a good idea of how to make it easier for users.
