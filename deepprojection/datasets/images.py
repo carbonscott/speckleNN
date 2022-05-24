@@ -11,7 +11,6 @@ import psana
 # Load misc modules
 import numpy as np
 import random
-import json
 import csv
 import os
 
@@ -78,7 +77,7 @@ class SPIImgDataset(Dataset):
             # Read each line/dataset
             for line in lines:
                 # Fetch metadata of a dataset 
-                exp, run, mode, detector_name, drc_root = line
+                exp, run, mode, detector_name, drc_label = line
 
                 # Form a minimal basename to describe a dataset
                 basename = (exp, run)
@@ -87,7 +86,7 @@ class SPIImgDataset(Dataset):
                 self.psana_imgreader_dict[basename] = PsanaImg(exp, run, mode, detector_name)
 
                 # Obtain image labels from this dataset
-                imglabel_fileparser = ImgLabelFileParser(exp, run, drc_root, exclude_labels)
+                imglabel_fileparser = ImgLabelFileParser(exp, run, drc_label, exclude_labels)
                 self._dataset_dict[basename] = imglabel_fileparser.imglabel_dict
 
         # Enumerate each image from all datasets
@@ -438,10 +437,10 @@ class ImgLabelFileParser:
     The type of a lable is always string.  
     """
 
-    def __init__(self, exp, run, drc_root, exclude_labels = ()):
+    def __init__(self, exp, run, drc_label, exclude_labels = ()):
         self.exp            = exp
         self.run            = run
-        self.drc_root       = drc_root
+        self.drc_label      = drc_label
         self.path_labelfile = ""
         self.imglabel_dict  = {}
         self.exclude_labels = exclude_labels
@@ -457,19 +456,12 @@ class ImgLabelFileParser:
 
 
     def _locate_labelfile(self):
-        # Get the username
-        username = os.environ.get("USER")
-
-        # The prefix directory to find label file
-        drc_run     = f"r{int(self.run):04d}"
-        drc_psocake = os.path.join(self.exp, username, 'psocake', drc_run)
-
         # Basename of a label file
         basename = f"{self.exp}_{int(self.run):04d}"
 
         # Locate the path to label file
-        fl_json = f"{basename}.label.json"
-        path_labelfile = os.path.join(self.drc_root, drc_psocake, fl_json)
+        fl_label = f"{basename}.label.csv"
+        path_labelfile = os.path.join(self.drc_label, fl_label)
 
         return path_labelfile
 
@@ -479,17 +471,26 @@ class ImgLabelFileParser:
         self.path_labelfile = self._locate_labelfile()
 
         # Read, sort and index labels
+        imglabel_dict = {}
         if os.path.exists(self.path_labelfile):
-            # Read label
+            # Read csv file of datasets
             with open(self.path_labelfile, 'r') as fh:
-                imglabel_dict = json.load(fh)
+                lines = csv.reader(fh)
+
+                # Skip the header
+                next(lines)
+
+                # Read each line/dataset
+                for line in lines:
+                    # Fetch metadata of a dataset 
+                    seqi, label = line
+                    imglabel_dict[seqi] = label
 
             # Exclude some labels
             imglabel_dict = { k:v for k, v in imglabel_dict.items() if not v in self.exclude_labels }
 
             # Sort label
             self.imglabel_dict = dict( sorted( imglabel_dict.items(), key = lambda x:int(x[0]) ) )
-
 
         else:
             print(f"File doesn't exist!!! Missing {self.path_labelfile}.")
