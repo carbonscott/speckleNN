@@ -598,6 +598,37 @@ class SimpleSet(Siamese):
 
 
 
+class SequentialSet(Siamese):
+    """
+    Sequential set feeds one example to model at a time.  The purpose is simply to
+    encode each example in imglabel_list.  
+    """
+
+    def __init__(self, config):
+        super().__init__(config)
+
+        return None
+
+
+    def __len__(self):
+        return len(self.imglabel_list)
+
+
+    def __getitem__(self, idx):
+        # Read the single image...
+        img, _ = super().__getitem__(idx)
+        res = (img, )
+
+        # Append metadata to the result list...
+        exp, run, event_num, label = self.imglabel_orig_list[idx]
+        title = f"{exp} {run} {int(event_num):>06d} {label}"
+        res += (title, )
+
+        return res
+
+
+
+
 class OnlineDataset(Siamese):
     """
     For online leraning.  
