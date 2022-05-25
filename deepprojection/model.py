@@ -458,7 +458,7 @@ class SiameseModelCompare(nn.Module):
 
 
 
-class SimpleEmbedding(nn.Module):
+class EmbeddingModel(nn.Module):
     """ Embedding independent triplet loss. """
 
     def __init__(self, config):
