@@ -287,7 +287,7 @@ class MultiwayQueryValidator:
 
 
 
-class SimpleEmbeddingChecker:
+class EmbeddingCalculator:
     def __init__(self, model, dataset_test, config_test):
         self.model        = model
         self.dataset_test = dataset_test
@@ -357,8 +357,10 @@ class SimpleEmbeddingChecker:
                     # Save the embedding...
                     if batch_id + i == 0:
                         size_y, size_x = img_embed.shape
-                        num_imgs       = len(img_single) * len(batch)
+                        num_imgs       = min(len(img_single) * len(batch), len(dataset_test))
                         imgs = torch.zeros(num_imgs, size_y, size_x)
                     imgs[i + batch_id * len(img_single)] = img_embed
+                    #                   ^^^^^^^^^^^^^^^
+                    # unpack dim ______________|
 
         return imgs
