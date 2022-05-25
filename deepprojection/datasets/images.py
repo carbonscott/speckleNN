@@ -607,6 +607,13 @@ class SequentialSet(Siamese):
     def __init__(self, config):
         super().__init__(config)
 
+        # Create a lookup table for locating the sequence number (seqi) based on a label...
+        self.label_seqi_orig_dict = {}
+        for seqi, (_, _, _, label) in enumerate(self.imglabel_orig_list):
+            # Keep track of label and its seqi
+            if not label in self.label_seqi_orig_dict: self.label_seqi_orig_dict[label] = [seqi]
+            else                                     : self.label_seqi_orig_dict[label].append(seqi)
+
         return None
 
 
