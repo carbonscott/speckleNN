@@ -359,10 +359,8 @@ class EmbeddingCalculator:
                         size_y, size_x = img_embed.shape
                         num_imgs       = min(len(img_single) * len(batch), len(dataset_test))
                         imgs = torch.zeros(num_imgs, size_y, size_x)
-                    imgs[i + batch_id * len(img_single)] = img_embed
-                    #                   ^^^^^^^^^^^^^^^
-                    # real batch szie _________|
-                    #
-                    # the last batch size might be smaller
+                        counter = 0
+                    imgs[counter] = img_embed
+                    counter += 1
 
         return imgs
