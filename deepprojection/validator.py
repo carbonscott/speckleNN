@@ -361,6 +361,8 @@ class EmbeddingCalculator:
                         imgs = torch.zeros(num_imgs, size_y, size_x)
                     imgs[i + batch_id * len(img_single)] = img_embed
                     #                   ^^^^^^^^^^^^^^^
-                    # unpack dim ______________|
+                    # real batch szie _________|
+                    #
+                    # the last batch size might be smaller
 
         return imgs
