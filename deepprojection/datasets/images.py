@@ -82,11 +82,22 @@ class SPIImgDataset(Dataset):
                 basename = (exp, run)
 
                 # Initiate image accessing layer...
-                self.psana_imgreader_dict[basename] = PsanaImg(exp, run, mode, detector_name)
+                psana_imgreader = PsanaImg(exp, run, mode, detector_name)
+                self.psana_imgreader_dict[basename] = psana_imgreader
 
                 # Obtain image labels from this dataset...
                 imglabel_fileparser = ImgLabelFileParser(exp, run, drc_label, exclude_labels)
-                self._dataset_dict[basename] = imglabel_fileparser.imglabel_dict
+
+                # Parse labels in the label file if it exists???
+                if imglabel_fileparser.imglabel_dict:
+                    imglabel_dict = imglabel_fileparser.imglabel_dict
+
+                # Otherwise, fetch all events without label...
+                else:
+                    imglabel_dict = { str(event_num) : "-1" for event_num, _ in enumerate(psana_imgreader.timestamps) }
+
+                self._dataset_dict[basename] = imglabel_dict
+
 
         # Enumerate each labeled image from all datasets...
         for dataset_id, dataset_content in self._dataset_dict.items():
@@ -490,9 +501,6 @@ class ImgLabelFileParser:
 
             # Sort label
             self.imglabel_dict = dict( sorted( imglabel_dict.items(), key = lambda x:int(x[0]) ) )
-
-        else:
-            print(f"File doesn't exist!!! Missing {self.path_labelfile}.")
 
         return None
 
