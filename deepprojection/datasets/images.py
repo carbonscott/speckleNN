@@ -94,7 +94,8 @@ class SPIImgDataset(Dataset):
 
                 # Otherwise, fetch all events without label...
                 else:
-                    imglabel_dict = { str(event_num) : "-1" for event_num, _ in enumerate(psana_imgreader.timestamps) }
+                    imglabel_dict = { str(event_num) : "-1" for event_num, _ in enumerate(psana_imgreader.timestamps) 
+                                                            if psana_imgreader.get(event_num, mode = self.mode)[0] is not None }
 
                 self._dataset_dict[basename] = imglabel_dict
 
