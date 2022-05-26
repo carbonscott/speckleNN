@@ -66,29 +66,29 @@ class SPIImgDataset(Dataset):
         # Debatable whether seed should be set in the dataset or in the running code
         if not self.seed is None: set_seed(self.seed)
 
-        # Read csv file of datasets
+        # Read csv file of datasets...
         with open(fl_csv, 'r') as fh:
             lines = csv.reader(fh)
 
-            # Skip the header
+            # Skip the header...
             next(lines)
 
-            # Read each line/dataset
+            # Read each line/dataset...
             for line in lines:
                 # Fetch metadata of a dataset 
                 exp, run, mode, detector_name, drc_label = line
 
-                # Form a minimal basename to describe a dataset
+                # Form a minimal basename to describe a dataset...
                 basename = (exp, run)
 
-                # Initiate image accessing layer
+                # Initiate image accessing layer...
                 self.psana_imgreader_dict[basename] = PsanaImg(exp, run, mode, detector_name)
 
-                # Obtain image labels from this dataset
+                # Obtain image labels from this dataset...
                 imglabel_fileparser = ImgLabelFileParser(exp, run, drc_label, exclude_labels)
                 self._dataset_dict[basename] = imglabel_fileparser.imglabel_dict
 
-        # Enumerate each image from all datasets
+        # Enumerate each labeled image from all datasets...
         for dataset_id, dataset_content in self._dataset_dict.items():
             # Get the exp and run
             exp, run = dataset_id
@@ -100,10 +100,10 @@ class SPIImgDataset(Dataset):
         num_list  = len(self.imglabel_orig_list)
         num_train = int(self.frac_train * num_list)
 
-        # Get training examples
+        # Get training examples...
         imglabel_train_list = random.sample(self.imglabel_orig_list, num_train)
 
-        # Get test examples
+        # Get test examples...
         imglabel_test_list = set(self.imglabel_orig_list) - set(imglabel_train_list)
         imglabel_test_list = sorted(list(imglabel_test_list))
 
