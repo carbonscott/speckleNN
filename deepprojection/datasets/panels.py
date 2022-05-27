@@ -92,15 +92,7 @@ class SPIPanelDataset(Dataset):
                 imglabel_fileparser = ImgLabelFileParser(exp, run, drc_label, exclude_labels)
 
                 # Parse labels in the label file if it exists???
-                if imglabel_fileparser.imglabel_dict:
-                    imglabel_dict = imglabel_fileparser.imglabel_dict
-
-                # Otherwise, fetch all events without label...
-                else:
-                    imglabel_dict = { str(event_num) : "-1" for event_num, _ in enumerate(psana_imgreader.timestamps) 
-                                                            if psana_imgreader.get(event_num, id_panel = None, mode = self.mode)[0] is not None }
-
-                self._dataset_dict[basename] = imglabel_dict
+                self._dataset_dict[basename] = imglabel_fileparser.imglabel_dict
 
         # Enumerate each image from all datasets
         for dataset_id, dataset_content in self._dataset_dict.items():
