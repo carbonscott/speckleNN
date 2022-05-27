@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 class ConfigDataset:
     ''' Biolerplate code to config dataset classs'''
+    NOLABEL    = '-1'
     NOHIT      = '0'
     SINGLE     = '1'
     MULTI      = '2'

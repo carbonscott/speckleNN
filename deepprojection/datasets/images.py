@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 class ConfigDataset:
     ''' Biolerplate code to config dataset classs'''
+    NOLABEL    = '-1'
     NOHIT      = '0'
     SINGLE     = '1'
     MULTI      = '2'
@@ -32,6 +33,7 @@ class ConfigDataset:
     def __init__(self, **kwargs):
         self.kwargs = kwargs
         for k, v in kwargs.items(): setattr(self, k, v)
+
 
     def report(self):
         logger.info(f"___/ Configure Dataset \___")
