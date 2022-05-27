@@ -341,11 +341,22 @@ class EmbeddingCalculator:
             img_single = img_single.to(self.device)
 
             with torch.no_grad():
-                # Look at each example in a batch...
-                for i in range(len(img_single)):
-                    # Inference...
-                    img_embed = self.model.forward(img_single[i].unsqueeze(0))
+                # Calculate image embedding for this batch...
+                img_embed = self.model.forward(img_single)
 
+                # Save the embedding...
+                if batch_id == 0:
+                    len_emb,  = img_embed.shape[-1:]
+                    num_imgs  = min(len(img_single) * len(batch), len(dataset_test))
+                    imgs      = torch.zeros(num_imgs, len_emb)
+                    rng_start = 0
+
+                batch_size = len(img_embed)
+                imgs[rng_start : rng_start + batch_size] = img_embed
+                rng_start += batch_size
+
+                # Logging...
+                for i in range(len(img_single)):
                     # Fetch the descriptor...
                     msg = title[i]
 
@@ -353,14 +364,5 @@ class EmbeddingCalculator:
                     log_header = f"DATA - {batch_id * len(img_single) + i:06d} - "
                     log_msg = log_header + msg
                     logger.info(log_msg)
-
-                    # Save the embedding...
-                    if batch_id + i == 0:
-                        size_y, size_x = img_embed.shape
-                        num_imgs       = min(len(img_single) * len(batch), len(dataset_test))
-                        imgs = torch.zeros(num_imgs, size_y, size_x)
-                        counter = 0
-                    imgs[counter] = img_embed
-                    counter += 1
 
         return imgs
