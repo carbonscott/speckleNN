@@ -110,7 +110,7 @@ fl_chkpt = f"{timestamp}.train.chkpt"
 path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
 config_validator = ConfigValidator( ## path_chkpt  = None,    # Use it for raw input (random weights)
                                     path_chkpt  = path_chkpt,
-                                    num_workers = 0,
+                                    num_workers = 1,
                                     batch_size  = size_batch,
                                     pin_memory  = True,
                                     shuffle     = False,
@@ -121,17 +121,10 @@ validator = EmbeddingCalculator(model, dataset, config_validator)
 embs = validator.run()
 
 # Fetch embedding directory...
-fl_emb = f"{basename}.comp_emb.pt"
+fl_emb = f"{basename}.pt"
 DRCEMB = "embeds"
 prefixpath_emb = os.path.join(drc_cwd, DRCEMB)
 if not os.path.exists(prefixpath_emb): os.makedirs(prefixpath_emb)
 path_emb = os.path.join(prefixpath_emb, fl_emb)
 
 torch.save(embs, path_emb)
-
-
-## # ___/ AVERAGING EMBEDDING PER CLASS \___
-## emb_avg_dict = {}
-## for k, v in dataset.label_seqi_dict.items():
-##     emb_avg_dict[k] = embs[v].mean(dim = 0)    # Mean along sample dim
-## torch.save(emb_avg_dict, path_emb)
