@@ -494,8 +494,8 @@ class ImgLabelFileParser:
                 # Read each line/dataset
                 for line in lines:
                     # Fetch metadata of a dataset 
-                    seqi, label = line
-                    imglabel_dict[seqi] = label
+                    event_num, label = line
+                    imglabel_dict[event_num] = label
 
             # Exclude some labels
             imglabel_dict = { k:v for k, v in imglabel_dict.items() if not v in self.exclude_labels }
