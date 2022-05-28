@@ -41,7 +41,8 @@ for i, (label, emb_container) in enumerate(emb_precomp_dict.items()):
     rng_start += rng_stride
 
 # Calculate squared distance between each unlabeled emb and each precomputed emb...
-emb_diff_per_label = emb_comp[:, None] - emb_precomp[None, :]
+# (case dim, new dim, emb dim) - (new dim, label dim, emb dim) -> (case dim, label dim, emb dim)
+emb_diff_per_label = emb_comp[:, None, :] - emb_precomp[None, :, :]
 emb_sqdist_per_label = torch.sum(emb_diff_per_label * emb_diff_per_label, dim = -1)    # Sum over emb rep dimension
 
 # Find the label but represented in indexing...
