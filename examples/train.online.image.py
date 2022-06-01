@@ -4,7 +4,7 @@
 import os
 import logging
 import torch
-from deepprojection.datasets.images  import OnlineDataset      , ConfigDataset, SPIImgDataset
+from deepprojection.datasets.images  import OnlineDataset      , ConfigDataset
 from deepprojection.model            import OnlineSiameseModel , ConfigSiameseModel
 from deepprojection.trainer          import OnlineTrainer      , ConfigTrainer
 from deepprojection.validator        import OnlineLossValidator, ConfigValidator
@@ -106,7 +106,7 @@ dataset_validate = OnlineDataset(config_dataset)
 
 # [[[ IMAGE ENCODER ]]]
 # Config the encoder...
-dim_emb = 128
+dim_emb        = 128
 size_y, size_x = img_trans.shape
 config_encoder = ConfigEncoder( dim_emb = dim_emb,
                                 size_y  = size_y,

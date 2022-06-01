@@ -26,7 +26,6 @@ frac_train     = 1.0
 seed           = 0
 istrain        = True
 
-
 # Clarify the purpose of this experiment...
 hostname = socket.gethostname()
 comments = f"""
@@ -69,32 +68,41 @@ metalog.report()
 
 # Config the dataset...
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
-config_dataset = ConfigDataset( fl_csv            = fl_csv,
-                                size_sample       = size_sample, 
-                                mode              = 'image',
-                                mask              = None,
-                                seed              = seed,
-                                isflat            = False,
-                                istrain           = istrain,
-                                trans             = None,
-                                frac_train        = frac_train,
-                                exclude_labels    = exclude_labels, )
+config_dataset = ConfigDataset( fl_csv         = fl_csv,
+                                size_sample    = size_sample, 
+                                mode           = 'image',
+                                mask           = None,
+                                seed           = seed,
+                                isflat         = False,
+                                istrain        = istrain,
+                                trans          = None,
+                                frac_train     = frac_train,
+                                exclude_labels = exclude_labels, )
+
+# Define validation set...
+dataset = SequentialSet(config_dataset)
 
 # Preprocess dataset...
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
-dataset_preproc = DatasetPreprocess(config_dataset)
-dataset_preproc.apply()
-size_y, size_x = dataset_preproc.get_imgsize()
+img_orig, _     = dataset.get_img_and_label(0)
+dataset_preproc = DatasetPreprocess(img_orig)
+trans           = dataset_preproc.config_trans()
+dataset.trans   = trans
+img_trans       = trans(img_orig)
+
+# Report training set...
+config_dataset.trans = trans
+config_dataset.report()
 
 # Define validation set...
 config_dataset.report()
-dataset = SequentialSet(config_dataset)
 
 DRCCHKPT = "chkpts"
 prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
 
 # Config the encoder...
-dim_emb = 128
+dim_emb        = 128
+size_y, size_x = img_trans.shape
 config_encoder = ConfigEncoder( dim_emb = dim_emb,
                                 size_y  = size_y,
                                 size_x  = size_x,
@@ -116,7 +124,6 @@ config_validator = ConfigValidator( ## path_chkpt  = None,    # Use it for raw i
                                     shuffle     = False,
                                     isflat      = False,
                                     lr          = lr, )
-
 validator = EmbeddingCalculator(model, dataset, config_validator)
 embs = validator.run()
 
