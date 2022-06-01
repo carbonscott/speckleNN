@@ -2,35 +2,21 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from deepprojection.datasets.images import SPIImgDataset
-from deepprojection.datasets        import transform
-from deepprojection.utils           import downsample
-import inspect
+from deepprojection.datasets import transform
+from deepprojection.utils    import downsample
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class DatasetPreprocess:
 
-    def __init__(self, config_dataset): 
-        self.config_dataset = config_dataset
-        self.get_img()
+    def __init__(self, img): 
+        self.img = img
 
-
-    def get_img(self):
-        config_dataset = self.config_dataset
-
-        # Get image size...
-        spiimg = SPIImgDataset(config_dataset)
-        img    = spiimg.get_img_and_label(0)[0]
-
-        self.spiimg = spiimg
-        self.img    = img
+        logger.info(f"___/ Preprocess Settings \___")
 
         return None
-
-
-    def get_imgsize(self): 
-        self.get_img()
-
-        return self.img.shape
 
 
     def apply_mask(self):
@@ -53,7 +39,23 @@ class DatasetPreprocess:
         # Fetch the value...
         self.mask = mask
 
+        logger.info(f"Apply mask.")
+
         return None
+
+
+    def apply_crop(self):
+        crop_orig = 250, 250
+        crop_end  = 250 + 550, 250 + 550
+
+        trans_crop = transform.Crop(crop_orig, crop_end)
+
+        self.trans_crop = trans_crop
+
+        logger.info(f"Apply cropping.")
+
+        return None
+
 
 
     def apply_augmentation(self):
@@ -73,6 +75,8 @@ class DatasetPreprocess:
         # Add augmentation to dataset configuration...
         self.trans_random = trans_list
 
+        logger.info(f"Apply random patching.")
+
         return None
 
 
@@ -82,14 +86,43 @@ class DatasetPreprocess:
 
         self.resize = resize
 
+        logger.info(f"Apply downsampling. resize_y = {resize_y}, resize_x = {resize_x}")
+
         return None
 
 
+    def apply_threshold(self):
+        self.threshold_ok = True
+
+        return None
+
+
+
+    def trans_threshold(self, img, threshold):
+        img_norm = (img - img.mean()) / img.std()
+        img[img_norm <= threshold] = 0.0
+
+        logger.info(f"Apply thresholding on normalized image. threshold = {threshold}")
+
+        return img
+
+
+
     def trans(self, img, **kwargs):
+        # Apply mask...
+        if getattr(self, "mask", None) is not None: img *= self.mask
+
         # Apply random transform if available???
         if getattr(self, "trans_random", None) is not None:
             for trans in self.trans_random:
                 if isinstance(trans, (transform.RandomRotate, transform.RandomPatch)): img = trans(img)
+
+        # Apply crop...
+        if getattr(self, "trans_crop", None) is not None: img = self.trans_crop(img)
+
+        # Apply threshold...
+        if getattr(self, "threshold_ok", None) is not None: 
+            img = self.trans_threshold(img, threshold = 1)
 
         # Resize images...
         if getattr(self, "resize", None) is not None:
@@ -99,12 +132,11 @@ class DatasetPreprocess:
         return img
 
 
-    def apply(self):
-        self.apply_mask()
-        self.apply_augmentation()
+    def config_trans(self):
+        ## self.apply_mask()
+        ## self.apply_augmentation()
+        self.apply_crop()
+        ## self.apply_threshold()
         self.apply_downsample()
 
-        self.config_dataset.trans = self.trans
-
-        return None
-
+        return self.trans
