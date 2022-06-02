@@ -2,64 +2,69 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from deepprojection.datasets.mosaic import SPIMosaicDataset
 from deepprojection.datasets        import transform
 from deepprojection.utils           import downsample
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class DatasetPreprocess:
 
-    def __init__(self, config_dataset): 
-        self.config_dataset = config_dataset
-        self.get_panel()
-        self.get_mosaic()
+    def __init__(self, img): 
+        self.img = img
 
-
-    def get_panel(self):
-        config_dataset = self.config_dataset
-
-        # Get panel size...
-        spipanel = SPIMosaicDataset(config_dataset)
-        spipanel.IS_MOSAIC = False
-        panels, _ = spipanel.get_img_and_label(0)
-
-        panel = panels[0]
-
-        self.panel = panel
+        logger.info(f"___/ Preprocess Settings \___")
 
         return None
 
 
-    def get_mosaic(self):
-        config_dataset = self.config_dataset
-
-        # Get panel size...
-        spipanel = SPIMosaicDataset(config_dataset)
-        spipanel.IS_MOSAIC = True
-        img_mosaic, _ = spipanel.get_img_and_label(0)
-
-        self.img_mosaic = img_mosaic
-
-        return None
-
-
-    def get_panelsize(self): 
-        self.get_panel()
-
-        return self.panel.shape
-
-
-    def get_mosaicsize(self):
-        self.get_mosaic()
-
-        return self.img_mosaic.shape
+##    def get_panel(self):
+##        config_dataset = self.config_dataset
+##
+##        # Get panel size...
+##        spipanel = SPIMosaicDataset(config_dataset)
+##        spipanel.IS_MOSAIC = False
+##        panels, _ = spipanel.get_img_and_label(0)
+##
+##        panel = panels[0]
+##
+##        self.panel = panel
+##
+##        return None
+##
+##
+##    def get_mosaic(self):
+##        config_dataset = self.config_dataset
+##
+##        # Get panel size...
+##        spipanel = SPIMosaicDataset(config_dataset)
+##        spipanel.IS_MOSAIC = True
+##        img_mosaic, _ = spipanel.get_img_and_label(0)
+##
+##        self.img_mosaic = img_mosaic
+##
+##        return None
+##
+##
+##    def get_panelsize(self): 
+##        self.get_panel()
+##
+##        return self.panel.shape
+##
+##
+##    def get_mosaicsize(self):
+##        self.get_mosaic()
+##
+##        return self.img_mosaic.shape
 
 
     def apply_mask(self):
-        panel = self.panel
-        size_y, size_x = panel.shape
+        img = self.img
+        size_y, size_x = img.shape
 
         # Create a raw mask...
-        mask = np.ones_like(panel)
+        mask = np.ones_like(img)
 
         # Mask out the top 20%...
         top = 0.2
@@ -69,6 +74,8 @@ class DatasetPreprocess:
 
         # Fetch the value...
         self.mask = mask
+
+        logger.info(f"Apply mask.")
 
         return None
 
@@ -92,6 +99,8 @@ class DatasetPreprocess:
         # Add augmentation to dataset configuration...
         self.trans_random = trans_list
 
+        logger.info(f"Apply random patching.")
+
         return None
 
 
@@ -105,6 +114,8 @@ class DatasetPreprocess:
 
         self.trans_crop = trans_crop
 
+        logger.info(f"Apply cropping.")
+
         return None
 
 
@@ -115,11 +126,7 @@ class DatasetPreprocess:
 
         self.resize = resize
 
-        return None
-
-
-    def apply_standardize(self):
-        self.trans_standardize = { "1" : transform.hflip, "3" : transform.hflip }
+        logger.info(f"Apply downsampling. resize_y = {resize_y}, resize_x = {resize_x}")
 
         return None
 
@@ -149,13 +156,10 @@ class DatasetPreprocess:
 
 
 
-    def apply(self):
+    def config_trans(self):
         self.apply_mask()
-        ## self.apply_standardize()
         ## self.apply_augmentation()
         ## self.apply_crop()
         self.apply_downsample()
 
-        self.config_dataset.trans = self.trans
-
-        return None
+        return self.trans
