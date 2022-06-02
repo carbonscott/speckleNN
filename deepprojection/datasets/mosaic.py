@@ -51,17 +51,17 @@ class SPIMosaicDataset(Dataset):
     """
 
     def __init__(self, config):
-        fl_csv                 = getattr(config, 'fl_csv'           , None)
-        exclude_labels         = getattr(config, 'exclude_labels'   , None)
-        self.resize            = getattr(config, 'resize'           , None)
-        self.isflat            = getattr(config, 'isflat'           , None)
-        self.mode              = getattr(config, 'mode'             , None)
-        self.istrain           = getattr(config, 'istrain'          , None)
-        self.frac_train        = getattr(config, 'frac_train'       , None)    # Proportion/Fraction of training examples
-        self.seed              = getattr(config, 'seed'             , None)
-        self.panels_ordered    = getattr(config, 'panels_ordered'   , None)
-        self.trans             = getattr(config, 'trans'            , None)
-        self.IS_MOSAIC         = True                                          # It should be true in any case except when visualization of panels is really required.
+        fl_csv              = getattr(config, 'fl_csv'           , None)
+        exclude_labels      = getattr(config, 'exclude_labels'   , None)
+        self.resize         = getattr(config, 'resize'           , None)
+        self.isflat         = getattr(config, 'isflat'           , None)
+        self.mode           = getattr(config, 'mode'             , None)
+        self.istrain        = getattr(config, 'istrain'          , None)
+        self.frac_train     = getattr(config, 'frac_train'       , None)    # Proportion/Fraction of training examples
+        self.seed           = getattr(config, 'seed'             , None)
+        self.panels_ordered = getattr(config, 'panels_ordered'   , None)
+        self.trans          = getattr(config, 'trans'            , None)
+        self.MOSAIC_ON      = True                                          # It should be true in any case except when visualization of panels is really required.
 
         self._dataset_dict        = {}
         self.psana_imgreader_dict = {}
@@ -165,7 +165,7 @@ class SPIMosaicDataset(Dataset):
             imgs = self.trans(imgs)
 
         # Form a mosaic...
-        img_mosaic = self.form_mosaic(imgs) if self.IS_MOSAIC else imgs
+        img_mosaic = self.form_mosaic(imgs) if self.MOSAIC_ON else imgs
 
         return img_mosaic, label
 
@@ -571,3 +571,64 @@ class PsanaMosaic:
         imgs = read[mode](event)
 
         return imgs
+
+
+
+
+class OnlineDataset(Siamese):
+    """
+    For online leraning.  
+    """
+
+    def __init__(self, config):
+        super().__init__(config)
+
+        label_seqi_dict = self.label_seqi_dict
+
+        # Form triplet for ML training...
+        self.online_set = self._form_online_set(label_seqi_dict)
+
+        return None
+
+
+    def __len__(self):
+        return self.size_sample
+
+
+    def __getitem__(self, idx):
+        single_tuple = self.online_set[idx]
+        id_single    = single_tuple
+
+        # Read the single image...
+        img_single, label_single = super().__getitem__(id_single)
+        res = (img_single, label_single)
+
+        # Append to the result...
+        exp, run, event_num, label = self.imglabel_list[id_single]
+        title = f"{exp} {run} {int(event_num):>06d} {label}"
+        res += (title, )
+
+        return res
+
+
+    def _form_online_set(self, label_seqi_dict):
+        """ 
+        Creating `size_sample` simple set that consists of one image only. 
+        """
+        # Select two list of random labels following uniform distribution...
+        # For a single image
+        size_sample = self.size_sample
+        label_list  = random.choices(self.labels, k = size_sample)
+
+        # Form a simple set...
+        online_set = []
+        for label in label_list:
+            # Fetch a bucket of images...
+            bucket = label_seqi_dict[label]
+
+            # Randomly sample one...
+            id = random.choice(bucket)
+
+            online_set.append(id)
+
+        return online_set
