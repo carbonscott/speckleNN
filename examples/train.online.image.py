@@ -92,7 +92,7 @@ img_orig, _         = dataset_train.get_img_and_label(0)
 dataset_preproc     = DatasetPreprocess(img_orig)
 trans               = dataset_preproc.config_trans()
 dataset_train.trans = trans
-img_trans           = trans(img_orig)
+img_trans, _        = dataset_train.get_img_and_label(0)
 
 # Report training set...
 config_dataset.trans = trans
