@@ -488,7 +488,7 @@ class ImgLabelFileParser:
                 # Read each line/dataset
                 for line in lines:
                     # Fetch metadata of a dataset 
-                    event_num, label = line
+                    _, _, event_num, label = line
                     imglabel_dict[event_num] = label
 
             # Exclude some labels
