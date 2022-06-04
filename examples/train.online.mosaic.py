@@ -23,6 +23,7 @@ online_shuffle = True
 lr             = 1e-3
 frac_train     = 0.7
 seed           = 0
+panels_ordered = [1, 2]
 
 # Clarify the purpose of this experiment...
 hostname = socket.gethostname()
@@ -69,7 +70,6 @@ metalog.report()
 
 # [[[ DATASET ]]]
 # Config the dataset...
-panels_ordered = [1, 2, 3]
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
 ## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
 config_dataset = ConfigDataset( fl_csv         = fl_csv,
