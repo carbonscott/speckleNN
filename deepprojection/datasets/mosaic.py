@@ -51,16 +51,15 @@ class SPIMosaicDataset(Dataset):
     """
 
     def __init__(self, config):
-        fl_csv              = getattr(config, 'fl_csv'           , None)
-        exclude_labels      = getattr(config, 'exclude_labels'   , None)
-        self.resize         = getattr(config, 'resize'           , None)
-        self.isflat         = getattr(config, 'isflat'           , None)
-        self.mode           = getattr(config, 'mode'             , None)
-        self.istrain        = getattr(config, 'istrain'          , None)
-        self.frac_train     = getattr(config, 'frac_train'       , None)    # Proportion/Fraction of training examples
-        self.seed           = getattr(config, 'seed'             , None)
-        self.panels_ordered = getattr(config, 'panels_ordered'   , None)
-        self.trans          = getattr(config, 'trans'            , None)
+        fl_csv              = getattr(config, 'fl_csv'        , None)
+        exclude_labels      = getattr(config, 'exclude_labels', None)
+        self.isflat         = getattr(config, 'isflat'        , None)
+        self.psana_mode     = getattr(config, 'psana_mode'    , None)
+        self.istrain        = getattr(config, 'istrain'       , None)
+        self.frac_train     = getattr(config, 'frac_train'    , None)    # Proportion/Fraction of training examples
+        self.seed           = getattr(config, 'seed'          , None)
+        self.panels_ordered = getattr(config, 'panels_ordered', None)
+        self.trans          = getattr(config, 'trans'         , None)
         self.MOSAIC_ON      = True                                          # It should be true in any case except when visualization of panels is really required.
 
         self._dataset_dict        = {}
@@ -152,7 +151,7 @@ class SPIMosaicDataset(Dataset):
         # Read image...
         exp, run, event_num, label = self.imglabel_list[idx]
         basename = (exp, run)
-        imgs = self.psana_imgreader_dict[basename].get(int(event_num), mode = self.mode)
+        imgs = self.psana_imgreader_dict[basename].get(int(event_num), mode = self.psana_mode)
 
         # Filter imgs...
         imgs = self.filter_panels(imgs)
