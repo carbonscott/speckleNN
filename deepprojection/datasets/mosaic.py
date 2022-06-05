@@ -574,6 +574,44 @@ class PsanaMosaic:
 
 
 
+class SequentialSet(Siamese):
+    """
+    Sequential set feeds one example to model at a time.  The purpose is simply to
+    encode each example in imglabel_list.  
+    """
+
+    def __init__(self, config):
+        super().__init__(config)
+
+        # Create a lookup table for locating the sequence number (seqi) based on a label...
+        self.label_seqi_orig_dict = {}
+        for seqi, (_, _, _, label) in enumerate(self.imglabel_orig_list):
+            # Keep track of label and its seqi
+            if not label in self.label_seqi_orig_dict: self.label_seqi_orig_dict[label] = [seqi]
+            else                                     : self.label_seqi_orig_dict[label].append(seqi)
+
+        return None
+
+
+    def __len__(self):
+        return len(self.imglabel_list)
+
+
+    def __getitem__(self, idx):
+        # Read the single image...
+        img, _ = super().__getitem__(idx)
+        res = (img, )
+
+        # Append metadata to the result list...
+        exp, run, event_num, label = self.imglabel_orig_list[idx]
+        title = f"{exp} {run} {int(event_num):>06d} {label}"
+        res += (title, )
+
+        return res
+
+
+
+
 class OnlineDataset(Siamese):
     """
     For online leraning.  
