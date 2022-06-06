@@ -329,6 +329,7 @@ class EmbeddingCalculator:
 
         # Train each batch...
         batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test))
+        counter_item = 0
         for batch_id, entry in batch:
             # Unpack entry...
             # Not a good design, but it's okay for now (03/03/2020)
@@ -361,8 +362,10 @@ class EmbeddingCalculator:
                     msg = title[i]
 
                     # Return a line for each batch...
-                    log_header = f"DATA - {batch_id * len(img_single) + i:06d} - "
+                    log_header = f"DATA - {counter_item:06d} - "
                     log_msg = log_header + msg
                     logger.info(log_msg)
+
+                    counter_item += 1
 
         return imgs
