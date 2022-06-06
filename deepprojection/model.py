@@ -444,16 +444,28 @@ class SiameseModelCompare(nn.Module):
         self.encoder = config.encoder
 
 
-    def forward(self, img_anchor, img_second):
-        # Encode images...
-        img_anchor_embed = self.encoder.encode(img_anchor)
-        img_second_embed = self.encoder.encode(img_second)
+    def forward(self, batch_img_query, batch_img_test):
+        '''
+        Parameters
+        ----------
+        batch_img_query : torch tensor, (num_query = 1     , size_batch, size_image2d)
+        batch_img_test  : torch tensor, (num_test_per_query, size_batch, size_image2d)
+        '''
 
-        # Calculate the RMSD between anchor and second...
-        img_diff           = img_anchor_embed - img_second_embed
-        rmsd_anchor_second = torch.sum(img_diff * img_diff, dim = -1)
+        # Encode the query image...
+        # batch_emb_query : (num_test_per_query, size_batch, len_emb)
+        batch_emb_query = torch.stack( [ self.encoder.encode(each_img) for each_img in batch_img_query ] )
 
-        return img_anchor_embed, img_second_embed, rmsd_anchor_second.mean()
+        # batch_emb_test  : (num_test_per_query, size_batch, len_emb)
+        batch_emb_test = torch.stack( [ self.encoder.encode(each_img) for each_img in batch_img_test ] )
+
+        # Calculate the RMSD between two embds -- query and test...
+        # emb_diff     : (num_test_per_query, size_batch, len_emb)
+        # dist_squared : (num_test_per_query, size_batch, )
+        batch_emb_diff     = batch_emb_query - batch_emb_test
+        batch_dist_squared = torch.sum(batch_emb_diff * batch_emb_diff, dim = -1)
+
+        return batch_emb_query, batch_emb_test, batch_dist_squared
 
 
 

@@ -256,33 +256,41 @@ class MultiwayQueryValidator:
             # Not a good design, but it's okay for now (03/03/2020)
             # Shape of entry: (unpack_dim, batch, internal_shape)
             # Internal shape of image is 2d, string is 1d
-            img_list   = entry[                 : len(entry) // 2 ]
-            title_list = entry[ len(entry) // 2 :                 ]
+            batch_img_list = entry[                 : len(entry) // 2 ]
+            batch_str_list = entry[ len(entry) // 2 :                 ]
 
-            # Assign returned subcategory for img and title...
-            img_query  , imgs_test   = img_list[0]  , img_list[1:]
-            title_query, titles_test = title_list[0], title_list[1:]
+            # Assign returned subcategory for img and str...
+            # batch_img_query : (num_query = 1     , size_batch, size_image2d)
+            # batch_img_test  : (num_test_per_query, size_batch, size_image2d)
+            # batch_str_query : (num_query = 1     , size_batch, size_str)
+            # batch_str_test  : (num_test_per_query, size_batch, size_str)
+            batch_img_query, batch_img_test = batch_img_list[0:1], batch_img_list[1:]
+            batch_str_query, batch_str_test = batch_str_list[0:1], batch_str_list[1:]
 
             # Load imgs to gpu...
-            img_query = img_query.to(self.device)
-            imgs_test = [ img_test.to(self.device) for img_test in imgs_test ]
+            batch_img_query = torch.stack(batch_img_query).to(self.device)
+            batch_img_test  = torch.stack(batch_img_test).to(self.device)
 
+            # Calculate the squared distance between embeddings...
+            # (size_batch, size_image) => (size_batch, len_emb)
             with torch.no_grad():
-                # Look at each example in a batch...
-                for i in range(len(img_query)):
-                    # Compare the query against EACH test image in the subcategory (each label)...
-                    msg = []
-                    for img_test, title_test in zip(imgs_test, titles_test):
-                        _, _, dist = self.model.forward(img_query[i].unsqueeze(0), img_test[i].unsqueeze(0))
+                # batch_emb_query : (num_test_per_query, size_batch, len_emb)
+                # batch_dist      : (num_test_per_query, size_batch         )
+                batch_emb_query, _, batch_dist = self.model.forward(batch_img_query, batch_img_test)
+                batch_dist_numpy = batch_dist.cpu().detach().numpy()
 
-                        dist_val = dist.cpu().detach().numpy()
-                        msg.append(f"{title_test[i]} : {dist_val:12.8f}")
+            # Go through each item in a batch...
+            num_test_per_query, size_batch = batch_img_test.shape[:2]
+            for i in range(size_batch):
+                # Go through each test against the query...
+                msg = [ f"{batch_str_test[j][i]} : {batch_dist_numpy[j][i]:12.8f}" for j in range(num_test_per_query) ]
 
+                # Return a line for each batch...
+                log_header = f"DATA - {batch_str_query[0][i]}, "
+                log_msg = log_header + ", ".join(msg)
+                logger.info(log_msg)
 
-                    # Return a line for each batch...
-                    log_header = f"DATA - {title_query[i]}, "
-                    log_msg = log_header + ", ".join(msg)
-                    logger.info(log_msg)
+        return None
 
 
 
