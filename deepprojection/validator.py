@@ -343,37 +343,37 @@ class EmbeddingCalculator:
             # Not a good design, but it's okay for now (03/03/2020)
             # Shape of entry: (unpack_dim, batch, internal_shape)
             # Internal shape of image is 2d, string is 1d
-            img_single = entry[0]
-            title      = entry[1]
+            batch_img = entry[0]
+            batch_str = entry[1]
 
             # Load imgs to gpu...
-            img_single = img_single.to(self.device)
+            # batch_img : torch.Tensor, (size_batch, size_image2d)
+            batch_img = batch_img.to(self.device)
 
             with torch.no_grad():
                 # Calculate image embedding for this batch...
-                img_embed = self.model.forward(img_single)
+                # batch_emb : torch.Tensor, (size_batch, len_emb)
+                batch_emb = self.model.forward(batch_img)
 
-                # Save the embedding...
-                if batch_id == 0:
-                    len_emb,  = img_embed.shape[-1:]
-                    num_imgs  = min(len(img_single) * len(batch), len(dataset_test))
-                    imgs      = torch.zeros(num_imgs, len_emb)
-                    rng_start = 0
+            # Save the embedding...
+            size_batch, len_emb = batch_emb.shape
+            if batch_id == 0:
+                num_imgs  = len(dataset_test)
+                dataset_emb      = torch.zeros(num_imgs, len_emb)
+                rng_start = 0
+            dataset_emb[rng_start : rng_start + size_batch] = batch_emb
+            rng_start += size_batch
 
-                batch_size = len(img_embed)
-                imgs[rng_start : rng_start + batch_size] = img_embed
-                rng_start += batch_size
+            # Logging...
+            for i in range(size_batch):
+                # Fetch the descriptor...
+                msg = batch_str[i]
 
-                # Logging...
-                for i in range(len(img_single)):
-                    # Fetch the descriptor...
-                    msg = title[i]
+                # Return a line for each batch...
+                log_header = f"DATA - {counter_item:06d} - "
+                log_msg = log_header + msg
+                logger.info(log_msg)
 
-                    # Return a line for each batch...
-                    log_header = f"DATA - {counter_item:06d} - "
-                    log_msg = log_header + msg
-                    logger.info(log_msg)
+                counter_item += 1
 
-                    counter_item += 1
-
-        return imgs
+        return dataset_emb
