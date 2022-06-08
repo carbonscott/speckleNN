@@ -17,7 +17,7 @@ import socket
 timestamp = "2022_0603_2226_44"
 
 # Set up parameters for an experiment...
-fl_csv         = 'datasets.comp_emb.csv'
+fl_csv         = 'datasets.comp_emb.test.csv'
 size_sample    = None
 size_batch     = 40
 online_shuffle = True
@@ -134,4 +134,17 @@ prefixpath_emb = os.path.join(drc_cwd, DRCEMB)
 if not os.path.exists(prefixpath_emb): os.makedirs(prefixpath_emb)
 path_emb = os.path.join(prefixpath_emb, fl_emb)
 
-torch.save(embs, path_emb)
+fl_emb_avg_dict = f"{basename}.emb_avg_dict.pt"
+path_emb_avg_dict = os.path.join(prefixpath_emb, fl_emb_avg_dict)
+
+fl_label_seqi_orig_dict = f"{basename}.label_seqi_orig_dict.pt"
+path_label_seqi_orig_dict = os.path.join(prefixpath_emb, fl_label_seqi_orig_dict)
+
+# ___/ AVERAGING EMBEDDING PER CLASS \___
+emb_avg_dict = {}
+for k, v in dataset.label_seqi_orig_dict.items():
+    emb_avg_dict[k] = embs[v].mean(dim = 0)    # Mean along sample dim
+
+torch.save(embs                        , path_emb                 )
+torch.save(emb_avg_dict                , path_emb_avg_dict        )
+torch.save(dataset.label_seqi_orig_dict, path_label_seqi_orig_dict)
