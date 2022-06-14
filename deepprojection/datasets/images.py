@@ -705,7 +705,7 @@ class OnlineDataset(Siamese):
         count_per_label_dict = {}
         for idx in self.online_set:
             exp, run, event_num, label = self.imglabel_list[idx]
-            logger.info(f"ENTRIES - {exp:12s} {int(run):04d}.{int(event_num):06d} {label:2s}")
+            logger.info(f"ENTRIES - {exp:12s} {int(run):04d} {int(event_num):06d} {label:2s}")
 
             if not label in count_per_label_dict: count_per_label_dict[label]  = 1
             else                                : count_per_label_dict[label] += 1
