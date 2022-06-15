@@ -13,11 +13,11 @@ from image_preprocess                import DatasetPreprocess
 import socket
 
 # Create a timestamp to name the log file...
-timestamp = "2022_0520_0748_45"
+timestamp = "2022_0614_1702_04"
 
 # Set up parameters for an experiment...
 fl_csv         = 'datasets.csv'
-size_sample    = 2000
+size_sample    = 1000
 size_batch     = 40
 online_shuffle = True
 lr             = 1e-3
@@ -62,7 +62,8 @@ logger = logging.getLogger(__name__)
 
 # Config the dataset...
 ## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
-exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
+exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
+## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
 config_dataset = ConfigDataset( fl_csv         = fl_csv,
                                 size_sample    = size_sample, 
                                 mode           = 'image',
@@ -74,21 +75,27 @@ config_dataset = ConfigDataset( fl_csv         = fl_csv,
                                 frac_train     = frac_train,
                                 exclude_labels = exclude_labels, )
 
+# Define the training set
+dataset_validate = MultiwayQueryset(config_dataset)
+
 # Preprocess dataset...
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
-dataset_preproc = DatasetPreprocess(config_dataset)
-dataset_preproc.apply()
-size_y, size_x = dataset_preproc.get_imgsize()
+img_orig, _         = dataset_validate.get_img_and_label(0)
+dataset_preproc     = DatasetPreprocess(img_orig)
+trans               = dataset_preproc.config_trans()
+dataset_validate.trans = trans
+img_trans, _        = dataset_validate.get_img_and_label(0)
 
 # Define validation set...
+config_dataset.trans = trans
 config_dataset.report()
-dataset_validate = MultiwayQueryset(config_dataset)
 
 DRCCHKPT = "chkpts"
 prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
 
 # Config the encoder...
 dim_emb = 128
+size_y, size_x = img_trans.shape
 config_encoder = ConfigEncoder( dim_emb = dim_emb,
                                 size_y  = size_y,
                                 size_x  = size_x,

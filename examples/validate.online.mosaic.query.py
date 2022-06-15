@@ -12,17 +12,17 @@ from mosaic_preprocess               import DatasetPreprocess
 import socket
 
 # Create a timestamp to name the log file...
-timestamp = "2022_0603_2226_44"
+timestamp = "2022_0614_2306_10"
 
 # Set up parameters for an experiment...
 fl_csv         = 'datasets.simple.csv'
-size_sample    = 2000
+size_sample    = 1000
 size_batch     = 40
 online_shuffle = True
 lr             = 1e-3
 frac_train     = 0.0
 seed           = 0
-panels_ordered = [1, 2]
+panels_ordered = [0, 1]
 
 # Comment this verification...
 hostname = socket.gethostname()
@@ -66,6 +66,7 @@ metalog.report()
 
 # Config the dataset...
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
+## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELPi, ConfigDataset.BACKGROUND ]
 config_dataset = ConfigDataset( fl_csv         = fl_csv,
                                 size_sample    = size_sample, 
                                 psana_mode     = 'calib',

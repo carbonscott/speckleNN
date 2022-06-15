@@ -16,14 +16,14 @@ import socket
 
 # Set up parameters for an experiment...
 fl_csv         = 'datasets.simple.csv'
-size_sample    = 2000
+size_sample    = 200
 size_batch     = 20
 alpha          = 2.0
 online_shuffle = True
 lr             = 1e-3
 frac_train     = 0.7
 seed           = 0
-panels_ordered = [1, 2]
+panels_ordered = [0, 1]
 
 # Clarify the purpose of this experiment...
 hostname = socket.gethostname()
@@ -70,11 +70,12 @@ metalog.report()
 
 # [[[ DATASET ]]]
 # Config the dataset...
-exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
+## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
+exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
 ## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
 config_dataset = ConfigDataset( fl_csv         = fl_csv,
                                 size_sample    = size_sample, 
-                                mode           = 'calib',
+                                psana_mode     = 'calib',
                                 mask           = None,
                                 resize         = None,
                                 seed           = seed,
@@ -98,6 +99,8 @@ dataset_preproc         = DatasetPreprocess(panel_orig)
 trans                   = dataset_preproc.config_trans()
 dataset_train.trans     = trans
 mosaic_trans, _         = dataset_train.get_img_and_label(0)
+
+dataset_train.report()
 
 # Report training set...
 config_dataset.trans = trans

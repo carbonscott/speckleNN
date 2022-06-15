@@ -16,7 +16,7 @@ import socket
 
 # Set up parameters for an experiment...
 fl_csv         = 'datasets.simple.csv'
-size_sample    = 2000
+size_sample    = 200
 size_batch     = 20
 alpha          = 2.0
 online_shuffle = True
@@ -66,10 +66,10 @@ logger = logging.getLogger(__name__)
 metalog = MetaLog( comments = comments )
 metalog.report()
 
-
 # [[[ DATASET ]]]
 # Config the dataset...
-exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
+## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
+exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
 ## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
 config_dataset = ConfigDataset( fl_csv         = fl_csv,
                                 size_sample    = size_sample, 
@@ -93,6 +93,8 @@ dataset_preproc     = DatasetPreprocess(img_orig)
 trans               = dataset_preproc.config_trans()
 dataset_train.trans = trans
 img_trans, _        = dataset_train.get_img_and_label(0)
+
+dataset_train.report()
 
 # Report training set...
 config_dataset.trans = trans
