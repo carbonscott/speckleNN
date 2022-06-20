@@ -9,7 +9,7 @@ import matplotlib.transforms   as mtransforms
 import matplotlib.font_manager as font_manager
 import numpy as np
 import os
-from deepprojection.datasets.cxi_v1 import SPIImgDataset, ConfigDataset
+from deepprojection.datasets.cxi_v1 import SPIImgDataset, SequentialSet, ConfigDataset
 from cxi_v1_preprocess import DatasetPreprocess
 
 class DisplaySPIImg():
@@ -114,19 +114,21 @@ class DisplaySPIImg():
 
 
 # Config the dataset...
-exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
+## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
+exclude_labels = []
 config_dataset = ConfigDataset( fl_csv         = '/reg/data/ana03/scratch/cwang31/play/hit-labeler/labels/2022_0619_1540_27.cxidb_10.label.csv',
                                 drc_root       = '/reg/data/ana03/scratch/cwang31/amo10510/',
-                                size_sample    = 200, 
+                                size_sample    = None, 
                                 seed           = 0,
                                 isflat         = False,
                                 istrain        = True,
                                 trans          = None,
-                                frac_train     = 0.7,
+                                frac_train     = 1.0,
                                 exclude_labels = exclude_labels, )
 
 # Create image manager...
-spiimg = SPIImgDataset(config_dataset)
+## spiimg = SPIImgDataset(config_dataset)
+spiimg = SequentialSet(config_dataset)
 img, _ = spiimg[0]
 
 # Preprocess dataset...
@@ -135,7 +137,7 @@ dataset_preproc = DatasetPreprocess(img)
 trans = dataset_preproc.config_trans()
 
 # Read an image...
-for idx in range(762,763):
+for idx in range(369,369+20):
     # Don't apply those changes from configuration...
     spiimg.trans = None
     img, _ = spiimg[idx]
