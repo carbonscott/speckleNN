@@ -621,7 +621,7 @@ class SequentialSet(Siamese):
 
 
     def __len__(self):
-        return len(self.imglabel_list)
+        return len(self.imglabel_orig_list)
 
 
     def __getitem__(self, idx):
