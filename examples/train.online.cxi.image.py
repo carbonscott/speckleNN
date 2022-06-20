@@ -69,7 +69,7 @@ metalog.report()
 
 # [[[ DATASET ]]]
 # Config the dataset...
-exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
+exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
 config_dataset = ConfigDataset( fl_csv         = fl_csv,
                                 drc_root       = drc_root,
                                 size_sample    = size_sample,
