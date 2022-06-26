@@ -51,16 +51,10 @@ class MacroMetric:
 
 
 # File to analyze...
-timestamp   = "2022_0508_2156_54"
-is_testsets = False
-
-# Validate mode...
-istrain = False
-mode_validate = 'train' if istrain else 'test'
+timestamp = "2022_0625_1704_31"
 
 # Locate the path of the log file...
-fl_log   = f'{timestamp}.validate.query.{mode_validate}'
-if is_testsets: fl_log = f"{fl_log}.testsets"
+fl_log   = f'{timestamp}.validate.query.test'
 fl_log   = f'{fl_log}.log'
 drc_log  = 'logs'
 path_log = os.path.join(drc_log, fl_log)

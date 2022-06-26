@@ -136,7 +136,7 @@ def get_loss(lines, istrain = True):
 
 
 
-timestamp = "2022_0508_2226_47"
+timestamp = "2022_0625_1704_31"
 
 drc_log  = 'logs'
 ## fl_log   = f"{timestamp}.train_validate.log"

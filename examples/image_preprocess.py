@@ -61,12 +61,12 @@ class DatasetPreprocess:
     def apply_augmentation(self):
         # Random rotation...
         angle = None
-        center = (524, 506)
+        center = (45, 45)
         trans_random_rotate = transform.RandomRotate(angle = angle, center = center)
 
         # Random patching...
         num_patch = 5
-        size_patch_y, size_patch_x = 70, 500
+        size_patch_y, size_patch_x = 6, 50
         trans_random_patch  = transform.RandomPatch(num_patch             , size_patch_y     , size_patch_x, 
                                                     var_patch_y    = 0.2  , var_patch_x    = 0.2, 
                                                     is_return_mask = False, is_random_flip = True)
@@ -75,7 +75,7 @@ class DatasetPreprocess:
         # Add augmentation to dataset configuration...
         self.trans_random = trans_list
 
-        logger.info(f"Apply random patching.")
+        logger.info(f"Apply random patching. angle = {angle}, center = {center}, size_patch_y = {size_patch_y}, size_patch_x = {size_patch_x}")
 
         return None
 
@@ -112,11 +112,6 @@ class DatasetPreprocess:
         # Apply mask...
         if getattr(self, "mask", None) is not None: img *= self.mask
 
-        # Apply random transform if available???
-        if getattr(self, "trans_random", None) is not None:
-            for trans in self.trans_random:
-                if isinstance(trans, (transform.RandomRotate, transform.RandomPatch)): img = trans(img)
-
         # Apply crop...
         if getattr(self, "trans_crop", None) is not None: img = self.trans_crop(img)
 
@@ -129,14 +124,19 @@ class DatasetPreprocess:
             bin_row, bin_col = self.resize
             img = downsample(img, bin_row, bin_col, mask = None)
 
+        # Apply random transform if available???
+        if getattr(self, "trans_random", None) is not None:
+            for trans in self.trans_random:
+                if isinstance(trans, (transform.RandomRotate, transform.RandomPatch)): img = trans(img)
+
         return img
 
 
     def config_trans(self):
         ## self.apply_mask()
-        ## self.apply_augmentation()
         self.apply_crop()
         ## self.apply_threshold()
         self.apply_downsample()
+        self.apply_augmentation()
 
         return self.trans

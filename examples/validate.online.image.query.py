@@ -9,20 +9,26 @@ from deepprojection.model            import SiameseModelCompare   , ConfigSiames
 from deepprojection.validator        import MultiwayQueryValidator, ConfigValidator
 from deepprojection.encoders.convnet import Hirotaka0122          , ConfigEncoder
 from deepprojection.utils            import MetaLog
-from image_preprocess                import DatasetPreprocess
+## from image_preprocess                import DatasetPreprocess
+from image_no_reg_preprocess import DatasetPreprocess
 import socket
 
 # Create a timestamp to name the log file...
-timestamp = "2022_0614_1702_04"
+timestamp = "2022_0625_1704_31"
 
 # Set up parameters for an experiment...
-fl_csv         = 'datasets.csv'
-size_sample    = 1000
+fl_csv         = 'datasets.simple.csv'
+num_query      = 1000
+frac_train     = 0.25
+frac_validate  = None
 size_batch     = 40
 online_shuffle = True
 lr             = 1e-3
-frac_train     = 0.7
+dataset_usage  = 'test'
 seed           = 0
+
+exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
+## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.MULTI, ConfigDataset.BACKGROUND ]
 
 # Comment this verification...
 hostname = socket.gethostname()
@@ -31,22 +37,18 @@ comments = f"""
 
             Online training.
 
-            Sample size    : {size_sample}
+            Number (query) : {num_query}
             Batch  size    : {size_batch}
             Online shuffle : {online_shuffle}
             lr             : {lr}
 
             """
 
-# Validate mode...
-istrain = False
-mode_validate = 'train' if istrain else 'test'
-
 # Configure the location to run the job...
 drc_cwd = os.getcwd()
 
 # Set up the log file...
-fl_log         = f"{timestamp}.validate.query.{mode_validate}.log"
+fl_log         = f"{timestamp}.validate.query.test.log"
 DRCLOG         = "logs"
 prefixpath_log = os.path.join(drc_cwd, DRCLOG)
 if not os.path.exists(prefixpath_log): os.makedirs(prefixpath_log)
@@ -61,16 +63,13 @@ logging.basicConfig( filename = path_log,
 logger = logging.getLogger(__name__)
 
 # Config the dataset...
-## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
-exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
-## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
 config_dataset = ConfigDataset( fl_csv         = fl_csv,
-                                size_sample    = size_sample, 
+                                size_sample    = num_query,
                                 mode           = 'image',
                                 resize         = None,
                                 seed           = seed,
                                 isflat         = False,
-                                istrain        = istrain,
+                                dataset_usage  = dataset_usage,
                                 trans          = None,
                                 frac_train     = frac_train,
                                 exclude_labels = exclude_labels, )
