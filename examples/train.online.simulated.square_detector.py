@@ -15,14 +15,18 @@ from datetime import datetime
 import socket
 
 # Set up parameters for an experiment...
-## fl_csv         = "simulated.square_detector.reduced.datasets.csv"
-fl_csv         = "simulated.square_detector.datasets.csv"
-size_sample    = 2000
-size_batch     = 40
-alpha          = 2.0
-online_shuffle = True
-lr             = 1e-3
-seed           = 0
+fl_csv               = "simulated.square_detector.datasets.pdb_sampled.30.csv"
+## fl_csv               = "simulated.square_detector.datasets.6Q5U.csv"
+size_sample_train    = 2000
+size_sample_validate = 2000
+size_batch           = 100
+frac_train           = 0.5
+frac_validate        = None
+dataset_usage        = 'train'
+alpha                = 2.0
+online_shuffle       = True
+lr                   = 1e-3
+seed                 = 0
 
 # Clarify the purpose of this experiment...
 hostname = socket.gethostname()
@@ -31,11 +35,12 @@ comments = f"""
 
             Online training.
 
-            Sample size    : {size_sample}
-            Batch  size    : {size_batch}
-            Alpha          : {alpha}
-            Online shuffle : {online_shuffle}
-            lr             : {lr}
+            Sample size (train)    : {size_sample_train}
+            Sample size (validate) : {size_sample_train}
+            Batch  size            : {size_batch}
+            Alpha                  : {alpha}
+            Online shuffle         : {online_shuffle}
+            lr                     : {lr}
 
             """
 
@@ -71,27 +76,35 @@ metalog.report()
 # Config the dataset...
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
 config_dataset = ConfigDataset( fl_csv         = fl_csv,
-                                size_sample    = size_sample, 
-                                resize         = None,
+                                size_sample    = size_sample_train, 
                                 seed           = seed,
                                 isflat         = False,
-                                istrain        = True,
-                                frac_train     = 0.7,
+                                dataset_usage  = dataset_usage,
+                                frac_train     = frac_train,
+                                frac_validate  = frac_validate,
                                 trans          = None,
                                 exclude_labels = exclude_labels, )
 
-# Preprocess dataset...
-# Data preprocessing can be lengthy and defined in dataset_preprocess.py
-dataset_preproc = DatasetPreprocess(config_dataset)
-dataset_preproc.apply()
-size_y, size_x = dataset_preproc.get_imgsize()
-
 # Define training set...
-config_dataset.report()
 dataset_train = OnlineDataset(config_dataset)
 
+# Preprocess dataset...
+# Data preprocessing can be lengthy and defined in dataset_preprocess.py
+img_orig, _         = dataset_train.get_img_and_label(0)
+dataset_preproc     = DatasetPreprocess(img_orig)
+trans               = dataset_preproc.config_trans()
+dataset_train.trans = trans
+img_trans, _        = dataset_train.get_img_and_label(0)
+
+dataset_train.report(verbose = False)
+
+# Report training set...
+config_dataset.trans = trans
+config_dataset.report()
+
 # Define validation set...
-config_dataset.istrain = False
+config_dataset.size_sample   = size_sample_validate
+config_dataset.dataset_usage = 'validate'
 config_dataset.report()
 dataset_validate = OnlineDataset(config_dataset)
 
@@ -99,6 +112,7 @@ dataset_validate = OnlineDataset(config_dataset)
 # [[[ IMAGE ENCODER ]]]
 # Config the encoder...
 dim_emb = 128
+size_y, size_x = img_trans.shape
 config_encoder = ConfigEncoder( dim_emb = dim_emb,
                                 size_y  = size_y,
                                 size_x  = size_x,
@@ -135,8 +149,6 @@ config_train = ConfigTrainer( path_chkpt     = path_chkpt,
                               online_shuffle = online_shuffle,
                               is_logging     = False,
                               method         = 'semi-hard', 
-                              ## method         = 'random-semi-hard', 
-                              ## method         = 'random', 
                               lr             = lr, )
 
 # Training...
@@ -152,8 +164,6 @@ config_validator = ConfigValidator( path_chkpt     = None,
                                     online_shuffle = online_shuffle,
                                     is_logging     = False,
                                     method         = 'semi-hard', 
-                                    ## method         = 'random-semi-hard', 
-                                    ## method         = 'random', 
                                     lr             = lr, 
                                     isflat         = False, )  # Conv2d input needs one more dim for batch
 

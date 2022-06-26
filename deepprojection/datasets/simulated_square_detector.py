@@ -1,14 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Load PyTorch
 import torch
-from torch.utils.data import Dataset
-
-# Load LCLS data management and LCLS data access (through detector) module
 import psana
-
-# Load misc modules
 import numpy as np
 import random
 import json
@@ -16,10 +10,10 @@ import csv
 import h5py
 import os
 import inspect
-
 import logging
 
-from deepprojection.utils import set_seed
+from torch.utils.data import Dataset
+from deepprojection.utils import set_seed, split_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -46,21 +40,21 @@ class ConfigDataset:
 
 
 
-class SPIPanelDataset(Dataset):
+class SPIImgDataset(Dataset):
     """
     SPI images are collected from multiple datasets specified in the input csv
     file. All images are organized in a plain list.  
     """
 
     def __init__(self, config):
-        self.fl_csv           = getattr(config, 'fl_csv'           , None)
-        self.exclude_labels   = getattr(config, 'exclude_labels'   , None)
-        self.resize           = getattr(config, 'resize'           , None)
-        self.isflat           = getattr(config, 'isflat'           , None)
-        self.istrain          = getattr(config, 'istrain'          , None)
-        self.frac_train       = getattr(config, 'frac_train'       , None)    # Proportion/Fraction of training examples
-        self.seed             = getattr(config, 'seed'             , None)
-        self.trans            = getattr(config, 'trans'            , None)
+        self.fl_csv         = getattr(config, 'fl_csv'        , None)
+        self.exclude_labels = getattr(config, 'exclude_labels', None)
+        self.isflat         = getattr(config, 'isflat'        , None)
+        self.dataset_usage  = getattr(config, 'dataset_usage' , None)    # train, validate, test, all
+        self.frac_train     = getattr(config, 'frac_train'    , None)    # Proportion/Fraction of training examples
+        self.frac_validate  = getattr(config, 'frac_validate' , None)    # Proportion/Fraction of validation examples
+        self.seed           = getattr(config, 'seed'          , None)
+        self.trans          = getattr(config, 'trans'         , None)
 
         self.h5_path_dict         = {}
         self.psana_imgreader_dict = {}
@@ -110,18 +104,38 @@ class SPIPanelDataset(Dataset):
             for id_frame in range(hit_type_dict[hit_type]):
                 self.imglabel_orig_list.append( (fl_base, id_frame, label) )
 
-        # Split the original image list into training set and test set...
-        num_list  = len(self.imglabel_orig_list)
-        num_train = int(self.frac_train * num_list)
+        ## # Split the original image list into training set and test set...
+        ## num_list  = len(self.imglabel_orig_list)
+        ## num_train = int(self.frac_train * num_list)
 
-        # Get training examples
-        imglabel_train_list = random.sample(self.imglabel_orig_list, num_train)
+        ## # Get training examples
+        ## imglabel_train_list = random.sample(self.imglabel_orig_list, num_train)
 
-        # Get test examples
-        imglabel_test_list = set(self.imglabel_orig_list) - set(imglabel_train_list)
-        imglabel_test_list = sorted(list(imglabel_test_list))
+        ## # Get test examples
+        ## imglabel_test_list = set(self.imglabel_orig_list) - set(imglabel_train_list)
+        ## imglabel_test_list = sorted(list(imglabel_test_list))
 
-        self.imglabel_list = imglabel_train_list if self.istrain else imglabel_test_list
+        ## self.imglabel_list = imglabel_train_list if self.istrain else imglabel_test_list
+
+        # Split original dataset into training and holdout...
+        imglabel_train_list, imglabel_holdout_list = split_dataset(self.imglabel_orig_list, self.frac_train)
+
+        # Calculate the percentage of validation in the whole holdout set...
+        frac_holdout = 1.0 - self.frac_train
+        frac_validate_in_holdout = self.frac_validate / frac_holdout if self.frac_validate is not None else 0.5
+
+        # Split holdout dataset into validation and test...
+        imglabel_valid_list, imglabel_test_list = split_dataset(imglabel_holdout_list, frac_validate_in_holdout)
+
+        # Choose which dataset is going to be used, defaults to original set...
+        dataset_by_usage_dict = {
+            'train'    : imglabel_train_list,
+            'validate' : imglabel_valid_list,
+            'test'     : imglabel_test_list,
+        }
+        self.imglabel_list = self.imglabel_orig_list
+        if self.dataset_usage in dataset_by_usage_dict:
+            self.imglabel_list = dataset_by_usage_dict[self.dataset_usage]
 
         return None
 
@@ -165,7 +179,7 @@ class SPIPanelDataset(Dataset):
 
 
 
-class Siamese(SPIPanelDataset):
+class Siamese(SPIImgDataset):
 
     def __init__(self, config):
         super().__init__(config)
@@ -562,3 +576,20 @@ class OnlineDataset(Siamese):
             online_set.append(id)
 
         return online_set
+
+
+    def report(self, verbose = False):
+        # Log the number of images for each label...
+        logger.info("___/ List of entries in dataset \___")
+
+        count_per_label_dict = {}
+        for idx in self.online_set:
+            fl_base, id_frame, label = self.imglabel_list[idx]
+            if verbose: 
+                logger.info(f"ENTRIES - {fl_base:16s} {int(id_frame):06d} {label:2s}")
+
+            if not label in count_per_label_dict: count_per_label_dict[label]  = 1
+            else                                : count_per_label_dict[label] += 1
+
+        for label, count in count_per_label_dict.items():
+            logger.info(f"COUNTS - label {label} : {count}")
