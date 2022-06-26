@@ -153,6 +153,8 @@ def downsample(assem, bin_row=2, bin_col=2, mask=None):
     return warr
 
 
+
+
 def read_log(file):
     '''Return all lines in the user supplied parameter file without comments.
     '''
@@ -201,3 +203,22 @@ def calc_dmat(emb1_list, emb2_list, is_sqrt = True):
     if is_sqrt: dmat = torch.sqrt(dmat)
 
     return dmat
+
+
+
+
+def split_dataset(dataset, fracA):
+    ''' Split a dataset into two subsets A and B by user-specified fraction.
+    '''
+    # Get the size of the dataset and the subset A...
+    size_dataset = len(dataset)
+    size_fracA   = int(fracA * size_dataset)
+
+    # Randomly choosing examples for constructing subset A...
+    fracA_list = random.sample(dataset, size_fracA)
+
+    # Obtain the subset B...
+    fracB_list = set(dataset) - set(fracA_list)
+    fracB_list = sorted(list(fracB_list))
+
+    return fracA_list, fracB_list

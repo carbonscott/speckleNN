@@ -119,7 +119,8 @@ class RandomRotate:
 
 
     def __call__(self, img): 
-        if self.angle is None:
+        angle = self.angle
+        if angle is None:
             # Sample an angle from 0 to 360 uniformly...
             angle = np.random.uniform(low = 0, high = 360)
 
