@@ -14,21 +14,27 @@ from image_no_reg_preprocess import DatasetPreprocess
 import socket
 
 # Create a timestamp to name the log file...
-timestamp = "2022_0625_1704_31"
+## timestamp = "2022_0625_1704_31"
+timestamp = "2022_0625_1754_16"
+## timestamp = "2022_0625_1746_43"
+## timestamp = "2022_0625_2321_32"
+
 
 # Set up parameters for an experiment...
-fl_csv         = 'datasets.simple.csv'
-num_query      = 1000
+## fl_csv         = 'datasets.simple.csv'
+fl_csv         = 'datasets.binary.csv'
+num_query      = 250
 frac_train     = 0.25
 frac_validate  = None
+dataset_usage  = 'test'
+## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
+exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.MULTI, ConfigDataset.BACKGROUND ]
+
+
 size_batch     = 40
 online_shuffle = True
 lr             = 1e-3
-dataset_usage  = 'test'
 seed           = 0
-
-exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
-## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.MULTI, ConfigDataset.BACKGROUND ]
 
 # Comment this verification...
 hostname = socket.gethostname()
@@ -69,9 +75,10 @@ config_dataset = ConfigDataset( fl_csv         = fl_csv,
                                 resize         = None,
                                 seed           = seed,
                                 isflat         = False,
-                                dataset_usage  = dataset_usage,
                                 trans          = None,
                                 frac_train     = frac_train,
+                                frac_validate  = None,
+                                dataset_usage  = dataset_usage,
                                 exclude_labels = exclude_labels, )
 
 # Define the training set
@@ -79,11 +86,11 @@ dataset_validate = MultiwayQueryset(config_dataset)
 
 # Preprocess dataset...
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
-img_orig, _         = dataset_validate.get_img_and_label(0)
-dataset_preproc     = DatasetPreprocess(img_orig)
-trans               = dataset_preproc.config_trans()
+img_orig, _            = dataset_validate.get_img_and_label(0)
+dataset_preproc        = DatasetPreprocess(img_orig)
+trans                  = dataset_preproc.config_trans()
 dataset_validate.trans = trans
-img_trans, _        = dataset_validate.get_img_and_label(0)
+img_trans, _           = dataset_validate.get_img_and_label(0)
 
 # Define validation set...
 config_dataset.trans = trans
