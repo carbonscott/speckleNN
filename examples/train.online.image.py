@@ -16,33 +16,35 @@ from image_preprocess import DatasetPreprocess
 import socket
 
 # Set up parameters for an experiment...
-fl_csv                = 'datasets.simple.csv'
-## size_sample_train     = 100 * 1
+## fl_csv                = 'datasets.simple.csv'
+## size_sample_train     = 150 * 1
 ## size_sample_validate  = 225 * 1
-size_sample_train     = 2000
-size_sample_validate  = 2000
-size_sample_per_class = 40
-exclude_labels        = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
-frac_train            = 0.25
-frac_validate        = None
-dataset_usage         = 'train'
+## size_sample_per_class = None
+## ## size_sample_train     = 2000
+## ## size_sample_validate  = 2000
+## ## size_sample_per_class = 40
+## exclude_labels        = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
+## frac_train            = 0.25
+## frac_validate         = None
+## dataset_usage         = 'train'
 
-## fl_csv               = 'datasets.binary.csv'
-## ## size_sample_train    =  60 * 1
-## ## size_sample_validate = 225 * 1
-## size_sample_train    = 2000
-## size_sample_validate = 2000
-## size_sample_per_class = 40
-## exclude_labels       = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.MULTI, ConfigDataset.BACKGROUND ]
-## frac_train           = 0.25
-## frac_validate        = None
-## dataset_usage        = 'train'
+fl_csv               = 'datasets.binary.csv'
+## size_sample_train    =  60 * 1
+## size_sample_validate = 225 * 1
+size_sample_train    = 2000
+size_sample_validate = 2000
+size_sample_per_class = 40
+exclude_labels       = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.MULTI, ConfigDataset.BACKGROUND ]
+frac_train           = 0.25
+frac_validate        = None
+dataset_usage        = 'train'
 
 size_batch     = 20
 alpha          = 2.0
 online_shuffle = True
 lr             = 1e-3
 seed           = 0
+is_cache       = True
 
 # Clarify the purpose of this experiment...
 hostname = socket.gethostname()
@@ -102,6 +104,7 @@ config_dataset = ConfigDataset( fl_csv                = fl_csv,
                                 frac_train            = frac_train,
                                 frac_validate         = frac_validate,
                                 size_sample_per_class = size_sample_per_class,
+                                is_cache              = is_cache,
                                 exclude_labels        = exclude_labels, )
 
 # Define the training set
@@ -109,12 +112,13 @@ dataset_train = OnlineDataset(config_dataset)
 
 # Preprocess dataset...
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
-img_orig, _         = dataset_train.get_img_and_label(0)
+img_orig            = dataset_train[0][0][0]    # idx, fetch img, fetch from batch
 dataset_preproc     = DatasetPreprocess(img_orig)
 trans               = dataset_preproc.config_trans()
 dataset_train.trans = trans
-img_trans, _        = dataset_train.get_img_and_label(0)
+img_trans           = dataset_train[0][0][0]    # idx, fetch img, fetch from batch
 
+dataset_train.cache_img()
 dataset_train.report()
 
 # Report training set...
@@ -127,12 +131,13 @@ config_dataset.dataset_usage         = 'validate'
 config_dataset.size_sample_per_class = None
 config_dataset.report()
 dataset_validate = OnlineDataset(config_dataset)
+dataset_validate.cache_img()
 
 
 # [[[ IMAGE ENCODER ]]]
 # Config the encoder...
 dim_emb        = 128
-size_y, size_x = img_trans.shape
+size_y, size_x = img_trans.shape[-2:]
 config_encoder = ConfigEncoder( dim_emb = dim_emb,
                                 size_y  = size_y,
                                 size_x  = size_x,
@@ -162,7 +167,7 @@ path_chkpt       = os.path.join(prefixpath_chkpt, fl_chkpt)
 # [[[ TRAINER ]]]
 # Config the trainer...
 config_train = ConfigTrainer( path_chkpt     = path_chkpt,
-                              num_workers    = 0,
+                              num_workers    = 1,
                               batch_size     = size_batch,
                               pin_memory     = True,
                               shuffle        = False,
@@ -177,7 +182,7 @@ trainer = OnlineTrainer(model, dataset_train, config_train)
 
 # [[[ VALIDATOR ]]]
 config_validator = ConfigValidator( path_chkpt     = None,
-                                    num_workers    = 0,
+                                    num_workers    = 1,
                                     batch_size     = size_batch,
                                     pin_memory     = True,
                                     shuffle        = False,
