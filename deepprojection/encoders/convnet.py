@@ -80,7 +80,7 @@ class Hirotaka0122(nn.Module):
         )
 
         # Define the embedding layer...
-        self.classifer = nn.Sequential(
+        self.embed = nn.Sequential(
             nn.Linear( in_features  = self.dim_features, 
                        out_features = 512, 
                        bias         = isbias),
@@ -94,7 +94,7 @@ class Hirotaka0122(nn.Module):
     def encode(self, x):
         x = self.conv(x)
         x = x.view(-1, self.dim_features)
-        x = self.classifer(x)
+        x = self.embed(x)
 
         # L2 Normalize...
         dnorm = torch.norm(x, dim = -1, keepdim = True)
