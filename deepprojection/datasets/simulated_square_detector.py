@@ -527,10 +527,10 @@ class OnlineDataset(Siamese):
     def __init__(self, config):
         super().__init__(config)
 
-        label_seqi_dict = self.label_seqi_dict
+        self.size_sample_per_class = getattr(config, 'size_sample_per_class', None)
 
         # Form triplet for ML training...
-        self.online_set = self._form_online_set(label_seqi_dict)
+        self.online_set = self._form_online_set()
 
         return None
 
@@ -555,7 +555,7 @@ class OnlineDataset(Siamese):
         return res
 
 
-    def _form_online_set(self, label_seqi_dict):
+    def _form_online_set(self):
         """ 
         Creating `size_sample` simple set that consists of one image only. 
         """
@@ -563,6 +563,23 @@ class OnlineDataset(Siamese):
         # For a single image
         size_sample = self.size_sample
         label_list  = random.choices(self.labels, k = size_sample)
+
+        label_seqi_dict = self.label_seqi_dict
+
+        # Limit unique samples per class...
+        label_seqi_sampled_dict = {}
+        if self.size_sample_per_class is not None:
+            for label in self.labels:
+                # Fetch a bucket of images...
+                bucket = label_seqi_dict[label]
+
+                # Randomly sample certain number of unique examples per class...
+                num_sample = min(self.size_sample_per_class, len(bucket))
+                id_list = random.sample(bucket, num_sample)
+
+                label_seqi_sampled_dict[label] = id_list
+
+            label_seqi_dict = label_seqi_sampled_dict
 
         # Form a simple set...
         online_set = []
@@ -578,18 +595,21 @@ class OnlineDataset(Siamese):
         return online_set
 
 
-    def report(self, verbose = False):
+    def report(self):
         # Log the number of images for each label...
         logger.info("___/ List of entries in dataset \___")
 
-        count_per_label_dict = {}
+        event_label_dict = {}
         for idx in self.online_set:
-            fl_base, id_frame, label = self.imglabel_list[idx]
-            if verbose: 
-                logger.info(f"ENTRIES - {fl_base:16s} {int(id_frame):06d} {label:2s}")
+            _, _, label = self.imglabel_list[idx]
 
-            if not label in count_per_label_dict: count_per_label_dict[label]  = 1
-            else                                : count_per_label_dict[label] += 1
+            if not label in event_label_dict: event_label_dict[label] = [ idx ]
+            else                            : event_label_dict[label].append(idx)
 
-        for label, count in count_per_label_dict.items():
-            logger.info(f"COUNTS - label {label} : {count}")
+        for label, idx_list in event_label_dict.items():
+            count = len(idx_list)
+            logger.info(f"KV - (event count) label {label} : {count}")
+
+        for label, idx_list in event_label_dict.items():
+            count = len(set(idx_list))
+            logger.info(f"KV - (unique event count) label {label} : {count}")
