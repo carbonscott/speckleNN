@@ -59,6 +59,8 @@ class SPIImgDataset(Dataset):
         self._dataset_dict        = {}
         self.psana_imgreader_dict = {}
         self.imglabel_orig_list   = []
+        self.imglabel_cache_list  = []
+        self.is_cache             = False
 
         # Set the seed...
         # Debatable whether seed should be set in the dataset or in the running code
@@ -124,11 +126,23 @@ class SPIImgDataset(Dataset):
         return len(self.imglabel_list)
 
 
+    def cache_img(self):
+        for idx in range(len(self.imglabel_list)):
+            img, label = self.get_img_and_label(idx)
+            self.imglabel_cache_list.append((img, label))
+
+        self.is_cache = True
+
+        return None
+
+
     def get_img_and_label(self, idx):
         # Read image...
         exp, run, event_num, label = self.imglabel_list[idx]
         basename = (exp, run)
         img = self.psana_imgreader_dict[basename].get(int(event_num), mode = self.mode)
+
+        print(f'Open {exp} {run} {event_num} {label} from psana...')
 
         # Apply any possible transformation...
         # How to define a custom transform function?
@@ -137,16 +151,16 @@ class SPIImgDataset(Dataset):
         if self.trans is not None:
             img = self.trans(img)
 
-        return img, label
-
-
-    def __getitem__(self, idx):
-        img, label = self.get_img_and_label(idx)
-
         # Normalize input image...
         img_mean = np.mean(img)
         img_std  = np.std(img)
         img_norm = (img - img_mean) / img_std
+
+        return img_norm, label
+
+
+    def __getitem__(self, idx):
+        img_norm, label = self.imglabel_cache_list[idx] if self.is_cache else self.get_img_and_label(idx)
 
         # If not flat, add one extra dimension to reflect the number channels...
         img_norm = img_norm[np.newaxis,] if not self.isflat else img_norm.reshape(-1)
