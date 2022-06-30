@@ -82,7 +82,6 @@ class Hirotaka0122(nn.Module):
         # Define the embedding layer...
         self.classifer = nn.Sequential(
             nn.Linear( in_features  = self.dim_features, 
-                       ## out_features = dim_emb, 
                        out_features = 512, 
                        bias         = isbias),
             nn.PReLU(),
