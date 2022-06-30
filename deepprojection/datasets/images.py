@@ -142,7 +142,13 @@ class SPIImgDataset(Dataset):
         basename = (exp, run)
         img = self.psana_imgreader_dict[basename].get(int(event_num), mode = self.mode)
 
-        print(f'Open {exp} {run} {event_num} {label} from psana...')
+        print(f'Load {exp} {run} {event_num} {label} using psana...')
+
+        return img, label
+
+
+    def __getitem__(self, idx):
+        img, label = self.imglabel_cache_list[idx] if self.is_cache else self.get_img_and_label(idx)
 
         # Apply any possible transformation...
         # How to define a custom transform function?
@@ -155,12 +161,6 @@ class SPIImgDataset(Dataset):
         img_mean = np.mean(img)
         img_std  = np.std(img)
         img_norm = (img - img_mean) / img_std
-
-        return img_norm, label
-
-
-    def __getitem__(self, idx):
-        img_norm, label = self.imglabel_cache_list[idx] if self.is_cache else self.get_img_and_label(idx)
 
         # If not flat, add one extra dimension to reflect the number channels...
         img_norm = img_norm[np.newaxis,] if not self.isflat else img_norm.reshape(-1)
