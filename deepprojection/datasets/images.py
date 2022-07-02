@@ -142,7 +142,7 @@ class SPIImgDataset(Dataset):
         basename = (exp, run)
         img = self.psana_imgreader_dict[basename].get(int(event_num), mode = self.mode)
 
-        print(f'Load {exp} {run} {event_num} {label} using psana...')
+        logger.info(f'DATA LOADING - {exp} {run} {event_num} {label}.')
 
         return img, label
 
