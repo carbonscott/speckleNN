@@ -10,7 +10,7 @@ import os
 import logging
 
 from torch.utils.data     import Dataset
-from deepprojection.utils import downsample, set_seed, split_dataset
+from deepprojection.utils import set_seed, split_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +50,9 @@ class SPIImgDataset(Dataset):
         self.size_sample   = getattr(config, 'size_sample'   , None)
         self.isflat        = getattr(config, 'isflat'        , None)
         self.mode          = getattr(config, 'mode'          , None)
-        self.dataset_usage = getattr(config, 'dataset_usage' , None)    # train, validate, test, all
         self.frac_train    = getattr(config, 'frac_train'    , None)    # Proportion/Fraction of training examples
         self.frac_validate = getattr(config, 'frac_validate' , None)    # Proportion/Fraction of validation examples
+        self.dataset_usage = getattr(config, 'dataset_usage' , None)    # train, validate, test, all
         self.seed          = getattr(config, 'seed'          , None)
         self.trans         = getattr(config, 'trans'         , None)
 
