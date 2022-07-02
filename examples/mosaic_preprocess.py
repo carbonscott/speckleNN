@@ -11,52 +11,13 @@ logger = logging.getLogger(__name__)
 
 class DatasetPreprocess:
 
-    def __init__(self, img): 
-        self.img = img
+    def __init__(self, img, panels_ordered): 
+        self.img            = img
+        self.panels_ordered = panels_ordered    # Enable panel-based preprocessing
 
         logger.info(f"___/ Preprocess Settings \___")
 
         return None
-
-
-##    def get_panel(self):
-##        config_dataset = self.config_dataset
-##
-##        # Get panel size...
-##        spipanel = SPIMosaicDataset(config_dataset)
-##        spipanel.IS_MOSAIC = False
-##        panels, _ = spipanel.get_img_and_label(0)
-##
-##        panel = panels[0]
-##
-##        self.panel = panel
-##
-##        return None
-##
-##
-##    def get_mosaic(self):
-##        config_dataset = self.config_dataset
-##
-##        # Get panel size...
-##        spipanel = SPIMosaicDataset(config_dataset)
-##        spipanel.IS_MOSAIC = True
-##        img_mosaic, _ = spipanel.get_img_and_label(0)
-##
-##        self.img_mosaic = img_mosaic
-##
-##        return None
-##
-##
-##    def get_panelsize(self): 
-##        self.get_panel()
-##
-##        return self.panel.shape
-##
-##
-##    def get_mosaicsize(self):
-##        self.get_mosaic()
-##
-##        return self.img_mosaic.shape
 
 
     def apply_mask(self):
@@ -104,11 +65,19 @@ class DatasetPreprocess:
         return None
 
 
-    def apply_crop(self):
-        # [TO FIX]
-        panel = self.panel
-        crop_orig = 250, 250
-        crop_end  = panel.shape
+    def apply_crop(self, idx_panel):
+        panels_ordered = self.panels_ordered
+
+        offset = 80
+        crop_dict = {
+            0 : { 'orig' : (250 + offset, 250 + offset), 'end' : (500, 500) },
+            1 : { 'orig' : (250 + offset,   0),          'end' : (500, 250 - offset) },
+            2 : { 'orig' : (250 + offset, 250 + offset), 'end' : (500, 500) },
+            3 : { 'orig' : (250 + offset,   0),          'end' : (500, 250 - offset) },
+        }
+
+        crop_orig = crop_dict[idx_panel]['orig']
+        crop_end  = crop_dict[idx_panel]['end']
 
         trans_crop = transform.Crop(crop_orig, crop_end)
 
@@ -133,14 +102,13 @@ class DatasetPreprocess:
 
     def trans(self, imgs, **kwargs):
         imgs_trans = []
-        for img in imgs:
+        for i, idx_panel in enumerate(self.panels_ordered):
+            self.apply_crop(idx_panel)
+
+            img = imgs[i]
+
             # Apply mask...
             if getattr(self, "mask", None) is not None: img *= self.mask
-
-            # Apply random transform if available???
-            if getattr(self, "trans_random", None) is not None:
-                for trans in self.trans_random:
-                    if isinstance(trans, (transform.RandomRotate, transform.RandomPatch)): img = trans(img)
 
             # Apply crop...
             if getattr(self, "trans_crop", None) is not None: img = self.trans_crop(img)
@@ -150,6 +118,11 @@ class DatasetPreprocess:
                 bin_row, bin_col = self.resize
                 img = downsample(img, bin_row, bin_col, mask = None)
 
+            # Apply random transform if available???
+            if getattr(self, "trans_random", None) is not None:
+                for trans in self.trans_random:
+                    if isinstance(trans, (transform.RandomRotate, transform.RandomPatch)): img = trans(img)
+
             imgs_trans.append(img)
 
         return imgs_trans
@@ -157,7 +130,7 @@ class DatasetPreprocess:
 
 
     def config_trans(self):
-        self.apply_mask()
+        ## self.apply_mask()
         ## self.apply_augmentation()
         ## self.apply_crop()
         self.apply_downsample()

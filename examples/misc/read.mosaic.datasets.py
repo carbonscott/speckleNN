@@ -10,7 +10,6 @@ import matplotlib.font_manager as font_manager
 import numpy as np
 import os
 from deepprojection.datasets.mosaic import SPIMosaicDataset, ConfigDataset
-from deepprojection.datasets.transform import hflip
 from mosaic_preprocess import DatasetPreprocess
 
 class DisplaySPIImg():
@@ -111,41 +110,43 @@ class DisplaySPIImg():
 
 
 # Config the dataset...
-panels_ordered = [0, 2]
+panels_ordered = [0, 1]
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
 config_dataset = ConfigDataset( fl_csv            = 'datasets.csv',
                                 size_sample       = 2000, 
-                                mode              = 'calib',
+                                psana_mode        = 'calib',
                                 resize            = None,
                                 seed              = 0,
                                 isflat            = False,
-                                istrain           = True,
+                                dataset_usage     = 'train',
                                 trans             = None,
                                 panels_ordered    = panels_ordered,
                                 frac_train        = 0.7,
                                 exclude_labels    = exclude_labels, )
 
-# Preprocess dataset...
-# Data preprocessing can be lengthy and defined in dataset_preprocess.py
-dataset_preproc = DatasetPreprocess(config_dataset)
-dataset_preproc.apply()
-
 # Create image manager...
 spiimg = SPIMosaicDataset(config_dataset)
+img, _ = spiimg[0]
+panel = img[0]
+
+# Preprocess dataset...
+# Data preprocessing can be lengthy and defined in dataset_preprocess.py
+dataset_preproc = DatasetPreprocess(panel, panels_ordered)
+trans = dataset_preproc.config_trans()
 
 # Read an image...
-for idx in [0, 23, 14, 100]:
+for idx in range(10):
     # Don't apply those changes from configuration...
     spiimg.trans     = None
-    spiimg.IS_MOSAIC = False
+    spiimg.MOSAIC_ON = False
     imgs, _ = spiimg[idx]
     imgs = imgs.squeeze(axis = 0)
 
     exp, run, event_num, label = spiimg.imglabel_list[idx]
 
     # Apply those changes from configuration...
-    spiimg.trans = config_dataset.trans
-    spiimg.IS_MOSAIC = True
+    spiimg.trans = trans
+    spiimg.MOSAIC_ON = True
 
     # Get transed image...
     img_mosaic, _ = spiimg[idx]
@@ -164,4 +165,4 @@ for idx in [0, 23, 14, 100]:
     title = f'imagemosaic.{idx:06d}'
     disp_manager = DisplaySPIImg(imgs, img_mosaic, figsize = (8, 10))
     disp_manager.show(center = center, angle = angle, title = title, is_save = False)
-    disp_manager.show(center = center, angle = angle, title = title, is_save = True)
+    ## disp_manager.show(center = center, angle = angle, title = title, is_save = True)
