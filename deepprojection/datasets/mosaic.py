@@ -1,22 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Load PyTorch
 import torch
-from torch.utils.data import Dataset
-
-# Load LCLS data management and LCLS data access (through detector) module
 import psana
-
-# Load misc modules
 import numpy as np
 import random
 import csv
 import os
-
 import logging
 
-from deepprojection.utils import set_seed
+from torch.utils.data     import Dataset
+from deepprojection.utils import set_seed, split_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -53,10 +47,12 @@ class SPIMosaicDataset(Dataset):
     def __init__(self, config):
         fl_csv              = getattr(config, 'fl_csv'        , None)
         exclude_labels      = getattr(config, 'exclude_labels', None)
+        self.size_sample    = getattr(config, 'size_sample'   , None)
         self.isflat         = getattr(config, 'isflat'        , None)
         self.psana_mode     = getattr(config, 'psana_mode'    , None)
-        self.istrain        = getattr(config, 'istrain'       , None)
         self.frac_train     = getattr(config, 'frac_train'    , None)    # Proportion/Fraction of training examples
+        self.frac_validate  = getattr(config, 'frac_validate' , None)    # Proportion/Fraction of validation examples
+        self.dataset_usage  = getattr(config, 'dataset_usage' , None)    # train, validate, test, all
         self.seed           = getattr(config, 'seed'          , None)
         self.panels_ordered = getattr(config, 'panels_ordered', None)
         self.trans          = getattr(config, 'trans'         , None)
@@ -65,6 +61,8 @@ class SPIMosaicDataset(Dataset):
         self._dataset_dict        = {}
         self.psana_imgreader_dict = {}
         self.imglabel_orig_list   = []
+        self.imglabel_cache_list  = []
+        self.is_cache             = False
 
         # Set the seed...
         # Debatable whether seed should be set in the dataset or in the running code
@@ -95,32 +93,49 @@ class SPIMosaicDataset(Dataset):
                 # Parse labels in the label file if it exists???
                 self._dataset_dict[basename] = imglabel_fileparser.imglabel_dict
 
-        # Enumerate each image from all datasets...
+        # Enumerate each labeled image from all datasets...
         for dataset_id, dataset_content in self._dataset_dict.items():
-            # Get the exp and run...
+            # Get the exp and run
             exp, run = dataset_id
 
             for event_num, label in dataset_content.items():
                 self.imglabel_orig_list.append( (exp, run, f"{event_num:>6s}", label) )
 
-        # Split the original image list into training set and test set...
-        num_list  = len(self.imglabel_orig_list)
-        num_train = int(self.frac_train * num_list)
+        # Split original dataset into training and holdout...
+        imglabel_train_list, imglabel_holdout_list = split_dataset(self.imglabel_orig_list, self.frac_train)
 
-        # Get training examples...
-        imglabel_train_list = random.sample(self.imglabel_orig_list, num_train)
+        # Calculate the percentage of validation in the whole holdout set...
+        frac_holdout = 1.0 - self.frac_train
+        frac_validate_in_holdout = self.frac_validate / frac_holdout if self.frac_validate is not None else 0.5
 
-        # Get test examples...
-        imglabel_test_list = set(self.imglabel_orig_list) - set(imglabel_train_list)
-        imglabel_test_list = sorted(list(imglabel_test_list))
+        # Split holdout dataset into validation and test...
+        imglabel_valid_list, imglabel_test_list = split_dataset(imglabel_holdout_list, frac_validate_in_holdout)
 
-        self.imglabel_list = imglabel_train_list if self.istrain else imglabel_test_list
+        # Choose which dataset is going to be used, defaults to original set...
+        dataset_by_usage_dict = {
+            'train'    : imglabel_train_list,
+            'validate' : imglabel_valid_list,
+            'test'     : imglabel_test_list,
+        }
+        self.imglabel_list = self.imglabel_orig_list
+        if self.dataset_usage in dataset_by_usage_dict:
+            self.imglabel_list = dataset_by_usage_dict[self.dataset_usage]
 
         return None
 
 
     def __len__(self):
         return len(self.imglabel_list)
+
+
+    def cache_img(self):
+        for idx in range(len(self.imglabel_list)):
+            imgs, label = self.get_img_and_label(idx)
+            self.imglabel_cache_list.append((imgs, label))
+
+        self.is_cache = True
+
+        return None
 
 
     def form_mosaic(self, imgs, **kwargs):
@@ -153,6 +168,15 @@ class SPIMosaicDataset(Dataset):
         basename = (exp, run)
         imgs = self.psana_imgreader_dict[basename].get(int(event_num), mode = self.psana_mode)
 
+        logger.info(f'DATA LOADING - {exp} {run} {event_num} {label}.')
+
+        return imgs, label
+
+
+    def __getitem__(self, idx):
+        # imgs: (which panel, size of a panel)
+        imgs, label = self.imglabel_cache_list[idx] if self.is_cache else self.get_img_and_label(idx)
+
         # Filter imgs...
         imgs = self.filter_panels(imgs)
 
@@ -164,13 +188,7 @@ class SPIMosaicDataset(Dataset):
             imgs = self.trans(imgs)
 
         # Form a mosaic...
-        img_mosaic = self.form_mosaic(imgs) if self.MOSAIC_ON else imgs
-
-        return img_mosaic, label
-
-
-    def __getitem__(self, idx):
-        img, label = self.get_img_and_label(idx)
+        img = self.form_mosaic(imgs) if self.MOSAIC_ON else imgs
 
         # Normalize input image...
         img_mean = np.mean(img)
@@ -623,10 +641,10 @@ class OnlineDataset(Siamese):
     def __init__(self, config):
         super().__init__(config)
 
-        label_seqi_dict = self.label_seqi_dict
+        self.size_sample_per_class = getattr(config, 'size_sample_per_class', None)
 
         # Form triplet for ML training...
-        self.online_set = self._form_online_set(label_seqi_dict)
+        self.online_set = self._form_online_set()
 
         return None
 
@@ -651,7 +669,7 @@ class OnlineDataset(Siamese):
         return res
 
 
-    def _form_online_set(self, label_seqi_dict):
+    def _form_online_set(self):
         """ 
         Creating `size_sample` simple set that consists of one image only. 
         """
@@ -659,6 +677,23 @@ class OnlineDataset(Siamese):
         # For a single image
         size_sample = self.size_sample
         label_list  = random.choices(self.labels, k = size_sample)
+
+        label_seqi_dict = self.label_seqi_dict
+
+        # Limit unique samples per class...
+        label_seqi_sampled_dict = {}
+        if self.size_sample_per_class is not None:
+            for label in self.labels:
+                # Fetch a bucket of images...
+                bucket = label_seqi_dict[label]
+
+                # Randomly sample certain number of unique examples per class...
+                num_sample = min(self.size_sample_per_class, len(bucket))
+                id_list = random.sample(bucket, num_sample)
+
+                label_seqi_sampled_dict[label] = id_list
+
+            label_seqi_dict = label_seqi_sampled_dict
 
         # Form a simple set...
         online_set = []
@@ -688,4 +723,3 @@ class OnlineDataset(Siamese):
 
         for label, count in count_per_label_dict.items():
             logger.info(f"COUNTS - label {label} : {count}")
-

@@ -15,15 +15,20 @@ from mosaic_preprocess import DatasetPreprocess
 import socket
 
 # Set up parameters for an experiment...
-fl_csv         = 'datasets.simple.csv'
-size_sample    = 200
-size_batch     = 20
-alpha          = 2.0
-online_shuffle = True
-lr             = 1e-3
-frac_train     = 0.7
-seed           = 0
-panels_ordered = [0, 1]
+fl_csv                = 'datasets.simple.csv'
+size_sample_train     = 200
+size_sample_validate  = 180
+frac_train            = 0.5
+frac_validate         = None
+size_sample_per_class = 80
+size_batch            = 20
+dataset_usage         = 'train'
+
+alpha                 = 2.0
+online_shuffle        = True
+lr                    = 1e-3
+seed                  = 0
+panels_ordered        = [0, 1]
 
 # Clarify the purpose of this experiment...
 hostname = socket.gethostname()
@@ -32,11 +37,13 @@ comments = f"""
 
             Online training.
 
-            Sample size    : {size_sample}
-            Batch  size    : {size_batch}
-            Alpha          : {alpha}
-            Online shuffle : {online_shuffle}
-            lr             : {lr}
+            Sample size (train)     : {size_sample_train}
+            Sample size (validate)  : {size_sample_validate}
+            Sample size (per class) : {size_sample_per_class}
+            Batch size              : {size_batch}
+            Alpha                   : {alpha}
+            Online shuffle          : {online_shuffle}
+            lr                      : {lr}
 
             """
 
@@ -70,21 +77,20 @@ metalog.report()
 
 # [[[ DATASET ]]]
 # Config the dataset...
-## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
 ## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
-config_dataset = ConfigDataset( fl_csv         = fl_csv,
-                                size_sample    = size_sample, 
-                                psana_mode     = 'calib',
-                                mask           = None,
-                                resize         = None,
-                                seed           = seed,
-                                isflat         = False,
-                                istrain        = True,
-                                trans          = None,
-                                frac_train     = frac_train,
-                                panels_ordered = panels_ordered,
-                                exclude_labels = exclude_labels, )
+config_dataset = ConfigDataset( fl_csv                = fl_csv,
+                                size_sample           = size_sample_train,
+                                frac_train            = frac_train,
+                                frac_validate         = frac_validate,
+                                size_sample_per_class = size_sample_per_class,
+                                dataset_usage         = dataset_usage,
+                                psana_mode            = 'calib',
+                                seed                  = seed,
+                                isflat                = False,
+                                trans                 = None,
+                                panels_ordered        = panels_ordered,
+                                exclude_labels        = exclude_labels, )
 
 # Define the training set
 dataset_train = OnlineDataset(config_dataset)
@@ -92,14 +98,15 @@ dataset_train = OnlineDataset(config_dataset)
 # Preprocess dataset...
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
 dataset_train.MOSAIC_ON = False
-img_orig, _             = dataset_train.get_img_and_label(0)
+img_orig                = dataset_train[0][0][0]    # idx, fetch img, fetch from batch
 panel_orig              = img_orig[0]
 dataset_train.MOSAIC_ON = True
-dataset_preproc         = DatasetPreprocess(panel_orig)
+dataset_preproc         = DatasetPreprocess(panel_orig, panels_ordered)
 trans                   = dataset_preproc.config_trans()
 dataset_train.trans     = trans
-mosaic_trans, _         = dataset_train.get_img_and_label(0)
+mosaic_trans            = dataset_train[0][0][0]
 
+dataset_train.cache_img()
 dataset_train.report()
 
 # Report training set...
@@ -107,9 +114,12 @@ config_dataset.trans = trans
 config_dataset.report()
 
 # Define validation set...
-config_dataset.istrain = False
+config_dataset.size_sample           = size_sample_validate
+config_dataset.dataset_usage         = 'validate'
+config_dataset.size_sample_per_class = None
 config_dataset.report()
 dataset_validate = OnlineDataset(config_dataset)
+dataset_validate.cache_img()
 
 
 # [[[ IMAGE ENCODER ]]]

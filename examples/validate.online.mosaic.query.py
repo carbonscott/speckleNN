@@ -12,17 +12,23 @@ from mosaic_preprocess               import DatasetPreprocess
 import socket
 
 # Create a timestamp to name the log file...
-timestamp = "2022_0614_2306_10"
+timestamp = "2022_0702_1225_15"
 
 # Set up parameters for an experiment...
 fl_csv         = 'datasets.simple.csv'
-size_sample    = 1000
-size_batch     = 40
+exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
+
+num_query      = 180
+frac_train     = 0.50
+frac_validate  = None
+dataset_usage  = 'test'
+panels_ordered = [0, 1]
+
+size_batch     = 180
 online_shuffle = True
 lr             = 1e-3
 frac_train     = 0.0
 seed           = 0
-panels_ordered = [0, 1]
 
 # Comment this verification...
 hostname = socket.gethostname()
@@ -31,7 +37,7 @@ comments = f"""
 
             Online training.
 
-            Sample size    : {size_sample}
+            Number (query) : {num_query}
             Batch  size    : {size_batch}
             Online shuffle : {online_shuffle}
             lr             : {lr}
@@ -65,10 +71,8 @@ metalog = MetaLog( comments = comments )
 metalog.report()
 
 # Config the dataset...
-exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP ]
-## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELPi, ConfigDataset.BACKGROUND ]
 config_dataset = ConfigDataset( fl_csv         = fl_csv,
-                                size_sample    = size_sample, 
+                                size_sample    = num_query, 
                                 psana_mode     = 'calib',
                                 seed           = 0,
                                 isflat         = False,
@@ -84,13 +88,13 @@ dataset_validate = MultiwayQueryset(config_dataset)
 # Preprocess dataset...
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
 dataset_validate.MOSAIC_ON = False
-img_orig, _                = dataset_validate.get_img_and_label(0)
+img_orig                   = dataset_validate[0][0][0]
 panel_orig                 = img_orig[0]
 dataset_validate.MOSAIC_ON = True
-dataset_preproc            = DatasetPreprocess(panel_orig)
+dataset_preproc            = DatasetPreprocess(panel_orig, panels_ordered)
 trans                      = dataset_preproc.config_trans()
 dataset_validate.trans     = trans
-mosaic_trans, _            = dataset_validate.get_img_and_label(0)
+mosaic_trans               = dataset_validate[0][0][0]
 
 # Report training set...
 config_dataset.trans = trans
