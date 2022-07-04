@@ -49,16 +49,18 @@ class SPIImgDataset(Dataset):
     def __init__(self, config):
         self.fl_csv         = getattr(config, 'fl_csv'        , None)
         self.exclude_labels = getattr(config, 'exclude_labels', None)
+        self.size_sample    = getattr(config, 'size_sample'   , None)
         self.isflat         = getattr(config, 'isflat'        , None)
-        self.dataset_usage  = getattr(config, 'dataset_usage' , None)    # train, validate, test, all
         self.frac_train     = getattr(config, 'frac_train'    , None)    # Proportion/Fraction of training examples
         self.frac_validate  = getattr(config, 'frac_validate' , None)    # Proportion/Fraction of validation examples
+        self.dataset_usage  = getattr(config, 'dataset_usage' , None)    # train, validate, test, all
         self.seed           = getattr(config, 'seed'          , None)
         self.trans          = getattr(config, 'trans'         , None)
 
         self.h5_path_dict         = {}
-        self.psana_imgreader_dict = {}
         self.imglabel_orig_list   = []
+        self.imglabel_cache_dict  = {}
+        self.is_cache             = False
 
         # Constants
         self.KEY_TO_IMG = 'photons'
@@ -144,7 +146,24 @@ class SPIImgDataset(Dataset):
         return len(self.imglabel_list)
 
 
-    def get_img_and_label(self, idx):
+    def cache_img(self, idx_list = []):
+        ''' Cache the whole dataset in imglabel_list or some subset.
+        '''
+        # If subset is not give, then go through the whole set...
+        if not len(idx_list): idx_list = range(len(self.imglabel_list))
+
+        for idx in idx_list:
+            # Skip those have been recorded...
+            if idx in self.imglabel_cache_dict: continue
+
+            # Otherwise, record it
+            img, label = self.get_img_and_label(idx, verbose = True)
+            self.imglabel_cache_dict[idx] = (img, label)
+
+        return None
+
+
+    def get_img_and_label(self, idx, verbose = False):
         # Read image...
         fl_base, id_frame, label = self.imglabel_list[idx]
         basename = (fl_base, label)
@@ -153,18 +172,21 @@ class SPIImgDataset(Dataset):
         with h5py.File(h5_path, 'r') as fh:
             img = fh.get(self.KEY_TO_IMG)[id_frame][0]
 
+        if verbose: logger.info(f'DATA LOADING - {fl_base} {id_frame} {label}.')
+
+        return img, label
+
+
+    def __getitem__(self, idx):
+        img, label = self.imglabel_cache_dict[idx] if   idx in self.imglabel_cache_dict \
+                                                   else self.get_img_and_label(idx)
+
         # Apply any possible transformation...
         # How to define a custom transform function?
         # Input : img, **kwargs 
         # Output: img_transfromed
         if self.trans is not None:
             img = self.trans(img)
-
-        return img, label
-
-
-    def __getitem__(self, idx):
-        img, label = self.get_img_and_label(idx)
 
         # Normalize input image...
         img_mean = np.mean(img)
