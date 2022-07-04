@@ -20,7 +20,7 @@ fl_csv               = "simulated.square_detector.datasets.pdb_sampled.10.csv"
 size_sample_train     = 2000
 size_sample_validate  = 2000
 size_sample_per_class = None
-size_batch            = 20
+size_batch            = 100
 frac_train            = 0.3
 frac_validate         = None
 dataset_usage         = 'train'
@@ -62,9 +62,7 @@ if not os.path.exists(prefixpath_log): os.makedirs(prefixpath_log)
 path_log = os.path.join(prefixpath_log, fl_log)
 
 # Config logging behaviors
-logging.basicConfig( filename = path_log,
-                     filemode = 'w',
-                     format="%(asctime)s %(levelname)s %(name)-35s - %(message)s",
+logging.basicConfig( format="%(asctime)s %(levelname)s %(name)-35s - %(message)s",
                      datefmt="%m/%d/%Y %H:%M:%S",
                      level=logging.INFO, )
 logger = logging.getLogger(__name__)
@@ -99,7 +97,7 @@ trans               = dataset_preproc.config_trans()
 dataset_train.trans = trans
 img_trans           = dataset_train[0][0][0]
 
-dataset_train.cache_img(dataset_train.online_set)
+## dataset_train.cache_img(dataset_train.online_set)
 dataset_train.report()
 
 # Report training set...
@@ -112,71 +110,12 @@ config_dataset.dataset_usage         = 'validate'
 config_dataset.size_sample_per_class = None
 config_dataset.report()
 dataset_validate = OnlineDataset(config_dataset)
-dataset_validate.cache_img(dataset_validate.online_set)
+## dataset_validate.cache_img(dataset_validate.online_set)
 
 
-# [[[ IMAGE ENCODER ]]]
-# Config the encoder...
-dim_emb = 128
-size_y, size_x = img_trans.shape
-config_encoder = ConfigEncoder( dim_emb = dim_emb,
-                                size_y  = size_y,
-                                size_x  = size_x,
-                                isbias  = True )
-encoder = Hirotaka0122(config_encoder)
-
-
-# [[[ MODEL ]]]
-# Config the model...
-config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
-model = OnlineSiameseModel(config_siamese)
-
-# Initialize weights...
-def init_weights(module):
-    if isinstance(module, (torch.nn.Embedding, torch.nn.Linear)):
-        module.weight.data.normal_(mean = 0.0, std = 0.02)
-model.apply(init_weights)
-
-
-# [[[ CHECKPOINT ]]]
-DRCCHKPT         = "chkpts"
-prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
-fl_chkpt         = f"{timestamp}.train.chkpt"
-path_chkpt       = os.path.join(prefixpath_chkpt, fl_chkpt)
-
-
-# [[[ TRAINER ]]]
-# Config the trainer...
-config_train = ConfigTrainer( path_chkpt     = path_chkpt,
-                              num_workers    = 0,
-                              batch_size     = size_batch,
-                              pin_memory     = True,
-                              shuffle        = False,
-                              online_shuffle = online_shuffle,
-                              is_logging     = False,
-                              method         = 'semi-hard', 
-                              lr             = lr, )
-
-# Training...
-trainer = OnlineTrainer(model, dataset_train, config_train)
-
-
-# [[[ VALIDATOR ]]]
-config_validator = ConfigValidator( path_chkpt     = None,
-                                    num_workers    = 0,
-                                    batch_size     = size_batch,
-                                    pin_memory     = True,
-                                    shuffle        = False,
-                                    online_shuffle = online_shuffle,
-                                    is_logging     = False,
-                                    method         = 'semi-hard', 
-                                    lr             = lr, 
-                                    isflat         = False, )  # Conv2d input needs one more dim for batch
-
-validator = OnlineLossValidator(model, dataset_validate, config_validator)
-
-
-# [[[ EPOCH MANAGER ]]]
-max_epochs = 360
-epoch_manager = EpochManager(trainer = trainer, validator = validator, max_epochs = max_epochs)
-epoch_manager.run()
+# Define validation set...
+config_dataset.size_sample           = size_sample_validate
+config_dataset.dataset_usage         = 'test'
+config_dataset.size_sample_per_class = None
+config_dataset.report()
+dataset_validate = OnlineDataset(config_dataset)

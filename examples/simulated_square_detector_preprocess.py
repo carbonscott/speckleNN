@@ -12,8 +12,9 @@ logger = logging.getLogger(__name__)
 
 class DatasetPreprocess:
 
-    def __init__(self, img): 
+    def __init__(self, img, sigma_scale = 100): 
         self.img = img
+        self.sigma_scale = sigma_scale
 
         logger.info(f"___/ Preprocess Settings \___")
 
@@ -44,7 +45,7 @@ class DatasetPreprocess:
     def apply_augmentation(self):
         # Random rotation...
         angle = None
-        center = (524, 506)
+        center = (25, 25)
         trans_random_rotate = transform.RandomRotate(angle = angle, center = center)
 
         # Random patching...
@@ -54,7 +55,9 @@ class DatasetPreprocess:
                                                     var_patch_y    = 0.2  , var_patch_x    = 0.2, 
                                                     is_return_mask = False, is_random_flip = True)
         ## trans_list = [trans_random_rotate, trans_random_patch]
-        trans_list = [trans_random_patch]
+        ## trans_list = [trans_random_patch]
+        trans_list = [trans_random_rotate]
+        ## trans_list = []
 
         # Add augmentation to dataset configuration...
         self.trans_random = trans_list
@@ -66,8 +69,10 @@ class DatasetPreprocess:
 
     def apply_crop(self):
         img = self.img
-        crop_orig = 43 - 15, 43 - 15
-        crop_end  = 43 + 15, 43 + 15
+        ## crop_orig = 43 - 15, 43 - 15
+        ## crop_end  = 43 + 15, 43 + 15
+        crop_orig = 60, 60
+        crop_end  = 60 + 50, 60 + 50
 
         trans_crop = transform.Crop(crop_orig, crop_end)
 
@@ -126,7 +131,7 @@ class DatasetPreprocess:
 
 
     def apply_noise_gaussian(self):
-        scale = 10.0
+        scale = self.sigma_scale
         sigma = scale * 0.15
 
         def _noise_gaussian(img):
@@ -149,13 +154,13 @@ class DatasetPreprocess:
         if getattr(self, "trans_zoom", None) is not None: img = self.trans_zoom(img)
         if getattr(self, "RandomPanelZoom", None) is not None: img = self.trans_zoom(img)
 
+        # Apply crop...
+        if getattr(self, "trans_crop", None) is not None: img = self.trans_crop(img)
+
         # Resize images...
         if getattr(self, "resize", None) is not None:
             bin_row, bin_col = self.resize
             img = downsample(img, bin_row, bin_col, mask = None)
-
-        # Apply crop...
-        if getattr(self, "trans_crop", None) is not None: img = self.trans_crop(img)
 
         # Apply random transform if available???
         if getattr(self, "trans_random", None) is not None:
@@ -182,6 +187,6 @@ class DatasetPreprocess:
         self.apply_augmentation()
         self.apply_crop()
 
-        self.apply_downsample()
+        ## self.apply_downsample()
 
         return self.trans

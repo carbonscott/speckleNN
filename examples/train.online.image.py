@@ -16,35 +16,29 @@ from image_preprocess import DatasetPreprocess
 import socket
 
 # Set up parameters for an experiment...
-## fl_csv                = 'datasets.simple.csv'
-## size_sample_train     = 150 * 1
-## size_sample_validate  = 225 * 1
-## size_sample_per_class = None
-## ## size_sample_train     = 2000
-## ## size_sample_validate  = 2000
-## ## size_sample_per_class = 40
-## exclude_labels        = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
-## frac_train            = 0.25
+fl_csv                = 'datasets.simple.csv'
+size_sample_train     = 2000
+size_sample_validate  = 2000
+frac_train            = 0.50
+size_sample_per_class = 60
+exclude_labels        = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
+frac_validate         = None
+dataset_usage         = 'train'
+
+## fl_csv                = 'datasets.binary.csv'
+## size_sample_train     = 2000
+## size_sample_validate  = 2000
+## frac_train            = 0.50
+## size_sample_per_class = 80
+## exclude_labels        = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.MULTI, ConfigDataset.BACKGROUND ]
 ## frac_validate         = None
 ## dataset_usage         = 'train'
-
-fl_csv               = 'datasets.binary.csv'
-## size_sample_train    =  60 * 1
-## size_sample_validate = 225 * 1
-size_sample_train    = 2000
-size_sample_validate = 2000
-size_sample_per_class = 40
-exclude_labels       = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.MULTI, ConfigDataset.BACKGROUND ]
-frac_train           = 0.25
-frac_validate        = None
-dataset_usage        = 'train'
 
 size_batch     = 20
 alpha          = 2.0
 online_shuffle = True
 lr             = 1e-3
 seed           = 0
-is_cache       = True
 
 # Clarify the purpose of this experiment...
 hostname = socket.gethostname()
@@ -104,7 +98,6 @@ config_dataset = ConfigDataset( fl_csv                = fl_csv,
                                 frac_train            = frac_train,
                                 frac_validate         = frac_validate,
                                 size_sample_per_class = size_sample_per_class,
-                                is_cache              = is_cache,
                                 exclude_labels        = exclude_labels, )
 
 # Define the training set
@@ -118,7 +111,7 @@ trans               = dataset_preproc.config_trans()
 dataset_train.trans = trans
 img_trans           = dataset_train[0][0][0]    # idx, fetch img, fetch from batch
 
-dataset_train.cache_img()
+dataset_train.cache_img(dataset_train.online_set)
 dataset_train.report()
 
 # Report training set...
@@ -131,7 +124,7 @@ config_dataset.dataset_usage         = 'validate'
 config_dataset.size_sample_per_class = None
 config_dataset.report()
 dataset_validate = OnlineDataset(config_dataset)
-dataset_validate.cache_img()
+dataset_validate.cache_img(dataset_validate.online_set)
 
 
 # [[[ IMAGE ENCODER ]]]
@@ -174,6 +167,7 @@ config_train = ConfigTrainer( path_chkpt     = path_chkpt,
                               is_logging     = False,
                               online_shuffle = online_shuffle,
                               method         = 'semi-hard', 
+                              ## method         = 'random', 
                               lr             = lr, )
 
 # Training...
@@ -189,6 +183,7 @@ config_validator = ConfigValidator( path_chkpt     = None,
                                     is_logging     = False,
                                     online_shuffle = online_shuffle,
                                     method         = 'semi-hard', 
+                                    ## method         = 'random', 
                                     lr             = lr,
                                     isflat         = False, )  # Conv2d input needs one more dim for batch
 validator = OnlineLossValidator(model, dataset_validate, config_validator)
