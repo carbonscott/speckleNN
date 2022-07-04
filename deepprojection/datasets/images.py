@@ -59,7 +59,7 @@ class SPIImgDataset(Dataset):
         self._dataset_dict        = {}
         self.psana_imgreader_dict = {}
         self.imglabel_orig_list   = []
-        self.imglabel_cache_list  = []
+        self.imglabel_cache_dict  = {}
         self.is_cache             = False
 
         # Set the seed...
@@ -126,29 +126,37 @@ class SPIImgDataset(Dataset):
         return len(self.imglabel_list)
 
 
-    def cache_img(self):
-        for idx in range(len(self.imglabel_list)):
-            img, label = self.get_img_and_label(idx)
-            self.imglabel_cache_list.append((img, label))
+    def cache_img(self, idx_list = []):
+        ''' Cache the whole dataset in imglabel_list or some subset.
+        '''
+        # If subset is not give, then go through the whole set...
+        if not len(idx_list): idx_list = range(len(self.imglabel_list))
 
-        self.is_cache = True
+        for idx in idx_list:
+            # Skip those have been recorded...
+            if idx in self.imglabel_cache_dict: continue
+
+            # Otherwise, record it
+            img, label = self.get_img_and_label(idx, verbose = True)
+            self.imglabel_cache_dict[idx] = (img, label)
 
         return None
 
 
-    def get_img_and_label(self, idx):
+    def get_img_and_label(self, idx, verbose = False):
         # Read image...
         exp, run, event_num, label = self.imglabel_list[idx]
         basename = (exp, run)
         img = self.psana_imgreader_dict[basename].get(int(event_num), mode = self.mode)
 
-        logger.info(f'DATA LOADING - {exp} {run} {event_num} {label}.')
+        if verbose: logger.info(f'DATA LOADING - {exp} {run} {event_num} {label}.')
 
         return img, label
 
 
     def __getitem__(self, idx):
-        img, label = self.imglabel_cache_list[idx] if self.is_cache else self.get_img_and_label(idx)
+        img, label = self.imglabel_cache_dict[idx] if   idx in self.imglabel_cache_dict \
+                                                   else self.get_img_and_label(idx)
 
         # Apply any possible transformation...
         # How to define a custom transform function?
