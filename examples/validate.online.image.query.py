@@ -9,29 +9,29 @@ from deepprojection.model            import SiameseModelCompare   , ConfigSiames
 from deepprojection.validator        import MultiwayQueryValidator, ConfigValidator
 from deepprojection.encoders.convnet import Hirotaka0122          , ConfigEncoder
 from deepprojection.utils            import MetaLog
-## from image_preprocess                import DatasetPreprocess
-from image_no_reg_preprocess import DatasetPreprocess
+from image_preprocess                import DatasetPreprocess
+## from image_no_reg_preprocess import DatasetPreprocess
+import itertools
 import socket
 
 # Create a timestamp to name the log file...
-## timestamp = "2022_0625_1704_31"
-timestamp = "2022_0625_1754_16"
-## timestamp = "2022_0625_1746_43"
-## timestamp = "2022_0625_2321_32"
-
+timestamp = "2022_0706_0905_04"
 
 # Set up parameters for an experiment...
-## fl_csv         = 'datasets.simple.csv'
-fl_csv         = 'datasets.binary.csv'
-num_query      = 250
-frac_train     = 0.25
+fl_csv         = 'datasets.simple.csv'
+exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
+
+## # Set up parameters for an experiment...
+## fl_csv         = 'datasets.binary.csv'
+## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.MULTI, ConfigDataset.BACKGROUND ]
+
+## num_query      = 250
+num_query      = 1000
+frac_train     = 0.50
 frac_validate  = None
 dataset_usage  = 'test'
-## exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
-exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.MULTI, ConfigDataset.BACKGROUND ]
 
-
-size_batch     = 40
+size_batch     = 100
 online_shuffle = True
 lr             = 1e-3
 seed           = 0
@@ -50,7 +50,7 @@ comments = f"""
 
             """
 
-# Configure the location to run the job...
+# Configure the location to run the job...## 
 drc_cwd = os.getcwd()
 
 # Set up the log file...
@@ -72,7 +72,6 @@ logger = logging.getLogger(__name__)
 config_dataset = ConfigDataset( fl_csv         = fl_csv,
                                 size_sample    = num_query,
                                 mode           = 'image',
-                                resize         = None,
                                 seed           = seed,
                                 isflat         = False,
                                 trans          = None,
@@ -86,11 +85,15 @@ dataset_validate = MultiwayQueryset(config_dataset)
 
 # Preprocess dataset...
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
-img_orig, _            = dataset_validate.get_img_and_label(0)
+img_orig               = dataset_validate[0][0][0]    # idx, fetch img, fetch from batch
 dataset_preproc        = DatasetPreprocess(img_orig)
 trans                  = dataset_preproc.config_trans()
 dataset_validate.trans = trans
-img_trans, _           = dataset_validate.get_img_and_label(0)
+img_trans              = dataset_validate[0][0][0]    # idx, fetch img, fetch from batch
+
+# Cache all images...
+idx_list = list(itertools.chain(*dataset_validate.queryset))
+dataset_validate.cache_img(idx_list)
 
 # Define validation set...
 config_dataset.trans = trans

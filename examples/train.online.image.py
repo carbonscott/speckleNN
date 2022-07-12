@@ -20,7 +20,7 @@ fl_csv                = 'datasets.simple.csv'
 size_sample_train     = 2000
 size_sample_validate  = 2000
 frac_train            = 0.50
-size_sample_per_class = 60
+size_sample_per_class = 80
 exclude_labels        = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.BACKGROUND ]
 frac_validate         = None
 dataset_usage         = 'train'
@@ -34,7 +34,7 @@ dataset_usage         = 'train'
 ## frac_validate         = None
 ## dataset_usage         = 'train'
 
-size_batch     = 20
+size_batch     = 200
 alpha          = 2.0
 online_shuffle = True
 lr             = 1e-3
@@ -166,7 +166,7 @@ config_train = ConfigTrainer( path_chkpt     = path_chkpt,
                               shuffle        = False,
                               is_logging     = False,
                               online_shuffle = online_shuffle,
-                              method         = 'semi-hard', 
+                              method         = 'random-semi-hard', 
                               ## method         = 'random', 
                               lr             = lr, )
 
@@ -182,7 +182,7 @@ config_validator = ConfigValidator( path_chkpt     = None,
                                     shuffle        = False,
                                     is_logging     = False,
                                     online_shuffle = online_shuffle,
-                                    method         = 'semi-hard', 
+                                    method         = 'random-semi-hard', 
                                     ## method         = 'random', 
                                     lr             = lr,
                                     isflat         = False, )  # Conv2d input needs one more dim for batch

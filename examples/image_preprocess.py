@@ -45,8 +45,8 @@ class DatasetPreprocess:
 
 
     def apply_crop(self):
-        crop_orig = 250, 250
-        crop_end  = 250 + 550, 250 + 550
+        crop_orig = 250 + 80, 250 + 80
+        crop_end  = 250 + 550 - 80, 250 + 550 - 80
 
         trans_crop = transform.Crop(crop_orig, crop_end)
 
@@ -57,20 +57,23 @@ class DatasetPreprocess:
         return None
 
 
-
     def apply_augmentation(self):
         # Random rotation...
         angle = None
-        center = (45, 45)
+        center = (32, 32)
+        ## center = (532, 527)
         trans_random_rotate = transform.RandomRotate(angle = angle, center = center)
 
         # Random patching...
         num_patch = 5
-        size_patch_y, size_patch_x = 6, 50
+        ## size_patch_y, size_patch_x = 6, 50
+        size_patch_y, size_patch_x = 6, 30
         trans_random_patch  = transform.RandomPatch(num_patch             , size_patch_y     , size_patch_x, 
                                                     var_patch_y    = 0.2  , var_patch_x    = 0.2, 
                                                     is_return_mask = False, is_random_flip = True)
-        trans_list = [trans_random_rotate, trans_random_patch]
+        trans_list = [trans_random_rotate]
+        ## trans_list = [trans_random_patch]
+        ## trans_list = [trans_random_rotate, trans_random_patch]
 
         # Add augmentation to dataset configuration...
         self.trans_random = trans_list
@@ -82,6 +85,7 @@ class DatasetPreprocess:
 
     def apply_downsample(self):
         resize_y, resize_x = 6, 6
+        ## resize_y, resize_x = 12, 12
         resize = (resize_y, resize_x) if not None in (resize_y, resize_x) else ()
 
         self.resize = resize
@@ -107,7 +111,6 @@ class DatasetPreprocess:
         return img
 
 
-
     def trans(self, img, **kwargs):
         # Apply mask...
         if getattr(self, "mask", None) is not None: img *= self.mask
@@ -127,7 +130,12 @@ class DatasetPreprocess:
         # Apply random transform if available???
         if getattr(self, "trans_random", None) is not None:
             for trans in self.trans_random:
-                if isinstance(trans, (transform.RandomRotate, transform.RandomPatch)): img = trans(img)
+                if isinstance(trans, (transform.RandomRotate)): img = trans(img)
+
+        # Apply random transform if available???
+        if getattr(self, "trans_random", None) is not None:
+            for trans in self.trans_random:
+                if isinstance(trans, (transform.RandomPatch)): img = trans(img)
 
         return img
 
