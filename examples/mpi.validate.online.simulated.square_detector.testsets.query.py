@@ -41,12 +41,24 @@ mpi_data_tag  = 11
 
 
 # Create a timestamp to name the log file...
-timestamp = "2022_0704_2305_36"
+## fl_csv = "simulated.square_detector.datasets.pdb_not_sampled.80.csv"
+## timestamp = "2022_0712_1123_09"
+## timestamp = "2022_0712_1127_27"
+## timestamp = "2022_0712_1135_25"
+
+## fl_csv = "simulated.square_detector.datasets.pdb_not_sampled.10.csv"
+## timestamp = "2022_0712_1151_18"
+## timestamp = "2022_0712_1152_22"
+## timestamp = "2022_0712_1153_38"
+
+fl_csv = "simulated.square_detector.datasets.pdb_not_sampled.50.csv"
+## timestamp = "2022_0712_1217_05"
+## timestamp = "2022_0712_1215_22"
+timestamp = "2022_0712_1212_18"
 
 # Set up parameters for an experiment...
-fl_csv         = "simulated.square_detector.datasets.pdb_not_sampled.80.csv"
-num_query      = 90000
-size_batch     = 10000
+num_query      = 50000
+size_batch     = 5000
 frac_train     = 1.0
 frac_validate  = None
 dataset_usage  = 'train'
@@ -114,16 +126,20 @@ img_trans              = dataset_validate[0][0][0]
 
 # Split MPI work load...
 idx_list = list(set(itertools.chain(*dataset_validate.queryset)))
-chunked_idx_list = chunk_list(idx_list, mpi_size - 1)
+chunked_idx_list = chunk_list(idx_list, mpi_size)
 
 # Load images by each worker...
 if mpi_rank != 0:
-    idx_list_by_rank = chunked_idx_list[mpi_rank - 1]
+    idx_list_by_rank = chunked_idx_list[mpi_rank]
     dataset_validate.cache_img(idx_list_by_rank)
 
     mpi_comm.send(dataset_validate.imglabel_cache_dict, dest = 0, tag = mpi_data_tag)
 
 if mpi_rank == 0:
+    # Main worker does the data loading...
+    idx_list_by_rank = chunked_idx_list[mpi_rank]
+    dataset_validate.cache_img(idx_list_by_rank)
+
     # Combine data from each worker...
     for i in range(1, mpi_size, 1):
         imglabel_cache_dict_by_rank = mpi_comm.recv(source = i, tag = mpi_data_tag)
