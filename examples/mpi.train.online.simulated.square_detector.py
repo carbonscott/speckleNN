@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+'''
+mpiexec -n 11 python mpi.train.online.simulated.square_detector.py
+'''
+
 from mpi4py import MPI
 
 import os
@@ -25,7 +29,7 @@ def chunk_list(input_list, num_chunk = 2):
         idx_b = idx_chunk * chunk_size
         idx_e = idx_b + chunk_size
         if idx_chunk == num_chunk - 1: idx_e = len(input_list)
-        seg   = input_list[idx_b : idx_e]
+        seg = input_list[idx_b : idx_e]
         chunked_list.append(seg)
 
     return chunked_list
@@ -39,20 +43,37 @@ mpi_size = mpi_comm.Get_size()    # num of processors
 mpi_rank = mpi_comm.Get_rank()
 mpi_data_tag  = 11
 
+# Is it a continued training???
+## timestamp_prev = None
+timestamp_prev = '2022_0713_2244_51'
 
 # [[[ PARAMETERS ]]]
 # Set up MPI...
 # Set up parameters for an experiment...
-fl_csv               = "simulated.square_detector.datasets.pdb_sampled.10.csv"
 ## fl_csv                = "simulated.square_detector.datasets.6Q5U.csv"
+
+fl_csv                = "simulated.square_detector.datasets.pdb_sampled.80.csv"
 size_sample_train     = 40000
-size_sample_validate  = 10000
+size_sample_validate  = 40000
+frac_train            = 0.7
+
+## fl_csv                = "simulated.square_detector.datasets.pdb_sampled.10.csv"
+## size_sample_train     = 40000
+## size_sample_validate  = 40000
+## frac_train            = 0.7
+
+## fl_csv                = "simulated.square_detector.datasets.pdb_sampled.50.csv"
+## size_sample_train     = 40000
+## size_sample_validate  = 40000
+## frac_train            = 0.7
+
+dim_emb = 128
+alpha   = 1.0
+
 size_sample_per_class = None
 size_batch            = 1000
-frac_train            = 0.8
 frac_validate         = None
 dataset_usage         = 'train'
-alpha                 = 2.0
 online_shuffle        = True
 lr                    = 1e-3
 seed                  = 0
@@ -71,6 +92,7 @@ comments = f"""
             Alpha                   : {alpha}
             Online shuffle          : {online_shuffle}
             lr                      : {lr}
+            Continued from???       : {timestamp_prev}
 
             """
 
@@ -131,17 +153,22 @@ img_trans           = dataset_train[0][0][0]
 
 # Split MPI work load (training)...
 train_idx_list         = list(set(dataset_train.online_set))
-train_chunked_idx_list = chunk_list(train_idx_list, mpi_size - 1)
+train_chunked_idx_list = chunk_list(train_idx_list, mpi_size)
 
 # Load images by each worker...
 if mpi_rank != 0:
-    train_idx_list_by_rank = train_chunked_idx_list[mpi_rank - 1]
+    train_idx_list_by_rank = train_chunked_idx_list[mpi_rank]
     dataset_train.cache_img(train_idx_list_by_rank)
 
     mpi_comm.send(dataset_train.imglabel_cache_dict, dest = 0, tag = mpi_data_tag)
 
 if mpi_rank == 0:
+    train_idx_list_by_rank = train_chunked_idx_list[mpi_rank]
+    dataset_train.cache_img(train_idx_list_by_rank)
+
     # Combine data from each worker...
+    # Data transmition is synced at recv stage as it blocks any following
+    # operations until all recv is complete.
     for i in range(1, mpi_size, 1):
         imglabel_cache_dict_by_rank = mpi_comm.recv(source = i, tag = mpi_data_tag)
         dataset_train.imglabel_cache_dict.update(imglabel_cache_dict_by_rank)
@@ -161,16 +188,19 @@ dataset_validate = OnlineDataset(config_dataset)
 
 # Split MPI work load (validation)...
 validate_idx_list         = list(set(dataset_validate.online_set))
-validate_chunked_idx_list = chunk_list(validate_idx_list, mpi_size - 1)
+validate_chunked_idx_list = chunk_list(validate_idx_list, mpi_size)
 
 # Load images by each worker...
 if mpi_rank != 0:
-    validate_idx_list_by_rank = validate_chunked_idx_list[mpi_rank - 1]
+    validate_idx_list_by_rank = validate_chunked_idx_list[mpi_rank]
     dataset_validate.cache_img(validate_idx_list_by_rank)
 
     mpi_comm.send(dataset_validate.imglabel_cache_dict, dest = 0, tag = mpi_data_tag)
 
 if mpi_rank == 0:
+    validate_idx_list_by_rank = validate_chunked_idx_list[mpi_rank]
+    dataset_validate.cache_img(validate_idx_list_by_rank)
+
     # Combine data from each worker...
     for i in range(1, mpi_size, 1):
         imglabel_cache_dict_by_rank = mpi_comm.recv(source = i, tag = mpi_data_tag)
@@ -182,7 +212,6 @@ if mpi_rank == 0:
     # ___/ MODEL TRAINING/VALIDATION \___
     # [[[ IMAGE ENCODER ]]]
     # Config the encoder...
-    dim_emb = 128
     size_y, size_x = img_trans.shape
     config_encoder = ConfigEncoder( dim_emb = dim_emb,
                                     size_y  = size_y,
@@ -191,23 +220,28 @@ if mpi_rank == 0:
     encoder = Hirotaka0122(config_encoder)
 
 
-    # [[[ MODEL ]]]
-    # Config the model...
-    config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
-    model = OnlineSiameseModel(config_siamese)
-
-    # Initialize weights...
-    def init_weights(module):
-        if isinstance(module, (torch.nn.Embedding, torch.nn.Linear)):
-            module.weight.data.normal_(mean = 0.0, std = 0.02)
-    model.apply(init_weights)
-
-
     # [[[ CHECKPOINT ]]]
     DRCCHKPT         = "chkpts"
     prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
     fl_chkpt         = f"{timestamp}.train.chkpt"
     path_chkpt       = os.path.join(prefixpath_chkpt, fl_chkpt)
+
+
+    # [[[ MODEL ]]]
+    # Config the model...
+    config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
+    model = OnlineSiameseModel(config_siamese)
+
+    # Initialize weights or reuse weights from a timestamp...
+    def init_weights(module):
+        if isinstance(module, (torch.nn.Embedding, torch.nn.Linear)):
+            module.weight.data.normal_(mean = 0.0, std = 0.02)
+    if timestamp_prev is None: 
+        model.apply(init_weights)
+    else:
+        fl_chkpt_prev = f"{timestamp_prev}.train.chkpt"
+        path_chkpt_prev = os.path.join(prefixpath_chkpt, fl_chkpt_prev)
+        model.load_state_dict(torch.load(path_chkpt_prev))
 
 
     # [[[ TRAINER ]]]
