@@ -119,7 +119,9 @@ class Hirotaka0122Plus(nn.Module):
         # Define Conv params...
         # I don't have a good idea of how to make it easier for users.
         conv_dict = {
-                      "order"  : ("conv 1", "pool 1", "conv 2", "pool 2"),
+                      "order"  : ("conv 1", "pool 1", 
+                                  "conv 2", "pool 2",
+                                  "conv 3", "pool 3"),
                       "conv 1" : { 
                                    "in_channels"  : 1,
                                    "out_channels" : 32,
@@ -146,19 +148,19 @@ class Hirotaka0122Plus(nn.Module):
                                    "stride"      : 2,
                                    "padding"     : 0,
                                  },
-                      ## "conv 3" : { 
-                      ##              "in_channels"  : 64,
-                      ##              "out_channels" : 128,
-                      ##              "kernel_size"  : 5,
-                      ##              "stride"       : 1,
-                      ##              "padding"      : 0,
-                      ##              "bias"         : isbias,
-                      ##            },
-                      ## "pool 3" : { 
-                      ##              "kernel_size" : 2,
-                      ##              "stride"      : 2,
-                      ##              "padding"     : 0,
-                      ##            },
+                      "conv 3" : { 
+                                   "in_channels"  : 64,
+                                   "out_channels" : 128,
+                                   "kernel_size"  : 1,
+                                   "stride"       : 1,
+                                   "padding"      : 0,
+                                   "bias"         : isbias,
+                                 },
+                      "pool 3" : { 
+                                   "kernel_size" : 1,
+                                   "stride"      : 1,
+                                   "padding"     : 0,
+                                 },
                     }
 
         in_channels = 1
@@ -179,10 +181,10 @@ class Hirotaka0122Plus(nn.Module):
             nn.MaxPool2d( **conv_dict["pool 2"] ),
             nn.Dropout(0.1),
 
-            ## nn.Conv2d(    **conv_dict["conv 3"] ),
-            ## nn.PReLU(),
-            ## nn.MaxPool2d( **conv_dict["pool 3"] ),
-            ## nn.Dropout(0.1),
+            nn.Conv2d(    **conv_dict["conv 3"] ),
+            nn.PReLU(),
+            nn.MaxPool2d( **conv_dict["pool 3"] ),
+            nn.Dropout(0.1),
         )
 
         # Define the embedding layer...
