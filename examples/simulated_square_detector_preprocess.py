@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 class DatasetPreprocess:
 
-    def __init__(self, img, sigma_scale = 100): 
+    def __init__(self, img, sigma = 0.15): 
         self.img = img
-        self.sigma_scale = sigma_scale
+        self.sigma = sigma
 
         logger.info(f"___/ Preprocess Settings \___")
 
@@ -131,8 +131,7 @@ class DatasetPreprocess:
 
 
     def apply_noise_gaussian(self):
-        scale = self.sigma_scale
-        sigma = scale * 0.15
+        sigma = self.sigma
 
         def _noise_gaussian(img):
             return transform.noise_gaussian(img, sigma)
@@ -157,20 +156,19 @@ class DatasetPreprocess:
         # Apply crop...
         if getattr(self, "trans_crop", None) is not None: img = self.trans_crop(img)
 
-        # Resize images...
-        if getattr(self, "resize", None) is not None:
-            bin_row, bin_col = self.resize
-            img = downsample(img, bin_row, bin_col, mask = None)
-
         # Apply random transform if available???
         if getattr(self, "trans_random", None) is not None:
             for trans in self.trans_random:
                 if isinstance(trans, (transform.RandomRotate, transform.RandomPatch)): img = trans(img)
 
+        # Resize images...
+        if getattr(self, "resize", None) is not None:
+            bin_row, bin_col = self.resize
+            img = downsample(img, bin_row, bin_col, mask = None)
+
         # Apply Poisson noise...
         if getattr(self, "noise_poisson", None) is not None:
-            scale_factor = 1.0
-            img = self.noise_poisson(img, scale_factor)
+            img = self.noise_poisson(img)
 
         # Apply Guassian noise...
         if getattr(self, "noise_gaussian", None) is not None:
@@ -187,6 +185,6 @@ class DatasetPreprocess:
         self.apply_augmentation()
         self.apply_crop()
 
-        ## self.apply_downsample()
+        self.apply_downsample()
 
         return self.trans

@@ -15,6 +15,7 @@ from deepprojection.model                              import OnlineSiameseModel
 from deepprojection.trainer                            import OnlineTrainer      , ConfigTrainer
 from deepprojection.validator                          import OnlineLossValidator, ConfigValidator
 from deepprojection.encoders.convnet                   import Hirotaka0122       , ConfigEncoder
+## from deepprojection.encoders.convnet                   import Hirotaka0122Plus   , ConfigEncoder
 from deepprojection.utils                              import EpochManager       , MetaLog
 from simulated_square_detector_preprocess              import DatasetPreprocess
 from datetime import datetime
@@ -44,8 +45,8 @@ mpi_rank = mpi_comm.Get_rank()
 mpi_data_tag  = 11
 
 # Is it a continued training???
-## timestamp_prev = None
-timestamp_prev = '2022_0713_2244_51'
+timestamp_prev = None
+## timestamp_prev = "2022_0717_1937_09"
 
 # [[[ PARAMETERS ]]]
 # Set up MPI...
@@ -53,22 +54,23 @@ timestamp_prev = '2022_0713_2244_51'
 ## fl_csv                = "simulated.square_detector.datasets.6Q5U.csv"
 
 fl_csv                = "simulated.square_detector.datasets.pdb_sampled.80.csv"
-size_sample_train     = 40000
-size_sample_validate  = 40000
+size_sample_train     = 200000
+size_sample_validate  = 80000
 frac_train            = 0.7
 
 ## fl_csv                = "simulated.square_detector.datasets.pdb_sampled.10.csv"
-## size_sample_train     = 40000
-## size_sample_validate  = 40000
+## size_sample_train     = 50000
+## size_sample_validate  = 10000
 ## frac_train            = 0.7
 
 ## fl_csv                = "simulated.square_detector.datasets.pdb_sampled.50.csv"
-## size_sample_train     = 40000
-## size_sample_validate  = 40000
+## size_sample_train     = 200000
+## size_sample_validate  = 80000
 ## frac_train            = 0.7
 
 dim_emb = 128
-alpha   = 1.0
+alpha   = 0.2
+sigma   = 0.15 * 1    # ...Define Gaussian noise level
 
 size_sample_per_class = None
 size_batch            = 1000
@@ -146,7 +148,7 @@ dataset_train = OnlineDataset(config_dataset)
 # Preprocess dataset...
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
 img_orig            = dataset_train[0][0][0]
-dataset_preproc     = DatasetPreprocess(img_orig)
+dataset_preproc     = DatasetPreprocess(img_orig, sigma = sigma)
 trans               = dataset_preproc.config_trans()
 dataset_train.trans = trans
 img_trans           = dataset_train[0][0][0]
@@ -218,6 +220,7 @@ if mpi_rank == 0:
                                     size_x  = size_x,
                                     isbias  = True )
     encoder = Hirotaka0122(config_encoder)
+    ## encoder = Hirotaka0122Plus(config_encoder)
 
 
     # [[[ CHECKPOINT ]]]
@@ -276,6 +279,6 @@ if mpi_rank == 0:
 
 
     # [[[ EPOCH MANAGER ]]]
-    max_epochs = 360
+    max_epochs = 360 * 3
     epoch_manager = EpochManager(trainer = trainer, validator = validator, max_epochs = max_epochs)
     epoch_manager.run()

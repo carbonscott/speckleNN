@@ -10,6 +10,7 @@ from deepprojection.datasets.simulated_square_detector import MultiwayQueryset  
 from deepprojection.model                              import SiameseModelCompare   , ConfigSiameseModel
 from deepprojection.validator                          import MultiwayQueryValidator, ConfigValidator
 from deepprojection.encoders.convnet                   import Hirotaka0122          , ConfigEncoder
+## from deepprojection.encoders.convnet                   import Hirotaka0122Plus      , ConfigEncoder
 from deepprojection.datasets                           import transform
 from deepprojection.utils                              import MetaLog
 from simulated_square_detector_preprocess              import DatasetPreprocess
@@ -42,23 +43,37 @@ mpi_data_tag  = 11
 
 # Create a timestamp to name the log file...
 ## fl_csv = "simulated.square_detector.datasets.pdb_not_sampled.80.csv"
-## timestamp = "2022_0712_1123_09"
-## timestamp = "2022_0712_1127_27"
-## timestamp = "2022_0712_1135_25"
+## timestamp = "2022_0718_2212_13"
 
 ## fl_csv = "simulated.square_detector.datasets.pdb_not_sampled.10.csv"
-## timestamp = "2022_0712_1151_18"
-## timestamp = "2022_0712_1152_22"
-## timestamp = "2022_0712_1153_38"
+## timestamp = "2022_0718_2219_19"
+## timestamp = "2022_0718_2223_30"
+## timestamp = "2022_0718_2247_15"
 
-fl_csv = "simulated.square_detector.datasets.pdb_not_sampled.50.csv"
-## timestamp = "2022_0712_1217_05"
-## timestamp = "2022_0712_1215_22"
-timestamp = "2022_0712_1212_18"
+## fl_csv = "simulated.square_detector.datasets.pdb_not_sampled.50.csv"
+## timestamp = "2022_0718_2226_20"
+## timestamp = "2022_0718_2228_01"
+## timestamp = "2022_0718_2241_38"
+
+
+fl_csv = "simulated.square_detector.datasets.pdb_not_sampled.common.csv"
+## timestamp = "2022_0718_2247_15"
+## timestamp = "2022_0718_2208_54"
+## timestamp = "2022_0718_2241_38"
+## timestamp = "2022_0718_2212_13"
+## timestamp = "2022_0718_2149_51"
+## timestamp = "2022_0718_2226_20"
+## timestamp = "2022_0718_2219_19"
+## timestamp = "2022_0712_1135_25"
+timestamp = "2022_0719_2156_29"
+## timestamp = "2022_0719_2159_21"
+## timestamp = "2022_0719_2159_53"
 
 # Set up parameters for an experiment...
-num_query      = 50000
-size_batch     = 5000
+dim_emb = 128
+
+num_query      = 100000
+size_batch     = 1000
 frac_train     = 1.0
 frac_validate  = None
 dataset_usage  = 'train'
@@ -157,13 +172,13 @@ if mpi_rank == 0:
     prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
 
     # Config the encoder...
-    dim_emb = 128
     size_y, size_x = img_trans.shape
     config_encoder = ConfigEncoder( dim_emb = dim_emb,
                                     size_y  = size_y,
                                     size_x  = size_x,
                                     isbias  = True )
     encoder = Hirotaka0122(config_encoder)
+    ## encoder = Hirotaka0122Plus(config_encoder)
 
     # Set up the model
     config_siamese = ConfigSiameseModel( encoder = encoder, )
