@@ -200,10 +200,10 @@ def hflip(img):
 
 
 def noise_poisson(img):
-    return np.random.poisson(img)
+    return np.float32(np.random.poisson(img))
 
 
 
 
 def noise_gaussian(img, sigma):
-    return img + sigma * np.random.randn(*img.shape)
+    return np.float32(img + sigma * np.random.randn(*img.shape))
