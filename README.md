@@ -1,13 +1,19 @@
 # Deepprojection
 
-![](./figures/deepprojection.github.00.png)
+![](./figures/deepprojection.github.01.png)
 
-Deepprojection is a X-ray scattering pattern classifier for the detection of
-"single hit" in single particle imaging (SPI) experiments.  
+Deepprojection is a hit classifier for single particle imaging (SPI)
+experiments.  The primary goal of the classifier is to identify *single-hit*s in
+a dataset.  The classifier achieved an accuracy of 99%, which was trained on 200
+experimental scattering images and tested against 140 other images.  The
+training time is around 15-20 min on a NVIDIA 1080 Ti.  It still had an accuracy
+of 90% when only 100 images were used for training, which means we can deploy it
+for *hit* classification even when the data collection is still underway.  The
+classifier can perform classification at nearly 450Hz on the same GPU (1080Ti).  
 
 ## Installation
 
-- Direct from github with `pip`
+- Direct from github with `pip` (Recommended)
 
   ```bash
   pip install git+https://github.com/carbonscott/deepprojection --upgrade --user
