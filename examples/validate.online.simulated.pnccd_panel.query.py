@@ -4,45 +4,63 @@
 import os
 import logging
 import torch
-from deepprojection.datasets.simulated_panels  import MultiwayQueryset      , ConfigDataset
-from deepprojection.model                      import SiameseModelCompare   , ConfigSiameseModel
-from deepprojection.validator                  import MultiwayQueryValidator, ConfigValidator
-from deepprojection.encoders.convnet           import Hirotaka0122          , ConfigEncoder
-from deepprojection.datasets                   import transform
-from deepprojection.utils                      import MetaLog
-from simulated_pnccd_panel_preprocess          import DatasetPreprocess
+from deepprojection.datasets.simulated_pnccd_detector import MultiwayQueryset      , ConfigDataset
+from deepprojection.model                             import SiameseModelCompare   , ConfigSiameseModel
+from deepprojection.validator                         import MultiwayQueryValidator, ConfigValidator
+from deepprojection.encoders.convnet                  import Hirotaka0122          , ConfigEncoder
+from deepprojection.datasets                          import transform
+from deepprojection.utils                             import MetaLog
+from deepprojection.plugins                           import PsanaImg
+from simulated_pnccd_panel_preprocess                 import DatasetPreprocess
+import itertools
 import socket
 
 # Create a timestamp to name the log file...
-timestamp = "2022_0423_0016_57"
+timestamp = "2022_0722_2156_30"
 
 # Set up parameters for an experiment...
 fl_csv         = "simulated.pnccd_panel.v2.datasets.csv"
-size_sample    = 4000
-size_batch     = 40
+num_query      = 2000
+frac_train     = 0.70
+frac_validate  = None
+dataset_usage  = 'test'
+
+size_batch     = 200
+online_shuffle = True
 lr             = 1e-3
+seed           = 0
+
 
 # Comment this verification...
 hostname = socket.gethostname()
 comments = f"""
             Hostname: {hostname}.
 
-            Sample size    : {size_sample}
+            Online training.
+
+            Number (query) : {num_query}
             Batch  size    : {size_batch}
+            Online shuffle : {online_shuffle}
             lr             : {lr}
 
-            Apply model to completed datasets, e.g. not in training or testing.
             """
 
-# Validate mode...
-istrain = False
-mode_validate = 'train' if istrain else 'test'
+# Load PsanaImg...
+exp           = 'amo06516'
+run           = '102'
+mode          = 'idx'
+detector_name = 'Camp.0:pnCCD.0'
+
+psana_img = PsanaImg( exp           = exp,
+                      run           = run,
+                      mode          = mode,
+                      detector_name = detector_name, )
 
 # Configure the location to run the job...
 drc_cwd = os.getcwd()
 
 # Set up the log file...
-fl_log         = f"{timestamp}.validate.query.{mode_validate}.log"
+fl_log         = f"{timestamp}.validate.query.test.log"
 DRCLOG         = "logs"
 prefixpath_log = os.path.join(drc_cwd, DRCLOG)
 if not os.path.exists(prefixpath_log): os.makedirs(prefixpath_log)
@@ -63,52 +81,61 @@ metalog.report()
 
 # Config the dataset...
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
-panels         = [ 0, 1, 2, 3 ]
-config_dataset = ConfigDataset( fl_csv            = fl_csv,
-                                size_sample       = size_sample, 
-                                resize            = None,
-                                seed              = 0,
-                                panels            = panels,
-                                isflat            = False,
-                                istrain           = istrain,
-                                frac_train        = 0.7,
-                                exclude_labels    = exclude_labels, )
+config_dataset = ConfigDataset( fl_csv         = fl_csv,
+                                size_sample    = num_query,
+                                seed           = 0,
+                                isflat         = False,
+                                frac_train     = frac_train,
+                                frac_validate  = None,
+                                dataset_usage  = dataset_usage,
+                                exclude_labels = exclude_labels,
+                                psana_img      = psana_img, )
+
+# Define the training set
+dataset_validate = MultiwayQueryset(config_dataset)
 
 # Preprocess dataset...
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
-dataset_preproc = DatasetPreprocess(config_dataset)
-dataset_preproc.apply()
-size_y, size_x = dataset_preproc.get_panelsize()
+img_orig               = dataset_validate[0][0][0]    # idx, fetch img, fetch from batch
+dataset_preproc        = DatasetPreprocess(img_orig)
+trans                  = dataset_preproc.config_trans()
+dataset_validate.trans = trans
+img_trans              = dataset_validate[0][0][0]    # idx, fetch img, fetch from batch
 
-# Define validation set...
+idx_list = list(itertools.chain(*dataset_validate.queryset))
+dataset_validate.cache_img(idx_list)
+
+# Define training set...
+config_dataset.trans = trans
 config_dataset.report()
-with MultiwayQueryset(config_dataset) as dataset_validate:
-    # Fetch checkpoint directory...
-    DRCCHKPT = "chkpts"
-    prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
 
-    # Config the encoder...
-    dim_emb = 128
-    config_encoder = ConfigEncoder( dim_emb = dim_emb,
-                                    size_y  = size_y,
-                                    size_x  = size_x,
-                                    isbias  = True )
-    encoder = Hirotaka0122(config_encoder)
+# Fetch checkpoint directory...
+DRCCHKPT = "chkpts"
+prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
 
-    # Set up the model
-    config_siamese = ConfigSiameseModel( encoder = encoder, )
-    model = SiameseModelCompare(config_siamese)
+# Config the encoder...
+dim_emb = 128
+size_y, size_x = img_trans.shape
+config_encoder = ConfigEncoder( dim_emb = dim_emb,
+                                size_y  = size_y,
+                                size_x  = size_x,
+                                isbias  = True )
+encoder = Hirotaka0122(config_encoder)
 
-    # Read chkpt from a trainig
-    fl_chkpt = f"{timestamp}.train.chkpt"
-    path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
-    config_validator = ConfigValidator( path_chkpt  = path_chkpt,
-                                        num_workers = 1,
-                                        batch_size  = size_batch,
-                                        pin_memory  = True,
-                                        shuffle     = False,
-                                        isflat      = False,
-                                        lr          = lr, )
+# Set up the model
+config_siamese = ConfigSiameseModel( encoder = encoder, )
+model = SiameseModelCompare(config_siamese)
 
-    validator = MultiwayQueryValidator(model, dataset_validate, config_validator)
-    validator.validate()
+# Read chkpt from a trainig
+fl_chkpt = f"{timestamp}.train.chkpt"
+path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
+config_validator = ConfigValidator( path_chkpt  = path_chkpt,
+                                    num_workers = 1,
+                                    batch_size  = size_batch,
+                                    pin_memory  = True,
+                                    shuffle     = False,
+                                    isflat      = False,
+                                    lr          = lr, )
+
+validator = MultiwayQueryValidator(model, dataset_validate, config_validator)
+validator.validate()
