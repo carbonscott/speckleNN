@@ -68,6 +68,7 @@ conda install -c lcls-rhel7 psana-conda
   conda install scikit-image=0.18.1=py37hdc94413_0 -c conda-forge
   ```
 
+<!--
 
 ## Datasets
 
@@ -144,6 +145,7 @@ All three scenarios in the above section are supported.  **Panels** of
   single hit  |        1845         174        0.92        0.91        0.92        0.91        0.92
    multi hit  |         159        1822        0.92        0.92        0.91        0.92        0.92
   ```
+-->
 
 
 <!--
