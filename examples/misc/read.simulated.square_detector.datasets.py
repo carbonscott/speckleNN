@@ -9,7 +9,7 @@ import matplotlib.transforms   as mtransforms
 import matplotlib.font_manager as font_manager
 import numpy as np
 import os
-from deepprojection.datasets.simulated_square_detector import SPIPanelDataset, ConfigDataset
+from deepprojection.datasets.simulated_square_detector import SPIImgDataset, ConfigDataset
 from simulated_square_detector_preprocess              import DatasetPreprocess
 
 class DisplaySPIImg:
@@ -89,7 +89,7 @@ class DisplaySPIImg:
         if isinstance(center, tuple): self.plot_center(center, angle)
         self.plot_mask()
 
-        if isinstance(title, str) and len(title) > 0: plt.suptitle(title)
+        ## if isinstance(title, str) and len(title) > 0: plt.suptitle(title)
 
         if not is_save: 
             plt.show()
@@ -115,28 +115,26 @@ class DisplaySPIImg:
 
 # Config the dataset...
 exclude_labels = [ ConfigDataset.UNKNOWN, ConfigDataset.NEEDHELP, ConfigDataset.NOHIT, ConfigDataset.BACKGROUND ]
-config_dataset = ConfigDataset( fl_csv            = 'simulated.square_detector.datasets.csv',
-                                size_sample       = 2000, 
-                                resize            = None,
+config_dataset = ConfigDataset( fl_csv            = 'simulated.square_detector.datasets.pdb_not_sampled.common.csv',
+                                size_sample       = 100,
                                 seed              = 0,
-                                isflat            = False,
-                                istrain           = True,
                                 trans             = None,
-                                frac_train        = 0.7,
+                                frac_train        = 0.2,
+                                dataset_usage     = 'train',
                                 exclude_labels    = exclude_labels, )
+
+# Create image manager...
+spiimg = SPIImgDataset(config_dataset)
+img, _ = spiimg.get_img_and_label(0)
 
 # Preprocess dataset...
 # Data preprocessing can be lengthy and defined in dataset_preprocess.py
-dataset_preproc = DatasetPreprocess(config_dataset)
-dataset_preproc.apply()
-
-# Create image manager...
-spiimg = SPIPanelDataset(config_dataset)
+dataset_preproc = DatasetPreprocess(config_dataset, sigma = 0.15 * 100)
+trans = dataset_preproc.config_trans()
 
 # Read an image...
-for idx in range(10):
+for idx in range(0,30):
     fl_base, id_frame, label = spiimg.imglabel_list[idx]
-    ## print(fl_base, id_frame)
 
     # Don't apply those changes from configuration...
     spiimg.trans = None
@@ -144,7 +142,7 @@ for idx in range(10):
     img = img.squeeze(axis = 0)
 
     # Apply those changes from configuration...
-    spiimg.trans = dataset_preproc.trans
+    spiimg.trans = trans
 
     # Get transed image...
     img_masked, _ = spiimg[idx]
@@ -156,11 +154,8 @@ for idx in range(10):
 
     title = f'simulated.{fl_base}.{id_frame}.{label}'
 
-    # Normalize image...
-    img_masked = (img_masked - np.mean(img_masked)) / np.std(img_masked)
-
     # Dispaly an image...
-    ## title = f'imagemask.{idx:06d}'
+    title = f'simulated.sq.{idx:06d}'
     disp_manager = DisplaySPIImg(img, img_masked, figsize = (18, 8))
     disp_manager.show(center = center, angle = angle, title = title, is_save = False)
     ## disp_manager.show(center = center, angle = angle, title = title, is_save = True)
