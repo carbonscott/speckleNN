@@ -106,19 +106,6 @@ class SPIImgDataset(Dataset):
             for id_frame in range(hit_type_dict[hit_type]):
                 self.imglabel_orig_list.append( (fl_base, id_frame, label) )
 
-        ## # Split the original image list into training set and test set...
-        ## num_list  = len(self.imglabel_orig_list)
-        ## num_train = int(self.frac_train * num_list)
-
-        ## # Get training examples
-        ## imglabel_train_list = random.sample(self.imglabel_orig_list, num_train)
-
-        ## # Get test examples
-        ## imglabel_test_list = set(self.imglabel_orig_list) - set(imglabel_train_list)
-        ## imglabel_test_list = sorted(list(imglabel_test_list))
-
-        ## self.imglabel_list = imglabel_train_list if self.istrain else imglabel_test_list
-
         # Split original dataset into training and holdout...
         imglabel_train_list, imglabel_holdout_list = split_dataset(self.imglabel_orig_list, self.frac_train)
 
