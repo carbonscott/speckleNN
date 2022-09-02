@@ -480,6 +480,14 @@ class SimpleSet(Siamese):
         # Form triplet for ML training...
         self.simpleset = self._form_simpleset(label_seqi_dict)
 
+        # Create a lookup table for locating the sequence number (seqi) based on a label...
+        self.label_seqi_simpleset_dict = {}
+        for i, seqi in enumerate(self.simpleset):
+            _, _, label = self.imglabel_list[seqi]
+            # Keep track of label and its seqi
+            if not label in self.label_seqi_simpleset_dict: self.label_seqi_simpleset_dict[label] = [i]
+            else                                          : self.label_seqi_simpleset_dict[label].append(i)
+
         return None
 
 
