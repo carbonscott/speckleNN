@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import torch
 import torch.nn as nn
 import random
@@ -69,6 +70,27 @@ class OnlineSiameseModel(nn.Module):
         super().__init__()
         self.alpha   = config.alpha
         self.encoder = config.encoder
+
+
+    def init_params(self, from_timestamp = None):
+        # Initialize weights or reuse weights from a timestamp...
+        def init_weights(module):
+            # Initialize conv2d with Kaiming method...
+            if isinstance(module, nn.Conv2d):
+                nn.init.kaiming_normal_(module.weight.data, nonlinearity = 'relu')
+
+                # Set bias zero since batch norm is used...
+                module.bias.data.zero_()
+
+        if from_timestamp is None:
+            self.apply(init_weights)
+        else:
+            drc_cwd          = os.getcwd()
+            DRCCHKPT         = "chkpts"
+            prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
+            fl_chkpt_prev    = f"{from_timestamp}.train.chkpt"
+            path_chkpt_prev  = os.path.join(prefixpath_chkpt, fl_chkpt_prev)
+            self.load_state_dict(torch.load(path_chkpt_prev))
 
 
     def forward(self, batch_imgs, batch_labels, batch_titles, 
@@ -333,6 +355,31 @@ class SiameseModelCompare(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.encoder = config.encoder
+
+
+    def init_params(self, from_timestamp = None):
+        # Initialize weights or reuse weights from a timestamp...
+        def init_weights(module):
+            # Initialize conv2d with Kaiming method...
+            if isinstance(module, nn.Conv2d):
+                nn.init.kaiming_normal_(module.weight.data, nonlinearity = 'relu')
+
+                # Set bias zero since batch norm is used...
+                module.bias.data.zero_()
+
+        if from_timestamp is None:
+            self.apply(init_weights)
+        else:
+            drc_cwd          = os.getcwd()
+            DRCCHKPT         = "chkpts"
+            prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
+            fl_chkpt_prev    = f"{from_timestamp}.train.chkpt"
+            path_chkpt_prev  = os.path.join(prefixpath_chkpt, fl_chkpt_prev)
+            self.load_state_dict(torch.load(path_chkpt_prev))
+
+        # Move to a device...
+        device = torch.cuda.current_device() if torch.cuda.is_available() else 'cpu'
+        self   = torch.nn.DataParallel(self).to(device)
 
 
     def forward(self, batch_img_query, batch_img_test):

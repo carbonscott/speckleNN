@@ -46,7 +46,7 @@ class LossValidator:
         return None
 
 
-    def validate(self, is_return_loss = False, epoch = None):
+    def validate(self, returns_loss = False, epoch = None):
         """ The testing loop.  """
 
         # Load model and testing configuration...
@@ -89,7 +89,7 @@ class LossValidator:
         loss_epoch_mean = np.mean(losses_epoch)
         logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.8f}")
 
-        return loss_epoch_mean if is_return_loss else None
+        return loss_epoch_mean if returns_loss else None
 
 
 
@@ -112,7 +112,7 @@ class OnlineLossValidator:
         return None
 
 
-    def validate(self, is_return_loss = False, epoch = None):
+    def validate(self, returns_loss = False, epoch = None):
         """ The testing loop.  """
 
         # Load model and testing configuration...
@@ -151,7 +151,7 @@ class OnlineLossValidator:
         loss_epoch_mean = np.mean(losses_epoch)
         logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.8f}")
 
-        return loss_epoch_mean if is_return_loss else None
+        return loss_epoch_mean if returns_loss else None
 
 
 
@@ -222,19 +222,12 @@ class MultiwayQueryValidator:
         self.dataset_test = dataset_test
         self.config_test  = config_test
 
-        # Load data to gpus if available
-        self.device = 'cpu'
-        if torch.cuda.is_available():
-            self.device = torch.cuda.current_device()
-
-            chkpt = torch.load(self.config_test.path_chkpt)
-            self.model.load_state_dict(chkpt)
-            self.model = torch.nn.DataParallel(self.model).to(self.device)
+        self.device = torch.cuda.current_device() if torch.cuda.is_available() else 'cpu'
 
         return None
 
 
-    def validate(self):
+    def validate(self, returns_details = False):
         """ The testing loop.  """
 
         # Load model and testing configuration...
@@ -251,6 +244,9 @@ class MultiwayQueryValidator:
 
         # Train each batch...
         batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test))
+        batch_metadata_query_list   = []
+        batch_metadata_support_list = []
+        batch_dist_support_list     = []
         for step_id, entry in batch:
             # Unpack entry...
             # Not a good design, but it's okay for now (03/03/2020)
@@ -260,37 +256,41 @@ class MultiwayQueryValidator:
             batch_str_list = entry[ len(entry) // 2 :                 ]
 
             # Assign returned subcategory for img and str...
-            # batch_img_query : (num_query = 1     , size_batch, size_image2d)
-            # batch_img_test  : (num_test_per_query, size_batch, size_image2d)
-            # batch_str_query : (num_query = 1     , size_batch, size_str)
-            # batch_str_test  : (num_test_per_query, size_batch, size_str)
-            batch_img_query, batch_img_test = batch_img_list[0:1], batch_img_list[1:]
-            batch_str_query, batch_str_test = batch_str_list[0:1], batch_str_list[1:]
+            # batch_img_query         : (num_query = 1        , size_batch, size_image2d)
+            # batch_img_support       : (num_support_per_query, size_batch, size_image2d)
+            # batch_metadata_query    : (num_query = 1        , size_batch, size_str)
+            # batch_metadata_support  : (num_support_per_query, size_batch, size_str)
+            batch_img_query, batch_img_support = batch_img_list[0:1], batch_img_list[1:]
+            batch_metadata_query, batch_metadata_support = batch_str_list[0:1], batch_str_list[1:]
 
             # Load imgs to gpu...
-            batch_img_query = torch.stack(batch_img_query).to(self.device)
-            batch_img_test  = torch.stack(batch_img_test).to(self.device)
+            batch_img_query   = torch.stack(batch_img_query).to(self.device)
+            batch_img_support = torch.stack(batch_img_support).to(self.device)
 
             # Calculate the squared distance between embeddings...
             # (size_batch, size_image) => (size_batch, len_emb)
             with torch.no_grad():
-                # batch_emb_query : (num_test_per_query, size_batch, len_emb)
-                # batch_dist      : (num_test_per_query, size_batch         )
-                batch_emb_query, _, batch_dist = self.model.forward(batch_img_query, batch_img_test)
-                batch_dist_numpy = batch_dist.cpu().detach().numpy()
+                # batch_emb_query : (num_support_per_query, size_batch, len_emb)
+                # batch_dist      : (num_support_per_query, size_batch         )
+                batch_emb_query, _, batch_dist = self.model.forward(batch_img_query, batch_img_support)
+                batch_dist_support = batch_dist.cpu().detach().numpy()
 
             # Go through each item in a batch...
-            num_test_per_query, size_batch = batch_img_test.shape[:2]
+            num_support_per_query, size_batch = batch_img_support.shape[:2]
             for i in range(size_batch):
                 # Go through each test against the query...
-                msg = [ f"{batch_str_test[j][i]} : {batch_dist_numpy[j][i]:12.8f}" for j in range(num_test_per_query) ]
+                msg = [ f"{batch_metadata_support[j][i]} : {batch_dist_support[j][i]:12.8f}" for j in range(num_support_per_query) ]
 
                 # Return a line for each batch...
-                log_header = f"DATA - {batch_str_query[0][i]}, "
+                log_header = f"DATA - {batch_metadata_query[0][i]}, "
                 log_msg = log_header + ", ".join(msg)
                 logger.info(log_msg)
 
-        return None
+            batch_metadata_query_list.append( batch_metadata_query )
+            batch_metadata_support_list.append( batch_metadata_support )
+            batch_dist_support_list.append( batch_dist_support )
+
+        return batch_metadata_query_list, batch_metadata_support_list, batch_dist_support_list if returns_details else None
 
 
 

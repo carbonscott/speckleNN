@@ -49,7 +49,7 @@ class Trainer:
         torch.save(model.state_dict(), self.config_train.path_chkpt)
 
 
-    def train(self, is_save_checkpoint = True, epoch = None):
+    def train(self, saves_checkpoint = True, epoch = None):
         """ The training loop.  """
 
         # Load model and training configuration...
@@ -95,7 +95,7 @@ class Trainer:
         logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.8f}")
 
         # Save the model state
-        if is_save_checkpoint: self.save_checkpoint()
+        if saves_checkpoint: self.save_checkpoint()
 
 
 
@@ -115,14 +115,21 @@ class OnlineTrainer:
         return None
 
 
-    def save_checkpoint(self):
+    def save_checkpoint(self, timestamp):
+        DRCCHKPT = "chkpts"
+        drc_cwd = os.getcwd()
+        prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
+        if not os.path.exists(prefixpath_chkpt): os.makedirs(prefixpath_chkpt)
+        fl_chkpt   = f"{timestamp}.train.chkpt"
+        path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
+
         # Hmmm, DataParallel wrappers keep raw model object in .module attribute
         model = self.model.module if hasattr(self.model, "module") else self.model
-        logger.info(f"SAVE - {self.config_train.path_chkpt}")
-        torch.save(model.state_dict(), self.config_train.path_chkpt)
+        logger.info(f"SAVE - {path_chkpt}")
+        torch.save(model.state_dict(), path_chkpt)
 
 
-    def train(self, is_save_checkpoint = True, epoch = None):
+    def train(self, saves_checkpoint = True, epoch = None, returns_loss = False):
         """ The training loop.  """
 
         # Load model and training configuration...
@@ -163,5 +170,4 @@ class OnlineTrainer:
         loss_epoch_mean = np.mean(losses_epoch)
         logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.8f}")
 
-        # Save the model state
-        if is_save_checkpoint: self.save_checkpoint()
+        return loss_epoch_mean if returns_loss else None
