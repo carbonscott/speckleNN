@@ -157,6 +157,8 @@ class SPIOnlineDataset(Dataset):
 
             label_seqi_dict = label_seqi_sampled_dict
 
+        self.label_seqi_dict = label_seqi_dict
+
         # Form a simple set...
         online_set = []
         for label in label_list:
