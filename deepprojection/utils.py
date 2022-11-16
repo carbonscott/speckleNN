@@ -157,20 +157,21 @@ class EpochManager:
 
 
 
-def init_logger(returns_timestamp = False):
-    # Create a timestamp to name the log file...
-    now = datetime.now()
-    timestamp = now.strftime("%Y_%m%d_%H%M_%S")
+def init_logger(log_name = 'train', timestamp = None, returns_timestamp = False, saves_log = True):
+    if timestamp is None:
+        # Create a timestamp to name the log file...
+        now = datetime.now()
+        timestamp = now.strftime("%Y_%m%d_%H%M_%S")
 
     # Configure the location to run the job...
     drc_cwd = os.getcwd()
 
     # Set up the log file...
-    fl_log         = f"{timestamp}.train.log"
+    fl_log         = f"{timestamp}.{log_name}.log"
     DRCLOG         = "logs"
     prefixpath_log = os.path.join(drc_cwd, DRCLOG)
     if not os.path.exists(prefixpath_log): os.makedirs(prefixpath_log)
-    path_log = os.path.join(prefixpath_log, fl_log)
+    path_log = os.path.join(prefixpath_log, fl_log) if saves_log else None
 
     # Config logging behaviors
     logging.basicConfig( filename = path_log,
