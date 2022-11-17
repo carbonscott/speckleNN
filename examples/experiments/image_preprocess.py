@@ -1,18 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import random
 import numpy as np
 from deepprojection.datasets import transform
-from deepprojection.utils    import downsample
+from deepprojection.utils    import downsample, set_seed
 import logging
 
 logger = logging.getLogger(__name__)
 
+set_seed(0)
 
 class DatasetPreprocess:
 
     def __init__(self, img): 
         self.img = img
+
+        # Set up state variable...
+        self._counter_broken_panel = 0
 
         logger.info(f"___/ Preprocess Settings \___")
 
@@ -39,7 +44,7 @@ class DatasetPreprocess:
         # Fetch the value...
         self.mask = mask
 
-        logger.info(f"Apply mask.")
+        logger.info(f"TRANS : Apply mask.")
 
         return None
 
@@ -52,7 +57,7 @@ class DatasetPreprocess:
 
         self.trans_crop = trans_crop
 
-        logger.info(f"Apply cropping.")
+        logger.info(f"TRANS : Apply cropping.")
 
         return None
 
@@ -61,16 +66,18 @@ class DatasetPreprocess:
         # Random rotation...
         angle = None
         center = (32, 32)
+        ## center = (197, 197)
         ## center = (532, 527)
         trans_random_rotate = transform.RandomRotate(angle = angle, center = center)
 
-        # Random patching...
-        num_patch = 5
-        ## size_patch_y, size_patch_x = 6, 50
-        size_patch_y, size_patch_x = 6, 30
-        trans_random_patch  = transform.RandomPatch(num_patch             , size_patch_y     , size_patch_x, 
-                                                    var_patch_y    = 0.2  , var_patch_x    = 0.2, 
-                                                    is_return_mask = False, is_random_flip = True)
+        ### # Random patching...
+        ### num_patch = 1
+        ### ## size_patch_y, size_patch_x = 6, 50
+        ### size_patch_y, size_patch_x = 25, 50
+        ### trans_random_patch  = transform.RandomPatch(num_patch             , size_patch_y     , size_patch_x, 
+        ###                                             var_patch_y    = 0.2  , var_patch_x    = 0.2, 
+        ###                                             is_return_mask = False, is_random_flip = True)
+
         trans_list = [trans_random_rotate]
         ## trans_list = [trans_random_patch]
         ## trans_list = [trans_random_rotate, trans_random_patch]
@@ -78,7 +85,8 @@ class DatasetPreprocess:
         # Add augmentation to dataset configuration...
         self.trans_random = trans_list
 
-        logger.info(f"Apply random patching. angle = {angle}, center = {center}, size_patch_y = {size_patch_y}, size_patch_x = {size_patch_x}")
+        ## logger.info(f"TRANS : Apply random patching. angle = {angle}, center = {center}, size_patch_y = {size_patch_y}, size_patch_x = {size_patch_x}")
+        logger.info(f"TRANS : Apply random patching. angle = {angle}, center = {center}")
 
         return None
 
@@ -90,7 +98,7 @@ class DatasetPreprocess:
 
         self.resize = resize
 
-        logger.info(f"Apply downsampling. resize_y = {resize_y}, resize_x = {resize_x}")
+        logger.info(f"TRANS : Apply downsampling. resize_y = {resize_y}, resize_x = {resize_x}")
 
         return None
 
@@ -101,14 +109,47 @@ class DatasetPreprocess:
         return None
 
 
+    def apply_broken_half_panel(self, img):
+        size_y, size_x = img.shape
+        img[:size_x//2] = 0.0
+
+        if not self._counter_broken_panel:
+            logger.info(f"TRANS : Apply broken panel.  1/2 panel.")
+            self._counter_broken_panel += 1
+
+        return None
+
+
+    def apply_broken_quater_panel(self, img):
+        size_y, size_x = img.shape
+        img[:size_x//2,:size_y//2] = 0.0
+
+        if not self._counter_broken_panel:
+            logger.info(f"TRANS : Apply broken panel.  1/4 panel.")
+            self._counter_broken_panel += 1
+
+        return None
+
+
+    def apply_broken_three_quater_panel(self, img):
+        size_y, size_x = img.shape
+        img[:size_x//2,:size_y//2] = 0.0
+        img[:,size_y//2 + 1:]      = 0.0
+
+        if not self._counter_broken_panel:
+            logger.info(f"TRANS : Apply broken panel.  1/4 panel.")
+            self._counter_broken_panel += 1
+
+        return None
+
 
     def trans_threshold(self, img, threshold):
         img_norm = (img - img.mean()) / img.std()
         img[img_norm <= threshold] = 0.0
 
-        logger.info(f"Apply thresholding on normalized image. threshold = {threshold}")
+        logger.info(f"TRANS : Apply thresholding on normalized image. threshold = {threshold}")
 
-        return img
+        return None
 
 
     def trans(self, img, **kwargs):
@@ -120,31 +161,53 @@ class DatasetPreprocess:
 
         # Apply threshold...
         if getattr(self, "threshold_ok", None) is not None: 
-            img = self.trans_threshold(img, threshold = 1)
+            self.trans_threshold(img, threshold = 0.0)
 
         # Resize images...
         if getattr(self, "resize", None) is not None:
             bin_row, bin_col = self.resize
             img = downsample(img, bin_row, bin_col, mask = None)
 
+        # Apply broken panel if available???
+        if getattr(self, "is_broken_panel", None) is not None:
+            self.apply_broken_half_panel(img)
+            ## self.apply_broken_quater_panel(img)
+            ## self.apply_broken_three_quater_panel(img)
+
         # Apply random transform if available???
         if getattr(self, "trans_random", None) is not None:
             for trans in self.trans_random:
                 if isinstance(trans, (transform.RandomRotate)): img = trans(img)
 
-        # Apply random transform if available???
-        if getattr(self, "trans_random", None) is not None:
-            for trans in self.trans_random:
-                if isinstance(trans, (transform.RandomPatch)): img = trans(img)
+        ## # Apply random transform if available???
+        ## if getattr(self, "trans_random", None) is not None:
+        ##     for trans in self.trans_random:
+        ##         if isinstance(trans, (transform.RandomPatch)): img = trans(img)
 
         return img
 
 
     def config_trans(self):
-        ## self.apply_mask()
+        self.apply_mask()
         self.apply_crop()
         ## self.apply_threshold()
         self.apply_downsample()
         self.apply_augmentation()
 
+        ## self.is_broken_panel = True
+
         return self.trans
+        ## return None
+
+
+    def save_random_state(self):
+        self.state_random = random.getstate()
+
+        return None
+
+
+    def set_random_state(self):
+        state_random = self.state_random
+        random.setstate(state_random)
+
+        return None
