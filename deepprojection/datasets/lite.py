@@ -9,6 +9,8 @@ import logging
 
 from torch.utils.data import Dataset
 
+from ..utils import set_seed
+
 logger = logging.getLogger(__name__)
 
 class ConfigDataset:
@@ -86,7 +88,9 @@ class SPIOnlineDataset(Dataset):
 
         # Set seed for data spliting...
         if seed is not None:
-            random.seed(seed)
+            set_seed(seed)
+
+        self.random_state_cache_dict = {}
 
         # Fetch all metadata...
         self.metadata_list = [ metadata for _, _, metadata in self.dataset_list ]
@@ -112,6 +116,20 @@ class SPIOnlineDataset(Dataset):
         return self.size_sample
 
 
+    def get_random_state(self):
+        state_random = (random.getstate(), np.random.get_state())
+
+        return state_random
+
+
+    def set_random_state(self, state_random):
+        state_random, state_numpy = state_random
+        random.setstate(state_random)
+        np.random.set_state(state_numpy)
+
+        return None
+
+
     def __getitem__(self, idx):
         # Retrive a sampled image...
         idx_sample = self.online_set[idx]
@@ -122,6 +140,13 @@ class SPIOnlineDataset(Dataset):
         # Input : img, **kwargs 
         # Output: img_transfromed
         if self.trans is not None:
+            # Memorize the random state by index
+            if idx not in self.random_state_cache_dict:
+                state_random = self.get_random_state()
+                self.random_state_cache_dict[idx] = state_random
+            state_random = self.random_state_cache_dict[idx]
+            self.set_random_state(state_random)
+
             img = self.trans(img)
 
         # Normalize input image...
@@ -216,7 +241,9 @@ class MultiwayQueryset(Dataset):
 
         # Set seed for data spliting...
         if seed is not None:
-            random.seed(seed)
+            set_seed(seed)
+
+        self.random_state_cache_dict = {}
 
         # Fetch all metadata...
         self.metadata_list = [ metadata for _, _, metadata in self.dataset_list ]
@@ -259,6 +286,13 @@ class MultiwayQueryset(Dataset):
         # Input : img, **kwargs 
         # Output: img_transfromed
         if self.trans is not None:
+            # Memorize the random state by index
+            if idx not in self.random_state_cache_dict:
+                state_random = self.get_random_state()
+                self.random_state_cache_dict[idx] = state_random
+            state_random = self.random_state_cache_dict[idx]
+            self.set_random_state(state_random)
+
             img_query = self.trans(img_query)
             imgs_test = [ self.trans(img) for img in imgs_test ]
 
@@ -322,6 +356,17 @@ class MultiwayQueryset(Dataset):
         return queryset
 
 
+    def get_random_state(self):
+        state_random = (random.getstate(), np.random.get_state())
 
+        return state_random
+
+
+    def set_random_state(self, state_random):
+        state_random, state_numpy = state_random
+        random.setstate(state_random)
+        np.random.set_state(state_numpy)
+
+        return None
 
 
