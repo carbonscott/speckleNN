@@ -14,27 +14,44 @@ from deepprojection.trainer          import OnlineTrainer      , ConfigTrainer
 from deepprojection.validator        import OnlineLossValidator, ConfigValidator
 from deepprojection.encoders.convnet import Hirotaka0122       , ConfigEncoder
 from deepprojection.utils            import EpochManager       , MetaLog, init_logger, split_dataset
+
 from datetime import datetime
-from image_preprocess import DatasetPreprocess
+## from image_preprocess import DatasetPreprocess
+from image_preprocess_faulty import DatasetPreprocess
 
 # [[[ CONFIG ]]]
 timestamp_prev = None
-frac_train = 0.5
-frac_validate = 0.5
+frac_train     = 0.5
+frac_validate  = 0.5
 
-lr = 1e-3
+lr    = 1e-3
+seed  = 0
+
+## alpha = 0.02
+## alpha = 0.03336201
+## alpha = 0.05565119
+## alpha = 0.09283178
+## alpha = 0.15485274
+## alpha = 0.25830993
+## alpha = 0.43088694
+## alpha = 0.71876273
+## alpha = 1.1989685
 alpha = 2.0
-seed = 0
 
-size_sample_train     = 500
-size_sample_validate  = 500
-size_sample_per_class = 60
-size_batch            = 200
-online_shuffle        = True
-trans                 = None
+## size_sample_per_class_train    = 10
+## size_sample_per_class_train    = 20
+## size_sample_per_class_train    = 40
+size_sample_per_class_train    = 60
+size_sample_train              = size_sample_per_class_train * 100
+size_sample_validate           = size_sample_train // 2
+size_sample_per_class_validate = size_sample_per_class_train // 2
+size_batch                     = 20
+online_shuffle                 = True
+trans                          = None
 
 # [[[ LOGGING ]]]
 timestamp = init_logger(log_name = 'train', returns_timestamp = True)
+print(timestamp)
 
 # Clarify the purpose of this experiment...
 hostname = socket.gethostname()
@@ -43,13 +60,14 @@ comments = f"""
 
             Online training.
 
-            Sample size (train)     : {size_sample_train}
-            Sample size (validate)  : {size_sample_validate}
-            Sample size (per class) : {size_sample_per_class}
-            Batch  size             : {size_batch}
-            Alpha                   : {alpha}
-            Online shuffle          : {online_shuffle}
-            lr                      : {lr}
+            Sample size (train)               : {size_sample_train}
+            Sample size (validate)            : {size_sample_validate}
+            Sample size (per class, train)    : {size_sample_per_class_train}
+            Sample size (per class, validate) : {size_sample_per_class_validate}
+            Batch  size                       : {size_batch}
+            Alpha                             : {alpha}
+            Online shuffle                    : {online_shuffle}
+            lr                                : {lr}
 
             """
 
@@ -73,19 +91,19 @@ data_train   , data_val_and_test = split_dataset(dataset_list     , frac_train  
 data_validate, data_test         = split_dataset(data_val_and_test, frac_validate, seed = seed)
 
 # Define the training set
-dataset_train = SPIOnlineDataset( dataset_list = data_train, 
-                                  size_sample  = size_sample_train,
-                                  size_sample_per_class = size_sample_per_class, 
-                                  trans = trans, 
-                                  seed  = seed, )
+dataset_train = SPIOnlineDataset( dataset_list          = data_train, 
+                                  size_sample           = size_sample_train,
+                                  size_sample_per_class = size_sample_per_class_train, 
+                                  trans                 = trans, 
+                                  seed                  = seed, )
 dataset_train.report()
 
 # Define the training set
-dataset_validate = SPIOnlineDataset( dataset_list = data_validate, 
-                                     size_sample  = size_sample_train,
-                                     size_sample_per_class = size_sample_per_class, 
-                                     trans = trans, 
-                                     seed  = seed, )
+dataset_validate = SPIOnlineDataset( dataset_list          = data_validate, 
+                                     size_sample           = size_sample_train,
+                                     size_sample_per_class = size_sample_per_class_validate, 
+                                     trans                 = trans, 
+                                     seed                  = seed, )
 dataset_validate.report()
 
 
@@ -98,6 +116,8 @@ dataset_train.trans    = trans
 dataset_validate.trans = trans
 img_trans              = dataset_train[0][0][0]
 
+dataset_train.cache_dataset()
+dataset_validate.cache_dataset()
 
 # [[[ IMAGE ENCODER ]]]
 # Config the encoder...
@@ -156,15 +176,15 @@ validator = OnlineLossValidator(model, dataset_validate, config_validator)
 
 # [[[ TRAIN EPOCHS ]]]
 
-loss_train_hist = []
+loss_train_hist    = []
 loss_validate_hist = []
-loss_min_hist = []
+loss_min_hist      = []
 
 # [[[ EPOCH MANAGER ]]]
 epoch_manager = EpochManager( trainer   = trainer,
                               validator = validator,
                               timestamp = timestamp, )
-max_epochs = 400
+max_epochs = 1000
 freq_save = 5
 for epoch in tqdm.tqdm(range(max_epochs), disable=False):
     loss_train, loss_validate, loss_min = epoch_manager.run_one_epoch(epoch = epoch, returns_loss = True)
