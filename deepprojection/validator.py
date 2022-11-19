@@ -131,8 +131,6 @@ class OnlineLossValidator:
         losses_epoch = []
         batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test), disable = config_test.tqdm_disable)
         for step_id, entry in batch:
-            losses_batch = []
-
             batch_imgs, batch_labels, batch_titles = entry
             batch_imgs = batch_imgs.to(self.device)
 
@@ -142,11 +140,9 @@ class OnlineLossValidator:
                                           method     = config_test.method,
                                           shuffle    = config_test.online_shuffle,)
                 loss_val = loss.cpu().detach().numpy()
-                losses_batch.append(loss_val)
 
-            loss_batch_mean = np.mean(losses_batch)
-            logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_batch_mean:.8f}")
-            losses_epoch.append(loss_batch_mean)
+            logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_val:.8f}")
+            losses_epoch.append(loss_val)
 
         loss_epoch_mean = np.mean(losses_epoch)
         logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.8f}")
