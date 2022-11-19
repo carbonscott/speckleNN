@@ -78,12 +78,14 @@ class SPIOnlineDataset(Dataset):
                        size_sample, 
                        size_sample_per_class = None, 
                        trans                 = None, 
+                       allows_cache_trans    = False,
                        seed                  = None):
         # Unpack parameters...
         self.size_sample           = size_sample
         self.size_sample_per_class = size_sample_per_class
         self.dataset_list          = dataset_list
         self.trans                 = trans
+        self.allows_cache_trans    = allows_cache_trans
         self.seed                  = seed
 
         # Set seed for data spliting...
@@ -91,6 +93,8 @@ class SPIOnlineDataset(Dataset):
             set_seed(seed)
 
         self.random_state_cache_dict = {}
+
+        self.dataset_cache_dict = {}
 
         # Fetch all metadata...
         self.metadata_list = [ metadata for _, _, metadata in self.dataset_list ]
@@ -130,7 +134,17 @@ class SPIOnlineDataset(Dataset):
         return None
 
 
-    def __getitem__(self, idx):
+    def cache_dataset(self):
+        for idx in range(self.size_sample):
+            if idx in self.dataset_cache_dict: continue
+
+            img, label, metadata = self.get_data(idx)
+            self.dataset_cache_dict[idx] = (img, label, metadata)
+
+        return None
+
+
+    def get_data(self, idx):
         # Retrive a sampled image...
         idx_sample = self.online_set[idx]
         img, label, metadata = self.dataset_list[idx_sample]
@@ -140,12 +154,13 @@ class SPIOnlineDataset(Dataset):
         # Input : img, **kwargs 
         # Output: img_transfromed
         if self.trans is not None:
-            # Memorize the random state by index
-            if idx not in self.random_state_cache_dict:
-                state_random = self.get_random_state()
-                self.random_state_cache_dict[idx] = state_random
-            state_random = self.random_state_cache_dict[idx]
-            self.set_random_state(state_random)
+            if self.allows_cache_trans:
+                # Memorize the random state by index
+                if idx not in self.random_state_cache_dict:
+                    state_random = self.get_random_state()
+                    self.random_state_cache_dict[idx] = state_random
+                state_random = self.random_state_cache_dict[idx]
+                self.set_random_state(state_random)
 
             img = self.trans(img)
 
@@ -153,6 +168,14 @@ class SPIOnlineDataset(Dataset):
         img_mean = np.mean(img)
         img_std  = np.std(img)
         img      = (img - img_mean) / img_std
+
+        return img, label, metadata
+
+
+    def __getitem__(self, idx):
+        idx_sample = self.online_set[idx]
+        img, label, metadata = self.dataset_cache_dict[idx] if idx in self.dataset_cache_dict \
+                                                            else self.get_data(idx)
 
         return img[None,], label, metadata
 
@@ -231,12 +254,14 @@ class MultiwayQueryset(Dataset):
                        size_sample, 
                        size_sample_per_class = None, 
                        trans                 = None, 
+                       allows_cache_trans    = False,
                        seed                  = None):
         # Unpack parameters...
         self.size_sample           = size_sample
         self.size_sample_per_class = size_sample_per_class
         self.dataset_list          = dataset_list
         self.trans                 = trans
+        self.allows_cache_trans    = allows_cache_trans
         self.seed                  = seed
 
         # Set seed for data spliting...
@@ -286,12 +311,13 @@ class MultiwayQueryset(Dataset):
         # Input : img, **kwargs 
         # Output: img_transfromed
         if self.trans is not None:
-            # Memorize the random state by index
-            if idx not in self.random_state_cache_dict:
-                state_random = self.get_random_state()
-                self.random_state_cache_dict[idx] = state_random
-            state_random = self.random_state_cache_dict[idx]
-            self.set_random_state(state_random)
+            if self.allows_cache_trans:
+                # Memorize the random state by index
+                if idx not in self.random_state_cache_dict:
+                    state_random = self.get_random_state()
+                    self.random_state_cache_dict[idx] = state_random
+                state_random = self.random_state_cache_dict[idx]
+                self.set_random_state(state_random)
 
             img_query = self.trans(img_query)
             imgs_test = [ self.trans(img) for img in imgs_test ]
