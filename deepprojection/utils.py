@@ -72,15 +72,15 @@ class EpochManager:
         self.model_named_gradients = [ (name, param.grad) for name, param in self.trainer.model.named_parameters() ]
 
 
-    def run_one_epoch(self, epoch, returns_loss = False):
+    def run_one_epoch(self, epoch, returns_loss = False, logs_batch_loss = False):
         # Run one epoch of training...
-        loss_train = self.trainer.train(epoch = epoch, returns_loss = True)
+        loss_train = self.trainer.train(epoch = epoch, returns_loss = True, logs_batch_loss = logs_batch_loss)
 
         # Pass the model to validator for immediate validation...
         self.validator.model = self.trainer.model
 
         # Run one epoch of training...
-        loss_validate = self.validator.validate(returns_loss = True, epoch = epoch)
+        loss_validate = self.validator.validate(returns_loss = True, epoch = epoch, logs_batch_loss = logs_batch_loss)
 
         # Save checkpoint whenever validation loss gets smaller...
         # Notice it doesn't imply early stopping
