@@ -112,7 +112,7 @@ class OnlineLossValidator:
         return None
 
 
-    def validate(self, returns_loss = False, epoch = None):
+    def validate(self, returns_loss = False, epoch = None, logs_batch_loss = False):
         """ The testing loop.  """
 
         # Load model and testing configuration...
@@ -140,9 +140,10 @@ class OnlineLossValidator:
                                           method     = config_test.method,
                                           shuffle    = config_test.online_shuffle,)
                 loss_val = loss.cpu().detach().numpy()
-
-            logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_val:.8f}")
             losses_epoch.append(loss_val)
+
+            if logs_batch_loss:
+                logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_val:.8f}")
 
         loss_epoch_mean = np.mean(losses_epoch)
         logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.8f}")

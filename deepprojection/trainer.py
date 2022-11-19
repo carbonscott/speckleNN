@@ -49,7 +49,7 @@ class Trainer:
         torch.save(model.state_dict(), self.config_train.path_chkpt)
 
 
-    def train(self, saves_checkpoint = True, epoch = None):
+    def train(self, saves_checkpoint = True, epoch = None, logs_batch_loss = False):
         """ The training loop.  """
 
         # Load model and training configuration...
@@ -89,7 +89,8 @@ class Trainer:
             loss_val = loss.cpu().detach().numpy()
             losses_epoch.append(loss_val)
 
-            logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_val:.8f}")
+            if logs_batch_loss: 
+                logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_val:.8f}")
 
         loss_epoch_mean = np.mean(losses_epoch)
         logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.8f}")
@@ -129,7 +130,7 @@ class OnlineTrainer:
         torch.save(model.state_dict(), path_chkpt)
 
 
-    def train(self, saves_checkpoint = True, epoch = None, returns_loss = False):
+    def train(self, saves_checkpoint = True, epoch = None, returns_loss = False, logs_batch_loss = False):
         """ The training loop.  """
 
         # Load model and training configuration...
@@ -165,7 +166,8 @@ class OnlineTrainer:
             loss_val = loss.cpu().detach().numpy()
             losses_epoch.append(loss_val)
 
-            logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_val:.8f}")
+            if logs_batch_loss:
+                logger.info(f"MSG - epoch {epoch}, batch {step_id:d}, loss {loss_val:.8f}")
 
         loss_epoch_mean = np.mean(losses_epoch)
         logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.8f}")
