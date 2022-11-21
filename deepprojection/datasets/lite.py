@@ -177,7 +177,7 @@ class SPIOnlineDataset(Dataset):
         img, label, metadata = self.dataset_cache_dict[idx] if idx in self.dataset_cache_dict \
                                                             else self.get_data(idx)
 
-        return img[None,], label, metadata
+        return img[None,], label, ' '.join(metadata)
 
 
     def _form_online_set(self):
