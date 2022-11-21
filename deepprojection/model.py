@@ -99,8 +99,7 @@ class OnlineSiameseModel(nn.Module):
 
     def forward(self, batch_imgs, batch_labels, batch_metadata, 
                       logs_triplets     = True, 
-                      method            = 'semi-hard',
-                      shuffles_triplets = False):
+                      method            = 'semi-hard',):
         # Supposed methods
         select_method_dict = {
             ## 'batch-hard'       : self.batch_hard,
@@ -113,7 +112,7 @@ class OnlineSiameseModel(nn.Module):
 
         # Select triplets...
         select_method = select_method_dict[method]
-        triplets = select_method(batch_imgs, batch_labels, batch_metadata, logs_triplets = logs_triplets, shuffles_triplets = shuffles_triplets)
+        triplets = select_method(batch_imgs, batch_labels, batch_metadata, logs_triplets = logs_triplets)
 
         img_anchor = batch_imgs[ [ triplet[0] for triplet in triplets ] ]
         img_pos    = batch_imgs[ [ triplet[1] for triplet in triplets ] ]
@@ -139,7 +138,7 @@ class OnlineSiameseModel(nn.Module):
         return loss_triplet.mean()
 
 
-    def batch_random(self, batch_imgs, batch_labels, batch_metadata, logs_triplets = True, shuffles_triplets = False, **kwargs):
+    def batch_random(self, batch_imgs, batch_labels, batch_metadata, logs_triplets = True, **kwargs):
         ''' Totally random shuffled triplet.  
         '''
         # Convert batch labels to dictionary for fast lookup...
@@ -176,10 +175,6 @@ class OnlineSiameseModel(nn.Module):
             # Track triplet...
             triplets.append((batch_idx_achr, batch_idx_pos, batch_idx_neg))
 
-        if shuffles_triplets: 
-            idx_shuffle_list = random.sample(range(len(triplets)), k = len(triplets))
-            triplets = [ triplets[i] for i in idx_shuffle_list ]
-
         if logs_triplets:
             # Logging all cases...
             for idx, triplet in enumerate(triplets):
@@ -192,7 +187,7 @@ class OnlineSiameseModel(nn.Module):
         return triplets
 
 
-    def batch_random_semi_hard(self, batch_imgs, batch_labels, batch_metadata, logs_triplets = True, shuffles_triplets = False, **kwargs):
+    def batch_random_semi_hard(self, batch_imgs, batch_labels, batch_metadata, logs_triplets = True, **kwargs):
         ''' Only supply batch_size of image triplet for training.  This is in
             contrast to the all positive method.  Each image in the batch has
             the chance of playing an anchor.  Negative mining is applied.  
@@ -275,11 +270,6 @@ class OnlineSiameseModel(nn.Module):
             # Track triplet...
             triplets.append((batch_idx_achr, batch_idx_pos, batch_idx_neg.tolist()))
             dist_log.append((dist_pos, dist_neg))
-
-        if shuffles_triplets: 
-            idx_shuffle_list = random.sample(range(len(triplets)), k = len(triplets))
-            triplets = [ triplets[i] for i in idx_shuffle_list ]
-            dist_log = [ dist_log[i] for i in idx_shuffle_list ]
 
         if logs_triplets:
             # Logging all cases...

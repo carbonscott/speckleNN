@@ -28,9 +28,9 @@ class EpochManager:
 
     def __init__(self, trainer, validator, timestamp = ""):
 
-        self.trainer           = trainer
-        self.validator         = validator
-        self.timestamp         = timestamp
+        self.trainer   = trainer
+        self.validator = validator
+        self.timestamp = timestamp
 
         # Track model training information
         self.param_update_ratio_dict  = {}

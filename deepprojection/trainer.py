@@ -28,10 +28,10 @@ class ConfigTrainer:
 
 
 class Trainer:
-    def __init__(self, model, dataset_train, config_train):
-        self.model         = model
-        self.dataset_train = dataset_train
-        self.config_train  = config_train
+    def __init__(self, model, dataset, config):
+        self.model   = model
+        self.dataset = dataset
+        self.config  = config
 
         # Load data to gpus if available
         self.device = 'cpu'
@@ -45,8 +45,8 @@ class Trainer:
     def save_checkpoint(self):
         # Hmmm, DataParallel wrappers keep raw model object in .module attribute
         model = self.model.module if hasattr(self.model, "module") else self.model
-        logger.info(f"SAVE - {self.config_train.path_chkpt}")
-        torch.save(model.state_dict(), self.config_train.path_chkpt)
+        logger.info(f"SAVE - {self.config.path_chkpt}")
+        torch.save(model.state_dict(), self.config.path_chkpt)
 
 
     def train(self, saves_checkpoint = True, epoch = None, logs_batch_loss = False):
@@ -54,21 +54,21 @@ class Trainer:
 
         # Load model and training configuration...
         # Optimizer can be reconfigured next epoch
-        model, config_train = self.model, self.config_train
-        model_raw           = model.module if hasattr(model, "module") else model
-        optimizer           = model_raw.configure_optimizers(config_train)
+        model, config = self.model, self.config
+        model_raw     = model.module if hasattr(model, "module") else model
+        optimizer     = model_raw.configure_optimizers(config)
 
         # Train an epoch...
         model.train()
-        dataset_train = self.dataset_train
-        loader_train = DataLoader( dataset_train, shuffle     = config_train.shuffle, 
-                                                  pin_memory  = config_train.pin_memory, 
-                                                  batch_size  = config_train.batch_size,
-                                                  num_workers = config_train.num_workers )
+        dataset = self.dataset
+        loader_train = DataLoader( dataset, shuffle     = config.shuffle, 
+                                                  pin_memory  = config.pin_memory, 
+                                                  batch_size  = config.batch_size,
+                                                  num_workers = config.num_workers )
         losses_epoch = []
 
         # Train each batch...
-        batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train), disable = config_train.tqdm_disable)
+        batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train), disable = config.tqdm_disable)
         for step_id, entry in batch:
             img_anchor, img_pos, img_neg, label_anchor, \
             metadata_anchor, metadata_pos, metadata_neg = entry
@@ -102,10 +102,10 @@ class Trainer:
 
 
 class OnlineTrainer:
-    def __init__(self, model, dataset_train, config_train):
+    def __init__(self, model, dataset, config):
         self.model         = model
-        self.dataset_train = dataset_train
-        self.config_train  = config_train
+        self.dataset = dataset
+        self.config  = config
 
         # Load data to gpus if available
         self.device = 'cpu'
@@ -135,29 +135,28 @@ class OnlineTrainer:
 
         # Load model and training configuration...
         # Optimizer can be reconfigured next epoch
-        model, config_train = self.model, self.config_train
-        model_raw           = model.module if hasattr(model, "module") else model
-        optimizer           = model_raw.configure_optimizers(config_train)
+        model, config = self.model, self.config
+        model_raw     = model.module if hasattr(model, "module") else model
+        optimizer     = model_raw.configure_optimizers(config)
 
         # Train an epoch...
         model.train()
-        dataset_train = self.dataset_train
-        loader_train = DataLoader( dataset_train, shuffle     = config_train.shuffle, 
-                                                  pin_memory  = config_train.pin_memory, 
-                                                  batch_size  = config_train.batch_size,
-                                                  num_workers = config_train.num_workers )
+        dataset = self.dataset
+        loader_train = DataLoader( dataset, shuffle     = config.shuffle, 
+                                                  pin_memory  = config.pin_memory, 
+                                                  batch_size  = config.batch_size,
+                                                  num_workers = config.num_workers )
         losses_epoch = []
 
         # Train each batch...
-        batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train), disable = config_train.tqdm_disable)
+        batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train), disable = config.tqdm_disable)
         for step_id, entry in batch:
             batch_imgs, batch_labels, batch_metadata = entry
             batch_imgs = batch_imgs.to(self.device)
 
             loss = self.model.forward(batch_imgs, batch_labels, batch_metadata, 
-                                      logs_triplets     = config_train.logs_triplets, 
-                                      method            = config_train.method,
-                                      shuffles_triplets = config_train.shuffles_triplets,)
+                                      logs_triplets     = config.logs_triplets, 
+                                      method            = config.method,)
 
             optimizer.zero_grad()
             loss.backward()

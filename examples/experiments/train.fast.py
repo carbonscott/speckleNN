@@ -33,7 +33,7 @@ logs_triplets = True
 
 lr = 1e-3
 
-## alpha = 0.02
+alpha = 0.02
 ## alpha = 0.03336201
 ## alpha = 0.05565119
 ## alpha = 0.09283178
@@ -42,17 +42,16 @@ lr = 1e-3
 ## alpha = 0.43088694
 ## alpha = 0.71876273
 ## alpha = 1.1989685
-alpha = 2.0
+## alpha = 2.0
 
-## size_sample_per_class_train    = 10
+size_sample_per_class_train    = 10
 ## size_sample_per_class_train    = 20
 ## size_sample_per_class_train    = 40
-size_sample_per_class_train    = 60
+## size_sample_per_class_train    = 60
 size_sample_train              = size_sample_per_class_train * 100
 size_sample_validate           = size_sample_train // 2
 size_sample_per_class_validate = size_sample_per_class_train // 2
 size_batch                     = 20
-shuffles_triplets              = False
 trans                          = None
 
 # [[[ LOGGING ]]]
@@ -72,7 +71,6 @@ comments = f"""
             Sample size (per class, validate) : {size_sample_per_class_validate}
             Batch  size                       : {size_batch}
             Alpha                             : {alpha}
-            Shuffles triplets                 : {shuffles_triplets}
             lr                                : {lr}
 
             """
@@ -162,7 +160,6 @@ config_train = ConfigTrainer( path_chkpt        = path_chkpt,
                               pin_memory        = True,
                               shuffle           = False,
                               logs_triplets     = logs_triplets,
-                              shuffles_triplets = shuffles_triplets,
                               method            = 'random-semi-hard', 
                               lr                = lr, 
                               tqdm_disable      = True)
@@ -176,7 +173,6 @@ config_validator = ConfigValidator( path_chkpt        = None,
                                     pin_memory        = True,
                                     shuffle           = False,
                                     logs_triplets     = logs_triplets,
-                                    shuffles_triplets = shuffles_triplets,
                                     method            = 'random-semi-hard', 
                                     lr                = lr,
                                     tqdm_disable      = True)  # Conv2d input needs one more dim for batch
@@ -193,9 +189,13 @@ loss_min_hist      = []
 epoch_manager = EpochManager( trainer   = trainer,
                               validator = validator,
                               timestamp = timestamp, )
-max_epochs = 1
+max_epochs = 2
 freq_save = 5
 for epoch in tqdm.tqdm(range(max_epochs), disable=False):
+    if epoch > 0:
+        epoch_manager.trainer.config.logs_triplets   = False
+        epoch_manager.validator.config.logs_triplets = False
+
     loss_train, loss_validate, loss_min = epoch_manager.run_one_epoch(epoch = epoch, returns_loss = True)
 
     loss_train_hist.append(loss_train)

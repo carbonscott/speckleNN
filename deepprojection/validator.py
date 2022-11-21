@@ -29,17 +29,17 @@ class ConfigValidator:
 
 
 class LossValidator:
-    def __init__(self, model, dataset_test, config_test):
-        self.model        = model
-        self.dataset_test = dataset_test
-        self.config_test  = config_test
+    def __init__(self, model, dataset, config):
+        self.model   = model
+        self.dataset = dataset
+        self.config  = config
 
         # Load data to gpus if available...
         self.device = 'cpu'
-        if self.config_test.path_chkpt is not None and torch.cuda.is_available():
+        if self.config.path_chkpt is not None and torch.cuda.is_available():
             self.device = torch.cuda.current_device()
 
-            chkpt = torch.load(self.config_test.path_chkpt)
+            chkpt = torch.load(self.config.path_chkpt)
             self.model.load_state_dict(chkpt)
             self.model = torch.nn.DataParallel(self.model).to(self.device)
 
@@ -50,20 +50,20 @@ class LossValidator:
         """ The testing loop.  """
 
         # Load model and testing configuration...
-        model, config_test = self.model, self.config_test
+        model, config = self.model, self.config
 
         # Validate an epoch...
         # Load model state...
         model.eval()
-        dataset_test = self.dataset_test
-        loader_test  = DataLoader( dataset_test, shuffle     = config_test.shuffle, 
-                                                 pin_memory  = config_test.pin_memory, 
-                                                 batch_size  = config_test.batch_size,
-                                                 num_workers = config_test.num_workers )
+        dataset = self.dataset
+        loader_test = DataLoader( dataset, shuffle     = config.shuffle, 
+                                           pin_memory  = config.pin_memory, 
+                                           batch_size  = config.batch_size,
+                                           num_workers = config.num_workers )
 
         # Train each batch...
         losses_epoch = []
-        batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test), disable = config_test.tqdm_disable)
+        batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test), disable = config.tqdm_disable)
         for step_id, entry in batch:
             losses_batch = []
 
@@ -95,17 +95,17 @@ class LossValidator:
 
 
 class OnlineLossValidator:
-    def __init__(self, model, dataset_test, config_test):
+    def __init__(self, model, dataset, config):
         self.model        = model
-        self.dataset_test = dataset_test
-        self.config_test  = config_test
+        self.dataset = dataset
+        self.config  = config
 
         # Load data to gpus if available...
         self.device = 'cpu'
-        if self.config_test.path_chkpt is not None and torch.cuda.is_available():
+        if self.config.path_chkpt is not None and torch.cuda.is_available():
             self.device = torch.cuda.current_device()
 
-            chkpt = torch.load(self.config_test.path_chkpt)
+            chkpt = torch.load(self.config.path_chkpt)
             self.model.load_state_dict(chkpt)
             self.model = torch.nn.DataParallel(self.model).to(self.device)
 
@@ -116,29 +116,28 @@ class OnlineLossValidator:
         """ The testing loop.  """
 
         # Load model and testing configuration...
-        model, config_test = self.model, self.config_test
+        model, config = self.model, self.config
 
         # Validate an epoch...
         # Load model state...
         model.eval()
-        dataset_test = self.dataset_test
-        loader_test  = DataLoader( dataset_test, shuffle     = config_test.shuffle, 
-                                                 pin_memory  = config_test.pin_memory, 
-                                                 batch_size  = config_test.batch_size,
-                                                 num_workers = config_test.num_workers )
+        dataset = self.dataset
+        loader_test = DataLoader( dataset, shuffle     = config.shuffle, 
+                                           pin_memory  = config.pin_memory, 
+                                           batch_size  = config.batch_size,
+                                           num_workers = config.num_workers )
 
         # Train each batch...
         losses_epoch = []
-        batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test), disable = config_test.tqdm_disable)
+        batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test), disable = config.tqdm_disable)
         for step_id, entry in batch:
             batch_imgs, batch_labels, batch_titles = entry
             batch_imgs = batch_imgs.to(self.device)
 
             with torch.no_grad():
                 loss = self.model.forward(batch_imgs, batch_labels, batch_titles, 
-                                          logs_triplets     = config_test.logs_triplets, 
-                                          method            = config_test.method,
-                                          shuffles_triplets = config_test.shuffles_triplets,)
+                                          logs_triplets     = config.logs_triplets, 
+                                          method            = config.method,)
                 loss_val = loss.cpu().detach().numpy()
             losses_epoch.append(loss_val)
 
@@ -154,17 +153,17 @@ class OnlineLossValidator:
 
 
 class PairValidator:
-    def __init__(self, model, dataset_test, config_test):
+    def __init__(self, model, dataset, config):
         self.model        = model
-        self.dataset_test = dataset_test
-        self.config_test  = config_test
+        self.dataset = dataset
+        self.config  = config
 
         # Load data to gpus if available
         self.device = 'cpu'
         if torch.cuda.is_available():
             self.device = torch.cuda.current_device()
 
-            chkpt = torch.load(self.config_test.path_chkpt)
+            chkpt = torch.load(self.config.path_chkpt)
             self.model.load_state_dict(chkpt)
             self.model = torch.nn.DataParallel(self.model).to(self.device)
 
@@ -175,16 +174,16 @@ class PairValidator:
         """ The testing loop.  """
 
         # Load model and testing configuration...
-        model, config_test = self.model, self.config_test
+        model, config = self.model, self.config
 
         # Train an epoch...
         # Load model state
         model.eval()
-        dataset_test = self.dataset_test
-        loader_test  = DataLoader( dataset_test, shuffle     = config_test.shuffle, 
-                                                 pin_memory  = config_test.pin_memory, 
-                                                 batch_size  = config_test.batch_size,
-                                                 num_workers = config_test.num_workers )
+        dataset = self.dataset
+        loader_test = DataLoader( dataset, shuffle     = config.shuffle, 
+                                           pin_memory  = config.pin_memory, 
+                                           batch_size  = config.batch_size,
+                                           num_workers = config.num_workers )
 
         # Train each batch...
         batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test))
@@ -200,7 +199,7 @@ class PairValidator:
                 # Look at each example in a batch...
                 for i in range(len(label_anchor)):
                     # Biolerplate unsqueeze due to the design of PyTorch Conv2d, no idea how to improve yet...
-                    if config_test.isflat:
+                    if config.isflat:
                         _, _, rmsd = self.model.forward(img_anchor[i], img_second[i])
                     else:
                         ## print(title_anchor[i], title_second[i])
@@ -214,10 +213,10 @@ class PairValidator:
 
 
 class MultiwayQueryValidator:
-    def __init__(self, model, dataset_test, config_test):
+    def __init__(self, model, dataset, config):
         self.model        = model
-        self.dataset_test = dataset_test
-        self.config_test  = config_test
+        self.dataset = dataset
+        self.config  = config
 
         self.device = torch.cuda.current_device() if torch.cuda.is_available() else 'cpu'
 
@@ -228,16 +227,16 @@ class MultiwayQueryValidator:
         """ The testing loop.  """
 
         # Load model and testing configuration...
-        model, config_test = self.model, self.config_test
+        model, config = self.model, self.config
 
         # Train an epoch...
         # Load model state
         model.eval()
-        dataset_test = self.dataset_test
-        loader_test  = DataLoader( dataset_test, shuffle     = config_test.shuffle, 
-                                                 pin_memory  = config_test.pin_memory, 
-                                                 batch_size  = config_test.batch_size,
-                                                 num_workers = config_test.num_workers )
+        dataset = self.dataset
+        loader_test  = DataLoader( dataset, shuffle     = config.shuffle, 
+                                            pin_memory  = config.pin_memory, 
+                                            batch_size  = config.batch_size,
+                                            num_workers = config.num_workers )
 
         # Train each batch...
         batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test))
@@ -293,18 +292,18 @@ class MultiwayQueryValidator:
 
 
 class EmbeddingCalculator:
-    def __init__(self, model, dataset_test, config_test):
+    def __init__(self, model, dataset, config):
         self.model        = model
-        self.dataset_test = dataset_test
-        self.config_test  = config_test
+        self.dataset = dataset
+        self.config  = config
 
         # Load data to gpus if available
         self.device = 'cpu'
         if torch.cuda.is_available():
             self.device = torch.cuda.current_device()
 
-            if self.config_test.path_chkpt is not None:
-                chkpt = torch.load(self.config_test.path_chkpt)
+            if self.config.path_chkpt is not None:
+                chkpt = torch.load(self.config.path_chkpt)
                 self.model.load_state_dict(chkpt)
             else:
                 # Initialize weights...
@@ -321,16 +320,16 @@ class EmbeddingCalculator:
         """ The testing loop.  """
 
         # Load model and testing configuration...
-        model, config_test = self.model, self.config_test
+        model, config = self.model, self.config
 
         # Train an epoch...
         # Load model state
         model.eval()
-        dataset_test = self.dataset_test
-        loader_test  = DataLoader( dataset_test, shuffle     = config_test.shuffle, 
-                                                 pin_memory  = config_test.pin_memory, 
-                                                 batch_size  = config_test.batch_size,
-                                                 num_workers = config_test.num_workers )
+        dataset = self.dataset
+        loader_test  = DataLoader( dataset, shuffle     = config.shuffle, 
+                                            pin_memory  = config.pin_memory, 
+                                            batch_size  = config.batch_size,
+                                            num_workers = config.num_workers )
 
         # Train each batch...
         batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test))
@@ -355,8 +354,8 @@ class EmbeddingCalculator:
             # Save the embedding...
             size_batch, len_emb = batch_emb.shape
             if batch_id == 0:
-                num_imgs  = len(dataset_test)
-                dataset_emb      = torch.zeros(num_imgs, len_emb)
+                num_imgs  = len(dataset)
+                dataset_emb = torch.zeros(num_imgs, len_emb)
                 rng_start = 0
             dataset_emb[rng_start : rng_start + size_batch] = batch_emb
             rng_start += size_batch
