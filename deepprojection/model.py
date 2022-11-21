@@ -5,7 +5,7 @@ import os
 import torch
 import torch.nn as nn
 import random
-from deepprojection.utils import calc_dmat
+from deepprojection.utils import calc_dmat, set_seed
 from itertools import combinations, permutations
 
 import logging
@@ -68,8 +68,12 @@ class OnlineSiameseModel(nn.Module):
 
     def __init__(self, config):
         super().__init__()
-        self.alpha   = config.alpha
-        self.encoder = config.encoder
+        self.alpha   = getattr(config, "alpha"  , None)
+        self.encoder = getattr(config, "encoder", None)
+        self.seed    = getattr(config, "seed"   , None)
+
+        if self.seed is not None:
+            set_seed(self.seed)
 
 
     def init_params(self, from_timestamp = None):
@@ -93,10 +97,10 @@ class OnlineSiameseModel(nn.Module):
             self.load_state_dict(torch.load(path_chkpt_prev))
 
 
-    def forward(self, batch_imgs, batch_labels, batch_titles, 
-                is_logging = True, 
-                method = 'semi-hard',
-                shuffle = False):
+    def forward(self, batch_imgs, batch_labels, batch_metadata, 
+                      logs_triplets     = True, 
+                      method            = 'semi-hard',
+                      shuffles_triplets = False):
         # Supposed methods
         select_method_dict = {
             ## 'batch-hard'       : self.batch_hard,
@@ -109,7 +113,7 @@ class OnlineSiameseModel(nn.Module):
 
         # Select triplets...
         select_method = select_method_dict[method]
-        triplets = select_method(batch_imgs, batch_labels, batch_titles, is_logging = is_logging, shuffle = shuffle)
+        triplets = select_method(batch_imgs, batch_labels, batch_metadata, logs_triplets = logs_triplets, shuffles_triplets = shuffles_triplets)
 
         img_anchor = batch_imgs[ [ triplet[0] for triplet in triplets ] ]
         img_pos    = batch_imgs[ [ triplet[1] for triplet in triplets ] ]
@@ -135,7 +139,7 @@ class OnlineSiameseModel(nn.Module):
         return loss_triplet.mean()
 
 
-    def batch_random(self, batch_imgs, batch_labels, batch_titles, is_logging = True, shuffle = False, **kwargs):
+    def batch_random(self, batch_imgs, batch_labels, batch_metadata, logs_triplets = True, shuffles_triplets = False, **kwargs):
         ''' Totally random shuffled triplet.  
         '''
         # Convert batch labels to dictionary for fast lookup...
@@ -172,23 +176,23 @@ class OnlineSiameseModel(nn.Module):
             # Track triplet...
             triplets.append((batch_idx_achr, batch_idx_pos, batch_idx_neg))
 
-        if shuffle: 
+        if shuffles_triplets: 
             idx_shuffle_list = random.sample(range(len(triplets)), k = len(triplets))
             triplets = [ triplets[i] for i in idx_shuffle_list ]
 
-        if is_logging:
+        if logs_triplets:
             # Logging all cases...
             for idx, triplet in enumerate(triplets):
                 batch_idx_achr, batch_idx_pos, batch_idx_neg = triplet
-                title_achr = batch_titles[batch_idx_achr]
-                title_pos  = batch_titles[batch_idx_pos]
-                title_neg  = batch_titles[batch_idx_neg]
-                logger.info(f"DATA - {title_achr} {title_pos} {title_neg}")
+                metadata_achr = batch_metadata[batch_idx_achr]
+                metadata_pos  = batch_metadata[batch_idx_pos]
+                metadata_neg  = batch_metadata[batch_idx_neg]
+                logger.info(f"DATA - {metadata_achr} {metadata_pos} {metadata_neg}")
 
         return triplets
 
 
-    def batch_random_semi_hard(self, batch_imgs, batch_labels, batch_titles, is_logging = True, shuffle = False, **kwargs):
+    def batch_random_semi_hard(self, batch_imgs, batch_labels, batch_metadata, logs_triplets = True, shuffles_triplets = False, **kwargs):
         ''' Only supply batch_size of image triplet for training.  This is in
             contrast to the all positive method.  Each image in the batch has
             the chance of playing an anchor.  Negative mining is applied.  
@@ -272,26 +276,26 @@ class OnlineSiameseModel(nn.Module):
             triplets.append((batch_idx_achr, batch_idx_pos, batch_idx_neg.tolist()))
             dist_log.append((dist_pos, dist_neg))
 
-        if shuffle: 
+        if shuffles_triplets: 
             idx_shuffle_list = random.sample(range(len(triplets)), k = len(triplets))
             triplets = [ triplets[i] for i in idx_shuffle_list ]
             dist_log = [ dist_log[i] for i in idx_shuffle_list ]
 
-        if is_logging:
+        if logs_triplets:
             # Logging all cases...
             for idx, triplet in enumerate(triplets):
                 batch_idx_achr, batch_idx_pos, batch_idx_neg = triplet
-                title_achr = batch_titles[batch_idx_achr]
-                title_pos  = batch_titles[batch_idx_pos]
-                title_neg  = batch_titles[batch_idx_neg]
+                metadata_achr = batch_metadata[batch_idx_achr]
+                metadata_pos  = batch_metadata[batch_idx_pos]
+                metadata_neg  = batch_metadata[batch_idx_neg]
                 dist_pos   = dist_log[idx][0]
                 dist_neg   = dist_log[idx][1]
-                logger.info(f"DATA - {title_achr} {title_pos} {title_neg} {dist_pos:12.6f} {dist_neg:12.6f}")
+                logger.info(f"DATA - {metadata_achr} {metadata_pos} {metadata_neg} {dist_pos:12.6f} {dist_neg:12.6f}")
 
         return triplets
 
 
-    def batch_hard(self, batch_imgs, batch_labels, batch_titles, **kwargs):
+    def batch_hard(self, batch_imgs, batch_labels, batch_metadata, **kwargs):
         # Get batch size...
         batch_size = len(batch_labels)
 
@@ -327,12 +331,12 @@ class OnlineSiameseModel(nn.Module):
         ## batch_val_hardest_negative = batch_hardest_negatives.values
 
         ## for i in range(len(batch_labels)):
-        ##     # Retrieve the title of hardest example...
-        ##     title_hardest_positive = batch_titles[ batch_idx_hardest_positive[i] ]
-        ##     title_hardest_negative = batch_titles[ batch_idx_hardest_negative[i] ]
+        ##     # Retrieve the metadata of hardest example...
+        ##     metadata_hardest_positive = batch_metadata[ batch_idx_hardest_positive[i] ]
+        ##     metadata_hardest_negative = batch_metadata[ batch_idx_hardest_negative[i] ]
         ##     val_hardest_positive = batch_val_hardest_positive[i]
         ##     val_hardest_negative = batch_val_hardest_negative[i]
-        ##     logger.info(f"DATA - {batch_titles[i]} {title_hardest_positive} {title_hardest_negative} {val_hardest_positive:12.6f} {val_hardest_negative:12.6f}")
+        ##     logger.info(f"DATA - {batch_metadata[i]} {metadata_hardest_positive} {metadata_hardest_negative} {val_hardest_positive:12.6f} {val_hardest_negative:12.6f}")
 
         # Get the batch hard row-wise triplet loss...
         batch_loss_triplet = torch.relu(batch_hardest_positives.values - batch_hardest_negatives.values + self.alpha)

@@ -71,10 +71,10 @@ class Trainer:
         batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train), disable = config_train.tqdm_disable)
         for step_id, entry in batch:
             img_anchor, img_pos, img_neg, label_anchor, \
-            title_anchor, title_pos, title_neg = entry
+            metadata_anchor, metadata_pos, metadata_neg = entry
 
             for i in range(len(label_anchor)):
-                logger.info(f"DATA - {title_anchor[i]}, {title_pos[i]}, {title_neg[i]}")
+                logger.info(f"DATA - {metadata_anchor[i]}, {metadata_pos[i]}, {metadata_neg[i]}")
 
             img_anchor = img_anchor.to(self.device)
             img_pos    = img_pos.to(self.device)
@@ -151,13 +151,13 @@ class OnlineTrainer:
         # Train each batch...
         batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train), disable = config_train.tqdm_disable)
         for step_id, entry in batch:
-            batch_imgs, batch_labels, batch_titles = entry
+            batch_imgs, batch_labels, batch_metadata = entry
             batch_imgs = batch_imgs.to(self.device)
 
-            loss = self.model.forward(batch_imgs, batch_labels, batch_titles, 
-                                      is_logging = config_train.is_logging, 
-                                      method     = config_train.method,
-                                      shuffle    = config_train.online_shuffle,)
+            loss = self.model.forward(batch_imgs, batch_labels, batch_metadata, 
+                                      logs_triplets     = config_train.logs_triplets, 
+                                      method            = config_train.method,
+                                      shuffles_triplets = config_train.shuffles_triplets,)
 
             optimizer.zero_grad()
             loss.backward()

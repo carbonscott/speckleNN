@@ -136,9 +136,9 @@ class OnlineLossValidator:
 
             with torch.no_grad():
                 loss = self.model.forward(batch_imgs, batch_labels, batch_titles, 
-                                          is_logging = config_test.is_logging, 
-                                          method     = config_test.method,
-                                          shuffle    = config_test.online_shuffle,)
+                                          logs_triplets     = config_test.logs_triplets, 
+                                          method            = config_test.method,
+                                          shuffles_triplets = config_test.shuffles_triplets,)
                 loss_val = loss.cpu().detach().numpy()
             losses_epoch.append(loss_val)
 
