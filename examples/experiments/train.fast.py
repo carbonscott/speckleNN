@@ -13,19 +13,25 @@ from deepprojection.model            import OnlineSiameseModel , ConfigSiameseMo
 from deepprojection.trainer          import OnlineTrainer      , ConfigTrainer
 from deepprojection.validator        import OnlineLossValidator, ConfigValidator
 from deepprojection.encoders.convnet import Hirotaka0122       , ConfigEncoder
-from deepprojection.utils            import EpochManager       , MetaLog, init_logger, split_dataset
+from deepprojection.utils            import EpochManager       , MetaLog, init_logger, split_dataset, set_seed
 
 from datetime import datetime
 ## from image_preprocess import DatasetPreprocess
 from image_preprocess_faulty import DatasetPreprocess
+
+# [[[ SEED ]]]
+seed = 0
+set_seed(seed)
+
 
 # [[[ CONFIG ]]]
 timestamp_prev = None
 frac_train     = 0.5
 frac_validate  = 0.5
 
-lr    = 1e-3
-seed  = 0
+logs_triplets = True
+
+lr = 1e-3
 
 ## alpha = 0.02
 ## alpha = 0.03336201
@@ -46,7 +52,7 @@ size_sample_train              = size_sample_per_class_train * 100
 size_sample_validate           = size_sample_train // 2
 size_sample_per_class_validate = size_sample_per_class_train // 2
 size_batch                     = 20
-online_shuffle                 = True
+shuffles_triplets              = False
 trans                          = None
 
 # [[[ LOGGING ]]]
@@ -66,7 +72,7 @@ comments = f"""
             Sample size (per class, validate) : {size_sample_per_class_validate}
             Batch  size                       : {size_batch}
             Alpha                             : {alpha}
-            Online shuffle                    : {online_shuffle}
+            Shuffles triplets                 : {shuffles_triplets}
             lr                                : {lr}
 
             """
@@ -87,15 +93,15 @@ with open(path_dataset, 'rb') as fh:
     dataset_list = pickle.load(fh)
 
 # Split data...
-data_train   , data_val_and_test = split_dataset(dataset_list     , frac_train   , seed = seed)
-data_validate, data_test         = split_dataset(data_val_and_test, frac_validate, seed = seed)
+data_train   , data_val_and_test = split_dataset(dataset_list     , frac_train   , seed = None)
+data_validate, data_test         = split_dataset(data_val_and_test, frac_validate, seed = None)
 
 # Define the training set
 dataset_train = SPIOnlineDataset( dataset_list          = data_train, 
                                   size_sample           = size_sample_train,
                                   size_sample_per_class = size_sample_per_class_train, 
                                   trans                 = trans, 
-                                  seed                  = seed, )
+                                  seed                  = None, )
 dataset_train.report()
 
 # Define the training set
@@ -103,7 +109,7 @@ dataset_validate = SPIOnlineDataset( dataset_list          = data_validate,
                                      size_sample           = size_sample_train,
                                      size_sample_per_class = size_sample_per_class_validate, 
                                      trans                 = trans, 
-                                     seed                  = seed, )
+                                     seed                  = None, )
 dataset_validate.report()
 
 
@@ -116,8 +122,8 @@ dataset_train.trans    = trans
 dataset_validate.trans = trans
 img_trans              = dataset_train[0][0][0]
 
-dataset_train.cache_dataset()
-dataset_validate.cache_dataset()
+## dataset_train.cache_dataset()
+## dataset_validate.cache_dataset()
 
 # [[[ IMAGE ENCODER ]]]
 # Config the encoder...
@@ -132,7 +138,10 @@ encoder = Hirotaka0122(config_encoder)
 
 # [[[ MODEL ]]]
 # Config the model...
-config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
+config_siamese = ConfigSiameseModel( alpha   = alpha, 
+                                     encoder = encoder, 
+                                     seed    = None     # No need to reset seed.  It has been set in data split.
+                                   )
 model = OnlineSiameseModel(config_siamese)
 model.init_params(from_timestamp = timestamp_prev)
 
@@ -147,30 +156,30 @@ path_chkpt       = os.path.join(prefixpath_chkpt, fl_chkpt)
 
 # [[[ TRAINER ]]]
 # Config the trainer...
-config_train = ConfigTrainer( path_chkpt     = path_chkpt,
-                              num_workers    = 1,
-                              batch_size     = size_batch,
-                              pin_memory     = True,
-                              shuffle        = False,
-                              is_logging     = False,
-                              online_shuffle = online_shuffle,
-                              method         = 'random-semi-hard', 
-                              lr             = lr, 
-                              tqdm_disable   = True)
+config_train = ConfigTrainer( path_chkpt        = path_chkpt,
+                              num_workers       = 1,
+                              batch_size        = size_batch,
+                              pin_memory        = True,
+                              shuffle           = False,
+                              logs_triplets     = logs_triplets,
+                              shuffles_triplets = shuffles_triplets,
+                              method            = 'random-semi-hard', 
+                              lr                = lr, 
+                              tqdm_disable      = True)
 trainer = OnlineTrainer(model, dataset_train, config_train)
 
 
 # [[[ VALIDATOR ]]]
-config_validator = ConfigValidator( path_chkpt     = None,
-                                    num_workers    = 1,
-                                    batch_size     = size_batch,
-                                    pin_memory     = True,
-                                    shuffle        = False,
-                                    is_logging     = False,
-                                    online_shuffle = online_shuffle,
-                                    method         = 'random-semi-hard', 
-                                    lr             = lr,
-                                    tqdm_disable   = True)  # Conv2d input needs one more dim for batch
+config_validator = ConfigValidator( path_chkpt        = None,
+                                    num_workers       = 1,
+                                    batch_size        = size_batch,
+                                    pin_memory        = True,
+                                    shuffle           = False,
+                                    logs_triplets     = logs_triplets,
+                                    shuffles_triplets = shuffles_triplets,
+                                    method            = 'random-semi-hard', 
+                                    lr                = lr,
+                                    tqdm_disable      = True)  # Conv2d input needs one more dim for batch
 validator = OnlineLossValidator(model, dataset_validate, config_validator)
 
 
@@ -184,7 +193,7 @@ loss_min_hist      = []
 epoch_manager = EpochManager( trainer   = trainer,
                               validator = validator,
                               timestamp = timestamp, )
-max_epochs = 1000
+max_epochs = 1
 freq_save = 5
 for epoch in tqdm.tqdm(range(max_epochs), disable=False):
     loss_train, loss_validate, loss_min = epoch_manager.run_one_epoch(epoch = epoch, returns_loss = True)
