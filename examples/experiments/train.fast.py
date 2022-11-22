@@ -18,6 +18,7 @@ from deepprojection.utils            import EpochManager       , MetaLog, init_l
 from datetime import datetime
 ## from image_preprocess import DatasetPreprocess
 from image_preprocess_faulty import DatasetPreprocess
+## from image_preprocess_rotation import DatasetPreprocess
 
 # [[[ SEED ]]]
 seed = 0
@@ -44,10 +45,10 @@ alpha = 0.02
 ## alpha = 1.1989685
 ## alpha = 2.0
 
-size_sample_per_class_train    = 10
+## size_sample_per_class_train    = 10
 ## size_sample_per_class_train    = 20
 ## size_sample_per_class_train    = 40
-## size_sample_per_class_train    = 60
+size_sample_per_class_train    = 60
 size_sample_train              = size_sample_per_class_train * 100
 size_sample_validate           = size_sample_train // 2
 size_sample_per_class_validate = size_sample_per_class_train // 2
@@ -120,8 +121,8 @@ dataset_train.trans    = trans
 dataset_validate.trans = trans
 img_trans              = dataset_train[0][0][0]
 
-## dataset_train.cache_dataset()
-## dataset_validate.cache_dataset()
+dataset_train.cache_dataset()
+dataset_validate.cache_dataset()
 
 # [[[ IMAGE ENCODER ]]]
 # Config the encoder...
@@ -189,7 +190,7 @@ loss_min_hist      = []
 epoch_manager = EpochManager( trainer   = trainer,
                               validator = validator,
                               timestamp = timestamp, )
-max_epochs = 2
+max_epochs = 1000
 freq_save = 5
 for epoch in tqdm.tqdm(range(max_epochs), disable=False):
     if epoch > 0:
