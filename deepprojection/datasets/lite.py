@@ -164,11 +164,6 @@ class SPIOnlineDataset(Dataset):
 
             img = self.trans(img)
 
-        # Normalize input image...
-        img_mean = np.mean(img)
-        img_std  = np.std(img)
-        img      = (img - img_mean) / img_std
-
         return img, label, metadata
 
 
@@ -176,6 +171,11 @@ class SPIOnlineDataset(Dataset):
         idx_sample = self.online_set[idx]
         img, label, metadata = self.dataset_cache_dict[idx] if idx in self.dataset_cache_dict \
                                                             else self.get_data(idx)
+
+        # Normalize input image...
+        img_mean = np.mean(img)
+        img_std  = np.std(img)
+        img      = (img - img_mean) / img_std
 
         return img[None,], label, ' '.join(metadata)
 
