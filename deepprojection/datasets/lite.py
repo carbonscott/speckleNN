@@ -98,6 +98,7 @@ class SPIOnlineDataset(Dataset):
 
         # Fetch all metadata...
         self.metadata_list = [ metadata for _, _, metadata in self.dataset_list ]
+        self.label_list    = [ label for _, label, _ in self.dataset_list ]
 
         # Create a lookup table for locating the sequence number (seqi) based on a label...
         label_seqi_dict = {}
@@ -187,7 +188,7 @@ class SPIOnlineDataset(Dataset):
         # Select two list of random labels following uniform distribution...
         # For a single image
         size_sample = self.size_sample
-        label_list  = random.choices(self.labels, k = size_sample)
+        label_online_list  = random.choices(self.labels, k = size_sample)
 
         # Limit unique samples per class...
         label_seqi_dict = self.label_seqi_dict
@@ -209,7 +210,7 @@ class SPIOnlineDataset(Dataset):
 
         # Form a simple set...
         online_set = []
-        for label in label_list:
+        for label in label_online_list:
             # Fetch a bucket of images...
             bucket = label_seqi_dict[label]
 
@@ -227,7 +228,7 @@ class SPIOnlineDataset(Dataset):
 
         event_label_dict = {}
         for idx in self.online_set:
-            _, _, _, label = self.metadata_list[idx]
+            label = self.label_list[idx]
 
             if not label in event_label_dict: event_label_dict[label] = [ idx ]
             else                            : event_label_dict[label].append(idx)
