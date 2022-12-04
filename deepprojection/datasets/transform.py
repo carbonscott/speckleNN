@@ -187,6 +187,47 @@ class RandomPanelZoom:
 
 
 
+class RandomCenterZoom:
+    """ WARNING!!! It's a hard-coded zoom, bottom right corner is fixated.  
+        Zoom in an area of the same aspect ratio as the original panel.  
+        It returns an zoom-in image with the same size.
+
+        Side effect: distortion occurs when the cropping aspect ratio is
+        markedly different from the one of the input image.
+    """
+    def __init__(self, max_zoom_percent = 0.1):
+        self.max_zoom_percent = max_zoom_percent
+
+        return None
+
+
+    def __call__(self, img):
+        size_img_y, size_img_x = img.shape
+
+        x_center, y_center = (size_img_y // 2, size_img_x // 2)
+
+        zoom_percent = random.uniform(0, self.max_zoom_percent)
+
+        size_y_zoom = size_img_y * (1.0 - zoom_percent)
+        size_x_zoom = size_img_x * (1.0 - zoom_percent)
+
+        y_min = int(y_center - size_y_zoom / 2)
+        x_min = int(x_center - size_x_zoom / 2)
+        y_max = int(y_center + size_y_zoom / 2)
+        x_max = int(x_center + size_x_zoom / 2)
+        crop_orig = (y_min, x_min)
+        crop_end  = (y_max, x_max)
+
+        crop     = Crop(crop_orig, crop_end)
+        img_crop = crop(img)
+
+        img_zoom = resize(img_crop, (size_img_y, size_img_x), anti_aliasing = True)
+
+        return img_zoom
+
+
+
+
 def vflip(img): 
     return np.flip(img, axis = 0)
 
