@@ -24,6 +24,8 @@ class ConfigSiameseModel:
             logger.info(f"KV - {k:16} : {v}")
 
 
+
+
 class SiameseModel(nn.Module):
     """ Embedding independent triplet loss. """
 
@@ -412,3 +414,57 @@ class EmbeddingModel(nn.Module):
 
     def forward(self, img):
         return self.encoder.encode(img)
+
+
+
+
+class Shi2019Model(nn.Module):
+    """ DOI: 10.1107/S2052252519001854 """
+
+    def __init__(self, config):
+        super().__init__()
+        self.encoder = getattr(config, "encoder", None)
+        self.seed    = getattr(config, "seed"   , None)
+
+        self.BCEWithLogitsLoss = nn.BCEWithLogitsLoss()
+
+        if self.seed is not None:
+            set_seed(self.seed)
+
+
+    def init_params(self, from_timestamp = None):
+        # Initialize weights or reuse weights from a timestamp...
+        def init_weights(module):
+            # Initialize conv2d with Kaiming method...
+            if isinstance(module, nn.Conv2d):
+                nn.init.kaiming_normal_(module.weight.data, nonlinearity = 'relu')
+
+                # Set bias zero since batch norm is used...
+                module.bias.data.zero_()
+
+        if from_timestamp is None:
+            self.apply(init_weights)
+        else:
+            drc_cwd          = os.getcwd()
+            DRCCHKPT         = "chkpts"
+            prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
+            fl_chkpt_prev    = f"{from_timestamp}.train.chkpt"
+            path_chkpt_prev  = os.path.join(prefixpath_chkpt, fl_chkpt_prev)
+            self.load_state_dict(torch.load(path_chkpt_prev))
+
+
+    def forward(self, batch_img, batch_labels):
+        # Encode images...
+        batch_logit = self.encoder.forward(batch_img)
+
+        # Calculate the BCE loss with logits...
+        loss_bce = self.BCEWithLogitsLoss(batch_logit, batch_labels)
+
+        return batch_logit, loss_bce
+
+
+    def configure_optimizers(self, config):
+        optimizer = torch.optim.Adam(self.encoder.parameters(), lr = config.lr)
+
+        return optimizer
+

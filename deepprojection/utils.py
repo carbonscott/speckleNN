@@ -571,3 +571,15 @@ class NNSize:
         out_size_x = (size_x - kernel_size) // stride + 1
 
         return out_channels, out_size_y, out_size_x
+
+
+
+
+class Config:
+    def __init__(self, name, **kwargs):
+        logger.info(f"___/ Configure {name} \___")
+
+        # Set values of attributes that are not known when obj is created
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+            logger.info(f"KV - {k:16} : {v}")
