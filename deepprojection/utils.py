@@ -3,11 +3,15 @@
 
 import logging
 import random
-import torch
 import numpy as np
 import tqdm
 import skimage.measure as sm
 import os
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -452,3 +456,118 @@ class ConfusionMatrix:
         f1          = 2 / f1_inv
 
         return accuracy, precision, recall, specificity, f1
+
+
+
+
+class TorchModelAttributeParser:
+
+    def __init__(self):
+
+        self.module_to_attr_dict = {
+            nn.Conv2d : {
+                "in_channels"  : None,
+                "out_channels" : None,
+                "kernel_size"  : None,
+                "stride"       : None,
+                "padding"      : None,
+                "dilation"     : None,
+                "groups"       : None,
+                "bias"         : None,
+                "padding_mode" : None,
+                "device"       : None,
+                "dtype"        : None,
+            },
+
+            nn.BatchNorm2d : {
+                "num_features"        : None,
+                "eps"                 : None,
+                "momentum"            : None,
+                "affine"              : None,
+                "track_running_stats" : None,
+                "device"              : None,
+                "dtype"               : None,
+            },
+
+            nn.MaxPool2d : {
+                "kernel_size"    : None,
+                "stride"         : None,
+                "padding"        : None,
+                "dilation"       : None,
+                "return_indices" : None,
+                "ceil_mode"      : None,
+            },
+        }
+
+
+    def parse(self, model):
+        model_type = type(model)
+        attr_dict   = self.module_to_attr_dict.get(model_type, {})
+
+        for attr in attr_dict.keys():
+            attr_dict[attr] = getattr(model, attr, None)
+
+        return model_type, attr_dict
+
+
+
+
+class NNSize:
+    """ Derive the output size of a conv net. """
+
+    def __init__(self, size_y, size_x, channels, conv_dict):
+        self.size_y      = size_y
+        self.size_x      = size_x
+        self.channels    = channels
+        self.conv_dict   = conv_dict
+        self.method_dict = { nn.Conv2d    : self.get_shape_from_conv2d,
+                             nn.MaxPool2d : self.get_shape_from_pool }
+
+        return None
+
+
+    def shape(self):
+        for layer_name, (model_type, model_attr_tuple) in self.conv_dict.items():
+            if model_type not in self.method_dict: continue
+
+            #  Obtain the size of the new volume...
+            self.channels, self.size_y, self.size_x = \
+                self.method_dict[model_type](**model_attr_tuple)
+
+        return self.channels, self.size_y, self.size_x
+
+
+    def get_shape_from_conv2d(self, **kwargs):
+        """ Returns the dimension of the output volumne. """
+        size_y       = self.size_y
+        size_x       = self.size_x
+        out_channels = kwargs["out_channels"]
+        kernel_size  = kwargs["kernel_size"]
+        stride       = kwargs["stride"]
+        padding      = kwargs["padding"]
+
+        kernel_size = kernel_size[0] if isinstance(kernel_size, tuple) else kernel_size
+        stride      = stride[0]      if isinstance(stride     , tuple) else stride
+        padding     = padding[0]     if isinstance(padding    , tuple) else padding
+
+        out_size_y = (size_y - kernel_size + 2 * padding) // stride + 1
+        out_size_x = (size_x - kernel_size + 2 * padding) // stride + 1
+
+        return out_channels, out_size_y, out_size_x
+
+
+    def get_shape_from_pool(self, **kwargs):
+        """ Return the dimension of the output volumen. """
+        size_y       = self.size_y
+        size_x       = self.size_x
+        out_channels = self.channels
+        kernel_size  = kwargs["kernel_size"]
+        stride       = kwargs["stride"]
+
+        kernel_size = kernel_size[0] if isinstance(kernel_size, tuple) else kernel_size
+        stride      = stride[0]      if isinstance(stride     , tuple) else stride
+
+        out_size_y = (size_y - kernel_size) // stride + 1
+        out_size_x = (size_x - kernel_size) // stride + 1
+
+        return out_channels, out_size_y, out_size_x
