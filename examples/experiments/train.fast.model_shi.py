@@ -1,0 +1,186 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import numpy as np
+import os
+import random
+
+from functools   import reduce
+from collections import OrderedDict
+
+import socket
+import pickle
+import tqdm
+import logging
+
+from deepprojection.model            import Shi2019Model
+from deepprojection.encoders.convnet import Shi2019
+from deepprojection.trainer          import SimpleTrainer  , ConfigTrainer
+from deepprojection.validator        import SimpleValidator, ConfigValidator
+
+from deepprojection.datasets.lite import SPIDataset, SPIOnlineDataset
+from deepprojection.utils         import MetaLog, init_logger, split_dataset, set_seed, NNSize, TorchModelAttributeParser, Config, EpochManager
+
+from datetime import datetime
+from image_preprocess_faulty import DatasetPreprocess
+
+# [[[ SEED ]]]
+seed = 3
+set_seed(seed)
+
+# [[[ CONFIG ]]]
+timestamp_prev = None
+## timestamp_prev = "2022_1129_2150_15"
+
+frac_train     = 0.5
+frac_validate  = 0.5
+
+logs_triplets = True
+
+lr = 1e-3
+## lr = 5e-4
+
+size_sample_per_class_train    = 6
+## size_sample_per_class_train    = 10
+## size_sample_per_class_train    = 20
+## size_sample_per_class_train    = 40
+## size_sample_per_class_train    = 60
+size_sample_train              = size_sample_per_class_train * 100
+size_sample_validate           = size_sample_train // 2
+size_sample_per_class_validate = size_sample_per_class_train // 2
+size_batch                     = 20
+trans                          = None
+
+# [[[ LOGGING ]]]
+timestamp = init_logger(log_name = 'train', returns_timestamp = True, saves_log = True)
+print(timestamp)
+
+# Clarify the purpose of this experiment...
+hostname = socket.gethostname()
+comments = f"""
+            Hostname: {hostname}.
+
+            Sample size (train)               : {size_sample_train}
+            Sample size (validate)            : {size_sample_validate}
+            Sample size (per class, train)    : {size_sample_per_class_train}
+            Sample size (per class, validate) : {size_sample_per_class_validate}
+            Batch  size                       : {size_batch}
+            lr                                : {lr}
+            seed                              : {seed}
+
+            """
+
+# Create a metalog to the log file, explaining the purpose of this run...
+metalog = MetaLog( comments = comments )
+metalog.report()
+
+
+# [[[ DATASET ]]]
+# Set up parameters for an experiment...
+drc_dataset   = 'fastdata'
+fl_dataset    = '0000.binary.fastdata'    # Raw, just give it a try
+path_dataset  = os.path.join(drc_dataset, fl_dataset)
+
+# Load raw data...
+with open(path_dataset, 'rb') as fh:
+    dataset_list = pickle.load(fh)
+
+# Split data...
+data_train   , data_val_and_test = split_dataset(dataset_list     , frac_train   , seed = None)
+data_validate, data_test         = split_dataset(data_val_and_test, frac_validate, seed = None)
+
+# Define the training set
+dataset_train = SPIOnlineDataset( dataset_list          = data_train, 
+                                  size_sample           = size_sample_train,
+                                  size_sample_per_class = size_sample_per_class_train, 
+                                  trans                 = trans, 
+                                  seed                  = None, )
+dataset_train.report()
+
+# Define the training set
+dataset_validate = SPIOnlineDataset( dataset_list          = data_validate, 
+                                     size_sample           = size_sample_train,
+                                     size_sample_per_class = size_sample_per_class_validate, 
+                                     trans                 = trans, 
+                                     seed                  = None, )
+dataset_validate.report()
+
+
+# Preprocess dataset...
+# Data preprocessing can be lengthy and defined in dataset_preprocess.py
+img_orig            = dataset_train[0][0][0]   # idx, fetch img
+dataset_preproc     = DatasetPreprocess(img_orig)
+trans               = dataset_preproc.config_trans()
+dataset_train.trans = trans
+dataset_validate.trans = trans
+img_trans           = dataset_train[0][0][0]
+
+dataset_train.cache_dataset()
+dataset_validate.cache_dataset()
+
+# [[[ IMAGE ENCODER ]]]
+# Config the encoder...
+size_y, size_x = img_trans.shape[-2:]
+config_encoder = Config( name   = "Shi2019",
+                         size_y = size_y,
+                         size_x = size_x,
+                         isbias = True )
+encoder = Shi2019(config_encoder)
+
+
+# [[[ MODEL ]]]
+# Config the model...
+config_model = Config( name = "Model", encoder = encoder, )
+model = Shi2019Model(config_model)
+model.init_params(from_timestamp = timestamp_prev)
+
+# [[[ CHECKPOINT ]]]
+drc_cwd          = os.getcwd()
+DRCCHKPT         = "chkpts"
+prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
+fl_chkpt         = f"{timestamp}.train.chkpt"
+path_chkpt       = os.path.join(prefixpath_chkpt, fl_chkpt)
+
+
+# [[[ TRAINER ]]]
+# Config the trainer...
+config_train = ConfigTrainer( path_chkpt        = path_chkpt,
+                              num_workers       = 1,
+                              batch_size        = size_batch,
+                              pin_memory        = True,
+                              shuffle           = False,
+                              lr                = lr, 
+                              tqdm_disable      = True)
+trainer = SimpleTrainer(model, dataset_train, config_train)
+
+
+# [[[ VALIDATOR ]]]
+config_validator = ConfigValidator( path_chkpt        = None,
+                                    num_workers       = 1,
+                                    batch_size        = size_batch,
+                                    pin_memory        = True,
+                                    shuffle           = False,
+                                    lr                = lr,
+                                    tqdm_disable      = True)  # Conv2d input needs one more dim for batch
+validator = SimpleValidator(model, dataset_validate, config_validator)
+
+loss_train_hist    = []
+loss_validate_hist = []
+loss_min_hist      = []
+
+# [[[ EPOCH MANAGER ]]]
+epoch_manager = EpochManager( trainer   = trainer,
+                              validator = validator,
+                              timestamp = timestamp, )
+
+max_epochs = 1000
+freq_save = 5
+for epoch in tqdm.tqdm(range(max_epochs), disable=False):
+    loss_train, loss_validate, loss_min = epoch_manager.run_one_epoch(epoch = epoch, returns_loss = True)
+
+    loss_train_hist.append(loss_train)
+    loss_validate_hist.append(loss_validate)
+    loss_min_hist.append(loss_min)
