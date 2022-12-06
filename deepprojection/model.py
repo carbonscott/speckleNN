@@ -423,10 +423,13 @@ class Shi2019Model(nn.Module):
 
     def __init__(self, config):
         super().__init__()
-        self.encoder = getattr(config, "encoder", None)
-        self.seed    = getattr(config, "seed"   , None)
+        self.encoder    = getattr(config, "encoder"   , None)
+        self.seed       = getattr(config, "seed"      , None)
+        self.pos_weight = getattr(config, "pos_weight", 1.0)
 
-        self.BCEWithLogitsLoss = nn.BCEWithLogitsLoss()
+        self.pos_weight = torch.tensor(self.pos_weight, dtype = torch.float)
+
+        self.BCEWithLogitsLoss = nn.BCEWithLogitsLoss(pos_weight = self.pos_weight)
 
         if self.seed is not None:
             set_seed(self.seed)
