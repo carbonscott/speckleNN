@@ -3,6 +3,8 @@
 
 import random
 import numpy as np
+
+from scipy import ndimage
 from skimage.transform import rotate, resize
 
 
@@ -248,3 +250,90 @@ def noise_poisson(img):
 
 def noise_gaussian(img, sigma):
     return np.float32(img + sigma * np.random.randn(*img.shape))
+
+
+
+
+class RandomShift:
+
+    def __init__(self, frac_y_shift_max = 0.01, frac_x_shift_max = 0.01, verbose = False):
+        self.frac_y_shift_max = frac_y_shift_max
+        self.frac_x_shift_max = frac_x_shift_max
+
+        self.verbose = verbose
+
+
+    def __call__(self, img):
+        # Get the size of the image...
+        size_img_y, size_img_x = img.shape
+
+        # Draw a random value for shifting along x and y, respectively...
+        y_shift_abs_max = size_img_y * self.frac_y_shift_max
+        y_shift_abs_max = y_shift_abs_max
+        y_shift = random.uniform(-y_shift_abs_max, y_shift_abs_max)
+
+        x_shift_abs_max = size_img_x * self.frac_x_shift_max
+        x_shift_abs_max = int(x_shift_abs_max)
+        x_shift = random.uniform(-x_shift_abs_max, x_shift_abs_max)
+
+        # Determine the size of the super image...
+        size_super_y = size_img_y + 2 * abs(y_shift)
+        size_super_x = size_img_x + 2 * abs(x_shift)
+
+        shift_img = ndimage.shift(input = img, shift = (y_shift, x_shift))
+
+        if self.verbose: print( f"y-shift = {y_shift}, x-shift = {x_shift}" )
+
+        return shift_img
+
+
+
+
+class RandomIntShift:
+
+    def __init__(self, frac_y_shift_max = 0.01, frac_x_shift_max = 0.01, verbose = False):
+        self.frac_y_shift_max = frac_y_shift_max
+        self.frac_x_shift_max = frac_x_shift_max
+
+        self.verbose = verbose
+
+
+    def __call__(self, img):
+        # Get the size of the image...
+        size_img_y, size_img_x = img.shape
+
+        # Draw a random value for shifting along x and y, respectively...
+        y_shift_abs_max = size_img_y * self.frac_y_shift_max
+        y_shift_abs_max = y_shift_abs_max
+        y_shift = random.uniform(-y_shift_abs_max, y_shift_abs_max)
+        y_shift = int(y_shift)
+
+        x_shift_abs_max = size_img_x * self.frac_x_shift_max
+        x_shift_abs_max = int(x_shift_abs_max)
+        x_shift = random.uniform(-x_shift_abs_max, x_shift_abs_max)
+        x_shift = int(x_shift)
+
+        # Determine the size of the super image...
+        size_super_y = size_img_y + 2 * abs(y_shift)
+        size_super_x = size_img_x + 2 * abs(x_shift)
+
+        # Construct a super image by padding (with zero) the absolute y and x shift...
+        super = np.zeros((size_super_y, size_super_x))
+
+        # Move the image to the target area...
+        target_y_min = abs(y_shift) + y_shift
+        target_x_min = abs(x_shift) + x_shift
+        target_y_max = size_img_y + target_y_min
+        target_x_max = size_img_x + target_x_min
+        super[target_y_min:target_y_max, target_x_min:target_x_max] = img[:]
+
+        # Crop super...
+        crop_y_min = abs(y_shift)
+        crop_x_min = abs(x_shift)
+        crop_y_max = size_img_y + crop_y_min
+        crop_x_max = size_img_x + crop_x_min
+        crop = super[crop_y_min:crop_y_max, crop_x_min:crop_x_max]
+
+        if self.verbose: print( f"y-shift = {y_shift}, x-shift = {x_shift}" )
+
+        return crop
