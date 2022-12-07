@@ -111,7 +111,7 @@ class OnlineTrainer:
         self.device = 'cpu'
         if torch.cuda.is_available():
             self.device = torch.cuda.current_device()
-            self.model  = torch.nn.DataParallel(self.model).to(self.device)
+            self.model  = torch.nn.DataParallel(self.model).to(self.device, dtype = torch.float)
 
         return None
 
@@ -152,7 +152,7 @@ class OnlineTrainer:
         batch = tqdm.tqdm(enumerate(loader_train), total = len(loader_train), disable = config.tqdm_disable)
         for step_id, entry in batch:
             batch_imgs, batch_labels, batch_metadata = entry
-            batch_imgs = batch_imgs.to(self.device)
+            batch_imgs = batch_imgs.to(self.device, dtype = torch.float)
 
             loss = self.model.forward(batch_imgs, batch_labels, batch_metadata, 
                                       logs_triplets = config.logs_triplets, 
@@ -186,7 +186,7 @@ class SimpleTrainer:
         self.device = 'cpu'
         if torch.cuda.is_available():
             self.device = torch.cuda.current_device()
-            self.model  = torch.nn.DataParallel(self.model).to(self.device)
+            self.model  = torch.nn.DataParallel(self.model).to(self.device, dtype = torch.float)
 
         return None
 

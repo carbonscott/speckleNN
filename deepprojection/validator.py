@@ -107,7 +107,7 @@ class OnlineLossValidator:
 
             chkpt = torch.load(self.config.path_chkpt)
             self.model.load_state_dict(chkpt)
-            self.model = torch.nn.DataParallel(self.model).to(self.device)
+            self.model = torch.nn.DataParallel(self.model).to(self.device, dtype = torch.float)
 
         return None
 
@@ -132,7 +132,7 @@ class OnlineLossValidator:
         batch = tqdm.tqdm(enumerate(loader_test), total = len(loader_test), disable = config.tqdm_disable)
         for step_id, entry in batch:
             batch_imgs, batch_labels, batch_titles = entry
-            batch_imgs = batch_imgs.to(self.device)
+            batch_imgs = batch_imgs.to(self.device, dtype = torch.float)
 
             with torch.no_grad():
                 loss = self.model.forward(batch_imgs, batch_labels, batch_titles, 
@@ -165,7 +165,7 @@ class SimpleValidator:
 
             chkpt = torch.load(self.config.path_chkpt)
             self.model.load_state_dict(chkpt)
-            self.model = torch.nn.DataParallel(self.model).to(self.device)
+            self.model = torch.nn.DataParallel(self.model).to(self.device, dtype = torch.float)
 
         return None
 
@@ -317,8 +317,8 @@ class MultiwayQueryValidator:
             batch_metadata_query, batch_metadata_support = batch_str_list[0:1], batch_str_list[1:]
 
             # Load imgs to gpu...
-            batch_img_query   = torch.stack(batch_img_query).to(self.device)
-            batch_img_support = torch.stack(batch_img_support).to(self.device)
+            batch_img_query   = torch.stack(batch_img_query).to(self.device, dtype = torch.float)
+            batch_img_support = torch.stack(batch_img_support).to(self.device, dtype = torch.float)
 
             # Calculate the squared distance between embeddings...
             # (size_batch, size_image) => (size_batch, len_emb)
