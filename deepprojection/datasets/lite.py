@@ -79,7 +79,8 @@ class SPIOnlineDataset(Dataset):
                        size_sample_per_class = None, 
                        trans                 = None, 
                        allows_cache_trans    = False,
-                       seed                  = None):
+                       seed                  = None, 
+                       mpi_comm              = None,):
         # Unpack parameters...
         self.size_sample           = size_sample
         self.size_sample_per_class = size_sample_per_class
@@ -87,13 +88,19 @@ class SPIOnlineDataset(Dataset):
         self.trans                 = trans
         self.allows_cache_trans    = allows_cache_trans
         self.seed                  = seed
+        self.mpi_comm              = mpi_comm
+
+        # Set up mpi...
+        if self.mpi_comm is not None:
+            self.mpi_size     = self.mpi_comm.Get_size()    # num of processors
+            self.mpi_rank     = self.mpi_comm.Get_rank()
+            self.mpi_data_tag = 11
 
         # Set seed for data spliting...
         if seed is not None:
             set_seed(seed)
 
         self.random_state_cache_dict = {}
-
         self.dataset_cache_dict = {}
 
         # Fetch all metadata...
@@ -135,9 +142,12 @@ class SPIOnlineDataset(Dataset):
         return None
 
 
-    def cache_dataset(self):
-        for idx in range(self.size_sample):
+    def cache_dataset(self, idx_list = []):
+        if not len(idx_list): idx_list = range(self.size_sample)
+        for idx in idx_list:
             if idx in self.dataset_cache_dict: continue
+
+            print(f"Cacheing data point {idx}...")
 
             img, label, metadata = self.get_data(idx)
             self.dataset_cache_dict[idx] = (img, label, metadata)
@@ -145,7 +155,68 @@ class SPIOnlineDataset(Dataset):
         return None
 
 
+    def mpi_cache_dataset(self):
+        ''' Cache image in the seq_random_list unless a subset is specified
+            using MPI.
+        '''
+        # Import chunking method...
+        from ..utils import split_list_into_chunk
+
+        # Get the MPI metadata...
+        mpi_comm     = self.mpi_comm
+        mpi_size     = self.mpi_size
+        mpi_rank     = self.mpi_rank
+        mpi_data_tag = self.mpi_data_tag
+
+        # If subset is not give, then go through the whole set...
+        idx_list = range(self.size_sample)
+
+        # Split the workload...
+        idx_list_in_chunk = split_list_into_chunk(idx_list, max_num_chunk = mpi_size)
+
+        # Process chunk by each worker...
+        # No need to sync the dataset_cache_dict across workers
+        if mpi_rank != 0:
+            if mpi_rank < len(idx_list_in_chunk):
+                idx_list_per_worker = idx_list_in_chunk[mpi_rank]
+                self.dataset_cache_dict = self._mpi_cache_data_per_rank(idx_list_per_worker)
+
+            mpi_comm.send(self.dataset_cache_dict, dest = 0, tag = mpi_data_tag)
+
+        if mpi_rank == 0:
+            idx_list_per_worker = idx_list_in_chunk[mpi_rank]
+            self.dataset_cache_dict = self._mpi_cache_data_per_rank(idx_list_per_worker)
+
+            for i in range(1, mpi_size, 1):
+                dataset_cache_dict = mpi_comm.recv(source = i, tag = mpi_data_tag)
+
+                self.dataset_cache_dict.update(dataset_cache_dict)
+
+        return None
+
+
+    def _mpi_cache_data_per_rank(self, idx_list):
+        ''' Cache image in the seq_random_list unless a subset is specified
+            using MPI.
+        '''
+        dataset_cache_dict = {}
+        for idx in idx_list:
+            # Skip those have been recorded...
+            if idx in dataset_cache_dict: continue
+
+            print(f"Cacheing data point {idx}...")
+
+            img, label, metadata = self.get_data(idx)
+            dataset_cache_dict[idx] = (img, label, metadata)
+
+        return dataset_cache_dict
+
+
     def get_data(self, idx):
+        '''
+        Acutallay access the source data and apply the tranformation.
+        '''
+
         # Retrive a sampled image...
         idx_sample = self.online_set[idx]
         img, label, metadata = self.dataset_list[idx_sample]
@@ -169,7 +240,7 @@ class SPIOnlineDataset(Dataset):
 
 
     def __getitem__(self, idx):
-        idx_sample = self.online_set[idx]
+        # Lazy load a cached image if it exists...
         img, label, metadata = self.dataset_cache_dict[idx] if idx in self.dataset_cache_dict \
                                                             else self.get_data(idx)
 
