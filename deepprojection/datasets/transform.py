@@ -206,22 +206,23 @@ class RandomCenterZoom:
     def __call__(self, img):
         size_img_y, size_img_x = img.shape
 
-        x_center, y_center = (size_img_y // 2, size_img_x // 2)
+        y_center, x_center = (size_img_y // 2, size_img_x // 2)
 
         zoom_percent = random.uniform(0, self.max_zoom_percent)
 
-        size_y_zoom = size_img_y * (1.0 - zoom_percent)
-        size_x_zoom = size_img_x * (1.0 - zoom_percent)
+        size_zoom_y = size_img_y * (1.0 - zoom_percent)
+        size_zoom_x = size_img_x * (1.0 - zoom_percent)
+        size_zoom_y = int(size_zoom_y)
+        size_zoom_x = int(size_zoom_x)
 
-        y_min = int(y_center - size_y_zoom / 2)
-        x_min = int(x_center - size_x_zoom / 2)
-        y_max = int(y_center + size_y_zoom / 2)
-        x_max = int(x_center + size_x_zoom / 2)
+        y_min = y_center - size_zoom_y // 2
+        x_min = x_center - size_zoom_x // 2
+        y_max = y_center + size_zoom_y // 2
+        x_max = x_center + size_zoom_x // 2
         crop_orig = (y_min, x_min)
         crop_end  = (y_max, x_max)
 
-        crop     = Crop(crop_orig, crop_end)
-        img_crop = crop(img)
+        img_crop = img[y_min:y_max, x_min:x_max]
 
         img_zoom = resize(img_crop, (size_img_y, size_img_x), anti_aliasing = True)
 
