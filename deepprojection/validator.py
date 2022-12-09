@@ -280,7 +280,7 @@ class MultiwayQueryValidator:
         return None
 
 
-    def validate(self, returns_details = False):
+    def validate(self, returns_details = False, logs_query = False):
         """ The testing loop.  """
 
         # Load model and testing configuration...
@@ -334,10 +334,11 @@ class MultiwayQueryValidator:
                 # Go through each test against the query...
                 msg = [ f"{batch_metadata_support[j][i]} : {batch_dist_support[j][i]:12.8f}" for j in range(num_support_per_query) ]
 
-                # Return a line for each batch...
-                log_header = f"DATA - {batch_metadata_query[0][i]}, "
-                log_msg = log_header + ", ".join(msg)
-                logger.info(log_msg)
+                if logs_query:
+                    # Return a line for each batch...
+                    log_header = f"DATA - {batch_metadata_query[0][i]}, "
+                    log_msg = log_header + ", ".join(msg)
+                    logger.info(log_msg)
 
             batch_metadata_query_list.append( batch_metadata_query )
             batch_metadata_support_list.append( batch_metadata_support )
