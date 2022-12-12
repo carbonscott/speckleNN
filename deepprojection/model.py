@@ -104,7 +104,6 @@ class OnlineSiameseModel(nn.Module):
                       method            = 'semi-hard',):
         # Supposed methods
         select_method_dict = {
-            ## 'batch-hard'       : self.batch_hard,
             'random-semi-hard' : self.batch_random_semi_hard,
             'random'           : self.batch_random,
         }
@@ -285,55 +284,6 @@ class OnlineSiameseModel(nn.Module):
                 logger.info(f"DATA - {metadata_achr} {metadata_pos} {metadata_neg} {dist_pos:12.6f} {dist_neg:12.6f}")
 
         return triplets
-
-
-    def batch_hard(self, batch_imgs, batch_labels, batch_metadata, **kwargs):
-        # Get batch size...
-        batch_size = len(batch_labels)
-
-        # Encode all batched images...
-        batch_embs = self.encoder.encode(batch_imgs)
-
-        # Get distance matrix...
-        dmat = calc_dmat(batch_embs, batch_embs, is_sqrt = False)
-
-        # Get the bool matrix...
-        bmat = batch_labels[:, None] == batch_labels[:, None].t()
-
-        # ___/ MINE HARDEST POSITIVES \___
-        # Get the dmat masked by bmat...
-        dmat_masked_positive = dmat * bmat
-
-        # Get the row-wise max distances and their indices...
-        batch_hardest_positives = torch.max(dmat_masked_positive, dim = -1)
-
-        # ___/ MINE HARDEST NEGATIVES \___
-        # Assign positive distances the max distance to facilitate mining min values...
-        MAX_DIST = torch.max(dmat)
-        dmat_masked_negative = dmat * (~bmat)
-        dmat_masked_negative[bmat] = MAX_DIST
-
-        # Get the row-wise min distances and their indices...
-        batch_hardest_negatives = torch.min(dmat_masked_negative, dim = -1)
-
-        ## # Log hardest examples...
-        ## batch_idx_hardest_positive = batch_hardest_positives.indices
-        ## batch_idx_hardest_negative = batch_hardest_negatives.indices
-        ## batch_val_hardest_positive = batch_hardest_positives.values
-        ## batch_val_hardest_negative = batch_hardest_negatives.values
-
-        ## for i in range(len(batch_labels)):
-        ##     # Retrieve the metadata of hardest example...
-        ##     metadata_hardest_positive = batch_metadata[ batch_idx_hardest_positive[i] ]
-        ##     metadata_hardest_negative = batch_metadata[ batch_idx_hardest_negative[i] ]
-        ##     val_hardest_positive = batch_val_hardest_positive[i]
-        ##     val_hardest_negative = batch_val_hardest_negative[i]
-        ##     logger.info(f"DATA - {batch_metadata[i]} {metadata_hardest_positive} {metadata_hardest_negative} {val_hardest_positive:12.6f} {val_hardest_negative:12.6f}")
-
-        # Get the batch hard row-wise triplet loss...
-        batch_loss_triplet = torch.relu(batch_hardest_positives.values - batch_hardest_negatives.values + self.alpha)
-
-        return batch_loss_triplet.mean()
 
 
     def configure_optimizers(self, config_train):
