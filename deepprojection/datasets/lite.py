@@ -48,7 +48,7 @@ class SPIDataset(Dataset):
 
 
     def __getitem__(self, idx):
-        img, label, title = self.dataset_list[idx]
+        img, label, metadata = self.dataset_list[idx]
 
         # Apply any possible transformation...
         # How to define a custom transform function?
@@ -62,7 +62,97 @@ class SPIDataset(Dataset):
         img_std  = np.std(img)
         img      = (img - img_mean) / img_std
 
-        return img[None,], label, title
+        return img[None,], label, metadata
+
+
+
+
+class CustomData:
+
+    def __init__(self, label, idx_list):
+        self.label    = label
+        self.idx_list = idx_list
+
+
+    def __repr__(self):
+        msg  = "label => "
+        msg += f"({self.label[0]:d}, {self.label[1]})"
+        msg += "\n"
+        msg += "idx_list => "
+        msg += " ".join([ f"{i:d}" for i in self.idx_list ])
+        msg += "\n"
+
+        return msg
+
+
+
+class SPIOnlineDictDataset(Dataset):
+    '''
+    This dataset class returns a dictionary of data for online negative mining.
+    '''
+
+    def __init__(self, dataset_list,
+                       num_sample            = 2,
+                       num_example_per_label = 2,
+                       trans                 = None):
+        self.dataset_list          = dataset_list
+        self.num_sample            = num_sample
+        self.num_example_per_label = num_example_per_label
+        self.trans                 = trans
+
+        self.label_to_idx_dict = self.build_label_to_idx_dict()
+
+        self.label_to_encode_dict, self.encode_to_label_dict = self.encode_label()
+
+        self.label_list  = []
+        self.encode_list = []
+        for label, encode in self.label_to_idx_dict.items():
+            self.label_list.append(label)
+            self.encode_list.append(encode)
+
+        self.sample_list = self.build_sample_list()
+
+
+    def encode_label(self):
+        label_to_encode_dict = { label  : encode for encode, label in enumerate(self.label_to_idx_dict.keys()) }
+        encode_to_label_dict = { encode : label  for encode, label in enumerate(self.label_to_idx_dict.keys()) }
+
+        return label_to_encode_dict, encode_to_label_dict
+
+
+    def build_label_to_idx_dict(self):
+        label_to_idx_dict = {}
+        for idx, (img, label, metadata) in enumerate(self.dataset_list):
+            if label not in label_to_idx_dict: label_to_idx_dict[label] = []
+            label_to_idx_dict[label].append(idx)
+
+        return label_to_idx_dict
+
+
+    def build_sample_list(self):
+        sample_list = []
+        for idx in range(self.num_sample):
+            label = random.choice (self.label_list)
+            encode = self.label_to_encode_dict[label]
+            idx_by_label_list = random.choices(self.label_to_idx_dict[label],
+                                               k = self.num_example_per_label)
+            idx_by_label_tensor = torch.tensor(idx_by_label_list)
+            sample_list.append( (encode, idx_by_label_tensor) )
+
+            ## custom_data = CustomData(label, idx_by_label_list)
+            ## sample_list.append( custom_data )
+
+        return sample_list
+
+
+    def __len__(self):
+        return self.num_sample
+
+
+    def __getitem__(self, idx):
+        sample = self.sample_list[idx]
+
+        return sample
 
 
 
@@ -71,7 +161,7 @@ class SPIOnlineDataset(Dataset):
     """
     For online learning.
     dataset_list element:
-        (img, label, title_tuple)
+        (img, label, metadata_tuple)
     """
 
     def __init__(self, dataset_list, 
@@ -401,8 +491,8 @@ class MultiwayQueryset(Dataset):
 
         # Append (exp, run, event_num, label) to the result
         for i in query_tuple: 
-            title = self.metadata_list[i]
-            res += [' '.join(title), ]
+            metadata = self.metadata_list[i]
+            res += [' '.join(metadata), ]
 
         return res
 
