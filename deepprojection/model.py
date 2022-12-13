@@ -31,34 +31,58 @@ class SiameseModel(nn.Module):
 
     def __init__(self, config):
         super().__init__()
-        self.alpha   = config.alpha
-        self.encoder = config.encoder
+        self.alpha   = getattr(config, "alpha"  , None)
+        self.encoder = getattr(config, "encoder", None)
+        self.seed    = getattr(config, "seed"   , None)
+
+        if self.seed is not None:
+            set_seed(self.seed)
 
 
-    def forward(self, img_anchor, img_pos, img_neg):
+    def init_params(self, from_timestamp = None):
+        # Initialize weights or reuse weights from a timestamp...
+        def init_weights(module):
+            # Initialize conv2d with Kaiming method...
+            if isinstance(module, nn.Conv2d):
+                nn.init.kaiming_normal_(module.weight.data, nonlinearity = 'relu')
+
+                # Set bias zero since batch norm is used...
+                module.bias.data.zero_()
+
+        if from_timestamp is None:
+            self.apply(init_weights)
+        else:
+            drc_cwd          = os.getcwd()
+            DRCCHKPT         = "chkpts"
+            prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
+            fl_chkpt_prev    = f"{from_timestamp}.train.chkpt"
+            path_chkpt_prev  = os.path.join(prefixpath_chkpt, fl_chkpt_prev)
+            self.load_state_dict(torch.load(path_chkpt_prev))
+
+
+    def forward(self, batch_anchor, batch_pos, batch_neg):
         # Encode images...
-        img_anchor_embed = self.encoder.encode(img_anchor)
-        img_pos_embed    = self.encoder.encode(img_pos)
-        img_neg_embed    = self.encoder.encode(img_neg)
+        batch_anchor_embed = self.encoder.encode(batch_anchor)
+        batch_pos_embed    = self.encoder.encode(batch_pos)
+        batch_neg_embed    = self.encoder.encode(batch_neg)
 
         # Calculate the RMSD between anchor and positive...
         # Well, it's in fact squared distance
-        img_diff = img_anchor_embed - img_pos_embed
-        rmsd_anchor_pos = torch.sum(img_diff * img_diff, dim = -1)
+        batch_diff = batch_anchor_embed - batch_pos_embed
+        rmsd_anchor_pos = torch.sum(batch_diff * batch_diff, dim = -1)
 
         # Calculate the RMSD between anchor and negative...
-        img_diff = img_anchor_embed - img_neg_embed
-        rmsd_anchor_neg = torch.sum(img_diff * img_diff, dim = -1)
+        batch_diff = batch_anchor_embed - batch_neg_embed
+        rmsd_anchor_neg = torch.sum(batch_diff * batch_diff, dim = -1)
 
         # Calculate the triplet loss, relu is another implementation of max(a, b)...
         loss_triplet = torch.relu(rmsd_anchor_pos - rmsd_anchor_neg + self.alpha)
 
-        return img_anchor_embed, img_pos_embed, img_neg_embed, loss_triplet.mean()
+        return loss_triplet.mean()
 
 
     def configure_optimizers(self, config_train):
         optimizer = torch.optim.Adam(self.encoder.parameters(), lr = config_train.lr)
-        ## optimizer = torch.optim.SGD(self.encoder.parameters(), lr = config_train.lr)
 
         return optimizer
 
