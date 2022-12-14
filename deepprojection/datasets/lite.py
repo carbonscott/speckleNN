@@ -86,18 +86,70 @@ class CustomData:
 
 
 
-class SPIOnlineDictDataset(Dataset):
+class TripletCandidate(Dataset):
     '''
-    This dataset class returns a dictionary of data for online negative mining.
+    """
+    TripletCandidate(dataset_list, num_sample, num_sample_per_label, trans)
+
+    This class will reutrn a list of `(encode, candidate_list)` so that PyTorch
+    DataLoader can pack `label` and `candidate_list` into a batch,
+    respectively.  This huge batch can then be divided into a number of
+    mini-batch for model training and validation.
+
+    Attributes
+    ----------
+    label_to_idx_dict : dict
+        Dictionary of `label` to `index` mapping, in which `index` is used to
+        access data in the `dataset_list`.
+
+    label_to_encode_dict : dict
+        Dictionary of `label` to `encode` mapping, where `encode` is an integer
+        that encodes a label like `(1, '6Q5U')`.
+
+    encode_to_label_dict : dict
+        Dictionary with key-value pair in `label_to_encode_dict` but reversed.
+
+    label_list : list
+        List of all values of `label`.
+
+    encode_list : list
+        List of all values of `encode`.
+
+    sample_list : list List of all sample that can be returned by the __call__
+    function with a supplied index.  Each sample is a tuple of two elements --
+    `(encode, candidate_list)`.
+
+    Parameters
+    ----------
+
+    dataset_list : list
+        List of data points, where a data point is defined as a tuple of three
+        elements -- `(image, label, metadata)`.
+
+    num_sample : int
+        Number of samples.  See the comment section of `sample_list` for the
+        definition of sample.
+
+    num_sample_per_label : int
+        Number of samples to be associated with one label.
+
+    trans : list
+        List of functions that transform an image.
+
+    Examples
+    --------
+    >>>
+
+    """
     '''
 
     def __init__(self, dataset_list,
                        num_sample            = 2,
-                       num_example_per_label = 2,
+                       num_sample_per_label  = 2,
                        trans                 = None):
         self.dataset_list          = dataset_list
         self.num_sample            = num_sample
-        self.num_example_per_label = num_example_per_label
+        self.num_sample_per_label = num_sample_per_label
         self.trans                 = trans
 
         self.label_to_idx_dict = self.build_label_to_idx_dict()
@@ -132,14 +184,16 @@ class SPIOnlineDictDataset(Dataset):
     def build_sample_list(self):
         sample_list = []
         for idx in range(self.num_sample):
-            label = random.choice (self.label_list)
+            label  = random.choice(self.label_list)
             encode = self.label_to_encode_dict[label]
-            idx_by_label_list = random.choices(self.label_to_idx_dict[label],
-                                               k = self.num_example_per_label)
-            idx_by_label_tensor = torch.tensor(idx_by_label_list)
-            sample_list.append( (encode, idx_by_label_tensor) )
+            candidate_list = random.choices(self.label_to_idx_dict[label],
+                                               k = self.num_sample_per_label)
+            ## candidate_tensor = torch.tensor(candidate_list)
+            ## sample_list.append( (encode, candidate_tensor) )
 
-            ## custom_data = CustomData(label, idx_by_label_list)
+            sample_list.append( (encode, candidate_list) )
+
+            ## custom_data = CustomData(label, candidate_list)
             ## sample_list.append( custom_data )
 
         return sample_list
@@ -149,10 +203,44 @@ class SPIOnlineDictDataset(Dataset):
         return self.num_sample
 
 
-    def __getitem__(self, idx):
-        sample = self.sample_list[idx]
+    def get_sample(self, idx):
+        encode, candidate_list = self.sample_list[idx]
 
-        return sample
+        ## return torch.tensor(encode), torch.tensor(candidate_list)
+        return encode, candidate_list
+
+
+    def __getitem__(self, idx):
+        encode, candidate_list = self.get_sample(idx)
+
+        # Loop through all candidate by index and create a candidate tensor...
+        metadata_list = []
+        num_candidate = len(candidate_list)
+        for i, candidate in enumerate(candidate_list):
+            # Fetch original data...
+            img, label, metadata = self.dataset_list[candidate]
+
+            # Apply any possible transformation...
+            # How to define a custom transform function?
+            # Input : img, **kwargs 
+            # Output: img_transfromed
+            if self.trans is not None:
+                img = self.trans(img)
+
+            if i == 0:
+                # Preallocate a matrix to hold all data...
+                size_y, size_x = img.shape[-2:]
+                img_nplist = np.zeros((num_candidate, 1, size_y, size_x), dtype = np.float32)
+                #                                     ^
+                # Torch Channel ______________________|
+
+            # Keep img in memory...
+            img_nplist[i] = img
+
+            # Save metadata...
+            metadata_list.append(metadata)
+
+        return encode, img_nplist, metadata_list
 
 
 
