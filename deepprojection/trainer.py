@@ -176,6 +176,90 @@ class OnlineTrainer:
 
 
 
+class OnlineTripletTrainer:
+    def __init__(self, model, dataset, config):
+        self.model   = model
+        self.dataset = dataset
+        self.config  = config
+
+        # Load data to gpus if available...
+        self.device = device = torch.cuda.current_device() if torch.cuda.is_available() else 'cpu'
+        self.model = torch.nn.DataParallel(self.model).to(self.device, dtype = torch.float)
+
+        return None
+
+
+    def save_checkpoint(self, timestamp):
+        DRCCHKPT = "chkpts"
+        drc_cwd = os.getcwd()
+        prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
+        if not os.path.exists(prefixpath_chkpt): os.makedirs(prefixpath_chkpt)
+        fl_chkpt   = f"{timestamp}.train.chkpt"
+        path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
+
+        # Hmmm, DataParallel wrappers keep raw model object in .module attribute
+        model = self.model.module if hasattr(self.model, "module") else self.model
+        logger.info(f"SAVE - {path_chkpt}")
+        torch.save(model.state_dict(), path_chkpt)
+
+
+    def train(self, saves_checkpoint = True, epoch = None, returns_loss = False, logs_batch_loss = False):
+        """ The training loop.  """
+
+        # Load model and training configuration...
+        # Optimizer can be reconfigured next epoch
+        model, config = self.model, self.config
+        model_raw     = model.module if hasattr(model, "module") else model
+        optimizer     = model_raw.configure_optimizers(config)
+
+        # Train an epoch...
+        model.train()
+        dataset = self.dataset
+        loader_train = DataLoader( dataset, shuffle     = config.shuffle, 
+                                            pin_memory  = config.pin_memory, 
+                                            batch_size  = config.batch_size,
+                                            num_workers = config.num_workers )
+
+        # Train each batch...
+        losses_epoch = []
+        batch_list = tqdm.tqdm(enumerate(loader_train), total = len(loader_train), disable = config.tqdm_disable)
+        for batch_id, batch in batch_list:
+            batch_encode, batch_candidate_list, batch_metadata_list = batch
+
+            # Transpose the first two dims in batch_metadata_list...
+            # CAUSE: The metadata list has a transposed dimension compared with batch_candidate_list
+            # [IMPROVE] It can be avoided by writing a custom collate_fn function
+            # https://stackoverflow.com/questions/65279115/how-to-use-collate-fn-with-dataloaders
+            # I don't have any interest for this.
+            batch_metadata_list = list(map(list, zip(*batch_metadata_list)))
+
+            batch_encode         = batch_encode.to(device = self.device, dtype = torch.float)
+            batch_candidate_list = batch_candidate_list.to(device = self.device, dtype = torch.float)
+
+            triplet_list, _ = self.model.module.select_semi_hard(batch_encode, batch_candidate_list, batch_metadata_list, logs_triplets = config.logs_triplets)
+
+            batch_a, batch_p, batch_n = self.model.module.fetch_img_triplet(triplet_list, batch_candidate_list)
+
+            loss = self.model.forward(batch_a, batch_p, batch_n)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            loss_val = loss.cpu().detach().numpy()
+            losses_epoch.append(loss_val)
+
+            if logs_batch_loss:
+                logger.info(f"MSG - epoch {epoch}, batch {batch_id:d}, loss {loss_val:.8f}")
+
+        loss_epoch_mean = np.mean(losses_epoch)
+        logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.8f}")
+
+        return loss_epoch_mean if returns_loss else None
+
+
+
+
 class SimpleTrainer:
     def __init__(self, model, dataset, config):
         self.model         = model

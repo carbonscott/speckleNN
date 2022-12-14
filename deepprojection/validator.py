@@ -152,6 +152,73 @@ class OnlineLossValidator:
 
 
 
+class OnlineTripletLossValidator:
+    def __init__(self, model, dataset, config):
+        self.model   = model
+        self.dataset = dataset
+        self.config  = config
+
+        # Load data to gpus if available...
+        self.device = device = torch.cuda.current_device() if torch.cuda.is_available() else 'cpu'
+        if self.config.path_chkpt is not None:
+            chkpt = torch.load(self.config.path_chkpt)
+            self.model.load_state_dict(chkpt)
+        self.model = torch.nn.DataParallel(self.model).to(self.device, dtype = torch.float)
+
+        return None
+
+
+    def validate(self, returns_loss = False, epoch = None, logs_batch_loss = False):
+        """ The testing loop.  """
+
+        # Load model and testing configuration...
+        model, config = self.model, self.config
+
+        # Validate an epoch...
+        # Load model state...
+        model.eval()
+        dataset = self.dataset
+        loader_test = DataLoader( dataset, shuffle     = config.shuffle, 
+                                           pin_memory  = config.pin_memory, 
+                                           batch_size  = config.batch_size,
+                                           num_workers = config.num_workers )
+
+        # Train each batch...
+        losses_epoch = []
+        batch_list = tqdm.tqdm(enumerate(loader_test), total = len(loader_test), disable = config.tqdm_disable)
+        for batch_id, batch in batch_list:
+            batch_encode, batch_candidate_list, batch_metadata_list = batch
+
+            # Transpose the first two dims in batch_metadata_list...
+            # CAUSE: The metadata list has a transposed dimension compared with batch_candidate_list
+            # [IMPROVE] It can be avoided by writing a custom collate_fn function
+            # https://stackoverflow.com/questions/65279115/how-to-use-collate-fn-with-dataloaders
+            # I don't have any interest for this.
+            batch_metadata_list = list(map(list, zip(*batch_metadata_list)))
+
+            batch_encode         = batch_encode.to(device = self.device, dtype = torch.float)
+            batch_candidate_list = batch_candidate_list.to(device = self.device, dtype = torch.float)
+
+            triplet_list, _ = self.model.module.select_semi_hard(batch_encode, batch_candidate_list, batch_metadata_list, logs_triplets = config.logs_triplets)
+
+            batch_a, batch_p, batch_n = self.model.module.fetch_img_triplet(triplet_list, batch_candidate_list)
+
+            with torch.no_grad():
+                loss = self.model.forward(batch_a, batch_p, batch_n)
+                loss_val = loss.cpu().detach().numpy()
+            losses_epoch.append(loss_val)
+
+            if logs_batch_loss:
+                logger.info(f"MSG - epoch {epoch}, batch {batch_id:d}, loss {loss_val:.8f}")
+
+        loss_epoch_mean = np.mean(losses_epoch)
+        logger.info(f"MSG - epoch {epoch}, loss mean {loss_epoch_mean:.8f}")
+
+        return loss_epoch_mean if returns_loss else None
+
+
+
+
 class SimpleValidator:
     def __init__(self, model, dataset, config):
         self.model        = model

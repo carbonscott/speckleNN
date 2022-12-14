@@ -188,13 +188,7 @@ class TripletCandidate(Dataset):
             encode = self.label_to_encode_dict[label]
             candidate_list = random.choices(self.label_to_idx_dict[label],
                                                k = self.num_sample_per_label)
-            ## candidate_tensor = torch.tensor(candidate_list)
-            ## sample_list.append( (encode, candidate_tensor) )
-
             sample_list.append( (encode, candidate_list) )
-
-            ## custom_data = CustomData(label, candidate_list)
-            ## sample_list.append( custom_data )
 
         return sample_list
 
