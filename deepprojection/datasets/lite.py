@@ -172,6 +172,8 @@ class TripletCandidate(Dataset):
 
         self.sample_list = self.build_sample_list()
 
+        self.dataset_cache_dict = {}
+
 
     def encode_label(self):
         label_to_encode_dict = { label  : encode for encode, label in enumerate(self.label_to_idx_dict.keys()) }
@@ -212,7 +214,7 @@ class TripletCandidate(Dataset):
         return encode, candidate_list
 
 
-    def __getitem__(self, idx):
+    def get_data(self, idx):
         encode, candidate_list = self.get_sample(idx)
 
         # Loop through all candidate by index and create a candidate tensor...
@@ -241,6 +243,15 @@ class TripletCandidate(Dataset):
 
             # Save metadata...
             metadata_list.append(metadata)
+
+        return encode, img_nplist, metadata_list
+
+
+    def __getitem__(self, idx):
+        encode, img_nplist, metadata_list =                                \
+            self.dataset_cache_dict[idx] if idx in self.dataset_cache_dict \
+                                         else                              \
+                                         self.get_data(idx)
 
         return encode, img_nplist, metadata_list
 
@@ -296,7 +307,7 @@ class TripletCandidate(Dataset):
 
             print(f"Cacheing data point {idx}...")
 
-            encode, img_nplist, metadata_list = self.__getitem__(idx)
+            encode, img_nplist, metadata_list = self.get_data(idx)
             dataset_cache_dict[idx] = (encode, img_nplist, metadata_list)
 
         return dataset_cache_dict
