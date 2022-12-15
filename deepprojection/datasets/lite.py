@@ -146,11 +146,19 @@ class TripletCandidate(Dataset):
     def __init__(self, dataset_list,
                        num_sample            = 2,
                        num_sample_per_label  = 2,
-                       trans                 = None):
+                       trans                 = None,
+                       mpi_comm              = None):
         self.dataset_list          = dataset_list
         self.num_sample            = num_sample
         self.num_sample_per_label = num_sample_per_label
         self.trans                 = trans
+        self.mpi_comm              = mpi_comm
+
+        # Set up mpi...
+        if self.mpi_comm is not None:
+            self.mpi_size     = self.mpi_comm.Get_size()    # num of processors
+            self.mpi_rank     = self.mpi_comm.Get_rank()
+            self.mpi_data_tag = 11
 
         self.label_to_idx_dict = self.build_label_to_idx_dict()
 
@@ -235,6 +243,63 @@ class TripletCandidate(Dataset):
             metadata_list.append(metadata)
 
         return encode, img_nplist, metadata_list
+
+
+    def mpi_cache_dataset(self):
+        ''' Cache image in the seq_random_list unless a subset is specified
+            using MPI.
+        '''
+        # Import chunking method...
+        from ..utils import split_list_into_chunk
+
+        # Get the MPI metadata...
+        mpi_comm     = self.mpi_comm
+        mpi_size     = self.mpi_size
+        mpi_rank     = self.mpi_rank
+        mpi_data_tag = self.mpi_data_tag
+
+        # If subset is not give, then go through the whole set...
+        idx_list = range(self.num_sample)
+
+        # Split the workload...
+        idx_list_in_chunk = split_list_into_chunk(idx_list, max_num_chunk = mpi_size)
+
+        # Process chunk by each worker...
+        # No need to sync the dataset_cache_dict across workers
+        if mpi_rank != 0:
+            if mpi_rank < len(idx_list_in_chunk):
+                idx_list_per_worker = idx_list_in_chunk[mpi_rank]
+                self.dataset_cache_dict = self._mpi_cache_data_per_rank(idx_list_per_worker)
+
+            mpi_comm.send(self.dataset_cache_dict, dest = 0, tag = mpi_data_tag)
+
+        if mpi_rank == 0:
+            idx_list_per_worker = idx_list_in_chunk[mpi_rank]
+            self.dataset_cache_dict = self._mpi_cache_data_per_rank(idx_list_per_worker)
+
+            for i in range(1, mpi_size, 1):
+                dataset_cache_dict = mpi_comm.recv(source = i, tag = mpi_data_tag)
+
+                self.dataset_cache_dict.update(dataset_cache_dict)
+
+        return None
+
+
+    def _mpi_cache_data_per_rank(self, idx_list):
+        ''' Cache image in the seq_random_list unless a subset is specified
+            using MPI.
+        '''
+        dataset_cache_dict = {}
+        for idx in idx_list:
+            # Skip those have been recorded...
+            if idx in dataset_cache_dict: continue
+
+            print(f"Cacheing data point {idx}...")
+
+            encode, img_nplist, metadata_list = self.__getitem__(idx)
+            dataset_cache_dict[idx] = (encode, img_nplist, metadata_list)
+
+        return dataset_cache_dict
 
 
 
