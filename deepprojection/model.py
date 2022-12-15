@@ -63,7 +63,7 @@ class OnlineTripletSiameseModel(nn.Module):
             self.load_state_dict(torch.load(path_chkpt_prev))
 
 
-    def select_semi_hard(self, batch_encode, batch_candidate_list, batch_metadata_list = None, logs_triplets = False):
+    def select_semi_hard(self, batch_encode, batch_candidate_list, encode_to_label_dict, batch_metadata_list = None, logs_triplets = False):
         """
         Return a list of entities of three elements -- `(a, p, n)`, which
         stand for anchor, positive and negative respectively.
@@ -122,11 +122,11 @@ class OnlineTripletSiameseModel(nn.Module):
             batch_emb_list = batch_emb_list.view(num_sample_in_mini_batch, num_candidate, -1)
 
         # Build a lookup table to locate negative examples...
-        encode_to_idx_dict = {}
+        encode_to_seqi_dict = {}
         for idx_encode, encode in enumerate(batch_encode):
             encode = encode.item()
-            if encode not in encode_to_idx_dict: encode_to_idx_dict[encode] = []
-            encode_to_idx_dict[encode].append(idx_encode)
+            if encode not in encode_to_seqi_dict: encode_to_seqi_dict[encode] = []
+            encode_to_seqi_dict[encode].append(idx_encode)
 
         # Go through each item in the mini-batch and find semi-hard triplets...
         triplet_list = []
@@ -146,9 +146,18 @@ class OnlineTripletSiameseModel(nn.Module):
 
             # Fetch negative sample candidates...
             idx_encode_n_list = []
-            for k_encode, v_idx_encode_list in encode_to_idx_dict.items():
-                if k_encode == encode: continue
+            for k_encode, v_idx_encode_list in encode_to_seqi_dict.items():
+                # Fetch the real label...
+                label   = encode_to_label_dict[encode]
+                k_label = encode_to_label_dict[k_encode]
+
+                # Skip those have the same hit type...
+                hit_type   = label  [1]
+                k_hit_type = k_label[1]
+                if hit_type == k_hit_type: continue
+
                 idx_encode_n_list += v_idx_encode_list
+
             idx_encode_n_list = torch.tensor(idx_encode_n_list)
 
             # Collect all negative embeddings...

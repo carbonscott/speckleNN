@@ -199,7 +199,11 @@ class OnlineTripletLossValidator:
             batch_encode         = batch_encode.to(device = self.device, dtype = torch.float)
             batch_candidate_list = batch_candidate_list.to(device = self.device, dtype = torch.float)
 
-            triplet_list, _ = self.model.module.select_semi_hard(batch_encode, batch_candidate_list, batch_metadata_list, logs_triplets = config.logs_triplets)
+            triplet_list, _ = self.model.module.select_semi_hard(batch_encode, 
+                                                                 batch_candidate_list, 
+                                                                 dataset.encode_to_label_dict, 
+                                                                 batch_metadata_list, 
+                                                                 logs_triplets = config.logs_triplets)
 
             batch_a, batch_p, batch_n = self.model.module.fetch_img_triplet(triplet_list, batch_candidate_list)
 
