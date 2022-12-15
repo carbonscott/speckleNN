@@ -172,17 +172,13 @@ class OnlineTripletSiameseModel(nn.Module):
 
             # If semi hard exists???
             if torch.any(cond_semihard):
-                # Selet idx_encode_n...
-                # [IMPROVE] Higher version of PyTorch should make this process easier
-                cond_semihard_numpy = cond_semihard.cpu().numpy()
-
                 # Sample a semi hard example but represented using seqence id in cond_semihard_numpy...
-                pos_semihard = np.argwhere(cond_semihard_numpy)
+                pos_semihard = torch.nonzero(cond_semihard)
                 seqi_encode, seqi_candidate = random.choice(pos_semihard)
 
                 # Locate the semi hard using idx_encode and idx_candidate...
                 idx_encode_n = idx_encode_n_list[seqi_encode].item()
-                idx_n        = seqi_candidate
+                idx_n        = seqi_candidate.item()
 
                 # Record dist...
                 dist_n = dist_n_list[seqi_encode][idx_n].item()
