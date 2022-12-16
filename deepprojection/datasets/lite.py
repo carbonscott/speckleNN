@@ -256,7 +256,7 @@ class TripletCandidate(Dataset):
         return encode, img_nplist, metadata_list
 
 
-    def mpi_cache_dataset(self):
+    def mpi_cache_dataset(self, mpi_batch_size = 1):
         ''' Cache image in the seq_random_list unless a subset is specified
             using MPI.
         '''
@@ -270,28 +270,33 @@ class TripletCandidate(Dataset):
         mpi_data_tag = self.mpi_data_tag
 
         # If subset is not give, then go through the whole set...
-        idx_list = range(self.num_sample)
+        global_idx_list = range(self.num_sample)
 
-        # Split the workload...
-        idx_list_in_chunk = split_list_into_chunk(idx_list, max_num_chunk = mpi_size)
+        # Divide all indices into batches and go through them...
+        batch_idx_list = split_list_into_chunk(global_idx_list, max_num_chunk = mpi_batch_size)
+        for batch_seqi, idx_list in enumerate(batch_idx_list):
+            # Split the workload...
+            idx_list_in_chunk = split_list_into_chunk(idx_list, max_num_chunk = mpi_size)
 
-        # Process chunk by each worker...
-        # No need to sync the dataset_cache_dict across workers
-        if mpi_rank != 0:
-            if mpi_rank < len(idx_list_in_chunk):
+            # Process chunk by each worker...
+            # No need to sync the dataset_cache_dict across workers
+            if mpi_rank != 0:
+                if mpi_rank < len(idx_list_in_chunk):
+                    idx_list_per_worker = idx_list_in_chunk[mpi_rank]
+                    dataset_cache_dict = self._mpi_cache_data_per_rank(idx_list_per_worker)
+
+                mpi_comm.send(dataset_cache_dict, dest = 0, tag = mpi_data_tag)
+
+            if mpi_rank == 0:
+                print(f'[[[ MPI batch {batch_seqi} ]]]')
+
                 idx_list_per_worker = idx_list_in_chunk[mpi_rank]
-                self.dataset_cache_dict = self._mpi_cache_data_per_rank(idx_list_per_worker)
-
-            mpi_comm.send(self.dataset_cache_dict, dest = 0, tag = mpi_data_tag)
-
-        if mpi_rank == 0:
-            idx_list_per_worker = idx_list_in_chunk[mpi_rank]
-            self.dataset_cache_dict = self._mpi_cache_data_per_rank(idx_list_per_worker)
-
-            for i in range(1, mpi_size, 1):
-                dataset_cache_dict = mpi_comm.recv(source = i, tag = mpi_data_tag)
-
+                dataset_cache_dict = self._mpi_cache_data_per_rank(idx_list_per_worker)
                 self.dataset_cache_dict.update(dataset_cache_dict)
+
+                for i in range(1, mpi_size, 1):
+                    dataset_cache_dict = mpi_comm.recv(source = i, tag = mpi_data_tag)
+                    self.dataset_cache_dict.update(dataset_cache_dict)
 
         return None
 
