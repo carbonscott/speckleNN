@@ -328,6 +328,7 @@ class SPIOnlineDataset(Dataset):
                        trans                 = None, 
                        allows_cache_trans    = False,
                        seed                  = None, 
+                       joins_metadata        = True,
                        mpi_comm              = None,):
         # Unpack parameters...
         self.size_sample           = size_sample
@@ -335,6 +336,7 @@ class SPIOnlineDataset(Dataset):
         self.dataset_list          = dataset_list
         self.trans                 = trans
         self.allows_cache_trans    = allows_cache_trans
+        self.joins_metadata        = joins_metadata
         self.seed                  = seed
         self.mpi_comm              = mpi_comm
 
@@ -497,7 +499,9 @@ class SPIOnlineDataset(Dataset):
         img_std  = np.std(img)
         img      = (img - img_mean) / img_std
 
-        return img[None,], label, ' '.join(metadata)
+        if self.joins_metadata: metadata = ' '.join(metadata)
+
+        return img[None,], label, metadata
 
 
     def _form_online_set(self):
