@@ -30,11 +30,10 @@ def set_seed(seed):
 
 class EpochManager:
 
-    def __init__(self, trainer, validator, timestamp = ""):
+    def __init__(self, trainer, validator):
 
         self.trainer   = trainer
         self.validator = validator
-        self.timestamp = timestamp
 
         # Track model training information
         self.param_update_ratio_dict  = {}
@@ -50,11 +49,13 @@ class EpochManager:
 
 
     def save_state_dict(self):
+        timestamp = self.trainer.config.timestamp
+
         DRCDEBUG = "debug"
         drc_cwd = os.getcwd()
         prefixpath_debug = os.path.join(drc_cwd, DRCDEBUG)
         if not os.path.exists(prefixpath_debug): os.makedirs(prefixpath_debug)
-        fl_debug   = f"{self.timestamp}.train.debug"
+        fl_debug   = f"{timestamp}.train.debug"
         path_debug = os.path.join(prefixpath_debug, fl_debug)
 
         # Hmmm, DataParallel wrappers keep raw model object in .module attribute
@@ -88,9 +89,9 @@ class EpochManager:
 
         # Save checkpoint whenever validation loss gets smaller...
         # Notice it doesn't imply early stopping
-        if loss_validate < self.loss_min: 
+        if loss_validate < self.loss_min:
             # Save a checkpoint file...
-            self.trainer.save_checkpoint(self.timestamp)
+            self.trainer.save_checkpoint(epoch = epoch)
 
             # Update the new loss...
             self.loss_min = loss_validate
