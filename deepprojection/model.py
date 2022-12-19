@@ -42,7 +42,7 @@ class OnlineTripletSiameseModel(nn.Module):
             set_seed(self.seed)
 
 
-    def init_params(self, from_timestamp = None):
+    def init_params(self, fl_chkpt = None):
         # Initialize weights or reuse weights from a timestamp...
         def init_weights(module):
             # Initialize conv2d with Kaiming method...
@@ -52,14 +52,13 @@ class OnlineTripletSiameseModel(nn.Module):
                 # Set bias zero since batch norm is used...
                 module.bias.data.zero_()
 
-        if from_timestamp is None:
+        if fl_chkpt is None:
             self.apply(init_weights)
         else:
             drc_cwd          = os.getcwd()
             DRCCHKPT         = "chkpts"
             prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
-            fl_chkpt_prev    = f"{from_timestamp}.train.chkpt"
-            path_chkpt_prev  = os.path.join(prefixpath_chkpt, fl_chkpt_prev)
+            path_chkpt_prev  = os.path.join(prefixpath_chkpt, fl_chkpt)
             self.load_state_dict(torch.load(path_chkpt_prev))
 
 
@@ -267,7 +266,7 @@ class OnlineSiameseModel(nn.Module):
             set_seed(self.seed)
 
 
-    def init_params(self, from_timestamp = None):
+    def init_params(self, fl_chkpt = None):
         # Initialize weights or reuse weights from a timestamp...
         def init_weights(module):
             # Initialize conv2d with Kaiming method...
@@ -277,13 +276,13 @@ class OnlineSiameseModel(nn.Module):
                 # Set bias zero since batch norm is used...
                 module.bias.data.zero_()
 
-        if from_timestamp is None:
+        if fl_chkpt is None:
             self.apply(init_weights)
         else:
             drc_cwd          = os.getcwd()
             DRCCHKPT         = "chkpts"
             prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
-            fl_chkpt_prev    = f"{from_timestamp}.train.chkpt"
+            fl_chkpt_prev    = f"{fl_chkpt}.train.chkpt"
             path_chkpt_prev  = os.path.join(prefixpath_chkpt, fl_chkpt_prev)
             self.load_state_dict(torch.load(path_chkpt_prev))
 
