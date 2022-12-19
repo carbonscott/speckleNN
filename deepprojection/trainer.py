@@ -189,12 +189,17 @@ class OnlineTripletTrainer:
         return None
 
 
-    def save_checkpoint(self, timestamp):
+    def save_checkpoint(self, epoch = None):
         DRCCHKPT = "chkpts"
         drc_cwd = os.getcwd()
         prefixpath_chkpt = os.path.join(drc_cwd, DRCCHKPT)
         if not os.path.exists(prefixpath_chkpt): os.makedirs(prefixpath_chkpt)
-        fl_chkpt   = f"{timestamp}.train.chkpt"
+        fl_chkpt = self.config.timestamp
+
+        if epoch is not None:
+            fl_chkpt += f'.epoch={epoch}'
+            fl_chkpt += f'.chkpt'
+
         path_chkpt = os.path.join(prefixpath_chkpt, fl_chkpt)
 
         # Hmmm, DataParallel wrappers keep raw model object in .module attribute
