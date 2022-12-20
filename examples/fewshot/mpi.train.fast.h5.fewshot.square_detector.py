@@ -1,0 +1,189 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import os
+import logging
+import torch
+import socket
+import pickle
+import tqdm
+
+from deepprojection.datasets.lite    import SPIDataset                , TripletCandidate
+from deepprojection.model            import OnlineTripletSiameseModel , ConfigSiameseModel
+from deepprojection.trainer          import OnlineTripletTrainer      , ConfigTrainer
+from deepprojection.validator        import OnlineTripletLossValidator, ConfigValidator
+from deepprojection.encoders.convnet import FewShotModel              , ConfigEncoder, FewShotModel2
+from deepprojection.utils            import EpochManager              , MetaLog, init_logger, split_dataset, set_seed
+
+from datetime import datetime
+
+from image_preprocess_faulty_sq import DatasetPreprocess
+
+from mpi4py import MPI
+
+mpi_comm = MPI.COMM_WORLD
+mpi_rank = mpi_comm.Get_rank()
+
+
+# [[[ SEED ]]]
+seed = 0
+set_seed(seed)
+
+
+# [[[ CONFIG ]]]
+timestamp_prev = None
+fl_chkpt = None
+
+frac_train    = 0.5
+frac_validate = 0.5
+
+lr = 1e-3
+alpha = 0.02
+
+num_sample_per_label_train    = 20
+num_sample_train              = 30000
+num_sample_per_label_validate = 20
+num_sample_validate           = 10000
+
+size_batch = 20
+trans      = None
+
+# [[[ LOGGING ]]]
+if mpi_rank == 0:
+    timestamp = init_logger(log_name = 'train', returns_timestamp = True, saves_log = True)
+    print(timestamp)
+
+    # Clarify the purpose of this experiment...
+    hostname = socket.gethostname()
+    comments = f"""
+                Hostname: {hostname}.
+
+                Online training.
+
+                Sample size (train)                          : {num_sample_train}
+                Sample size (validate)                       : {num_sample_validate}
+                Sample size (candidates per class, train)    : {num_sample_per_label_train}
+                Sample size (candidates per class, validate) : {num_sample_per_label_validate}
+                Batch  size                                  : {size_batch}
+                Alpha                                        : {alpha}
+                lr                                           : {lr}
+                seed                                         : {seed}
+
+                """
+
+    # Create a metalog to the log file, explaining the purpose of this run...
+    metalog = MetaLog( comments = comments )
+    metalog.report()
+
+
+# [[[ DATASET ]]]
+# Set up parameters for an experiment...
+drc_dataset   = 'fastdata.h5'
+fl_dataset    = 'mini.sq.train.relabel.pickle'    # Raw, just give it a try
+path_dataset  = os.path.join(drc_dataset, fl_dataset)
+
+# Load raw data...
+with open(path_dataset, 'rb') as fh:
+    dataset_list = pickle.load(fh)
+
+# Split data...
+data_train   , data_val_and_test = split_dataset(dataset_list     , frac_train   , seed = None)
+data_validate, data_test         = split_dataset(data_val_and_test, frac_validate, seed = None)
+
+# Define the training set
+dataset_train = TripletCandidate( dataset_list          = data_train, 
+                                  num_sample            = num_sample_train,
+                                  num_sample_per_label  = num_sample_per_label_train, 
+                                  mpi_comm              = mpi_comm,
+                                  trans                 = None, )
+# dataset_train.report()
+
+# Define the training set
+dataset_validate = TripletCandidate( dataset_list          = data_validate, 
+                                     num_sample            = num_sample_validate,
+                                     num_sample_per_label  = num_sample_per_label_validate, 
+                                     mpi_comm              = mpi_comm,
+                                     trans                 = None, )
+# dataset_validate.report()
+
+# Preprocess dataset...
+# Data preprocessing can be lengthy and defined in dataset_preprocess.py
+img_orig               = dataset_train[0][1][0][0]   # idx, fetch img
+dataset_preproc        = DatasetPreprocess(img_orig)
+trans                  = dataset_preproc.config_trans()
+dataset_train.trans    = trans
+dataset_validate.trans = trans
+img_trans              = dataset_train[0][1][0][0]
+
+dataset_train.mpi_cache_dataset(mpi_batch_size = 20)
+dataset_validate.mpi_cache_dataset(mpi_batch_size = 20)
+
+
+if mpi_rank == 0:
+    MPI.Finalize()
+
+    # [[[ IMAGE ENCODER ]]]
+    # Config the encoder...
+    dim_emb        = 128
+    size_y, size_x = img_trans.shape[-2:]
+    config_encoder = ConfigEncoder( dim_emb = dim_emb,
+                                    size_y  = size_y,
+                                    size_x  = size_x,
+                                    isbias  = True )
+    ## encoder = FewShotModel(config_encoder)
+    encoder = FewShotModel2(config_encoder)
+
+
+    # [[[ MODEL ]]]
+    # Config the model...
+    config_siamese = ConfigSiameseModel( alpha = alpha, encoder = encoder, )
+    model = OnlineTripletSiameseModel(config_siamese)
+    model.init_params(fl_chkpt = fl_chkpt)
+
+
+    # [[[ TRAINER ]]]
+    # Config the trainer...
+    config_train = ConfigTrainer( timestamp     = timestamp,
+                                  num_workers   = 0,
+                                  batch_size    = size_batch,
+                                  pin_memory    = True,
+                                  shuffle       = False,
+                                  lr            = lr, 
+                                  logs_triplets = True,
+                                  tqdm_disable  = True)
+    trainer = OnlineTripletTrainer(model, dataset_train, config_train)
+
+
+    # [[[ VALIDATOR ]]]
+    config_validator = ConfigValidator( path_chkpt    = None,
+                                        num_workers   = 0,
+                                        batch_size    = size_batch,
+                                        pin_memory    = True,
+                                        shuffle       = False,
+                                        lr            = lr,
+                                        logs_triplets = True,
+                                        tqdm_disable  = True)  # Conv2d input needs one more dim for batch
+    validator = OnlineTripletLossValidator(model, dataset_validate, config_validator)
+
+
+    loss_train_hist = []
+    loss_validate_hist = []
+    loss_min_hist = []
+
+    # [[[ EPOCH MANAGER ]]]
+    epoch_manager = EpochManager( trainer   = trainer,
+                                  validator = validator, )
+
+    max_epochs = 1000
+    freq_save = 5
+    print(timestamp)
+    for epoch in tqdm.tqdm(range(max_epochs), disable=False):
+        if epoch > 0:
+            epoch_manager.trainer.config.logs_triplets   = False
+            epoch_manager.validator.config.logs_triplets = False
+
+        loss_train, loss_validate, loss_min = epoch_manager.run_one_epoch(epoch = epoch, returns_loss = True)
+
+        loss_train_hist.append(loss_train)
+        loss_validate_hist.append(loss_validate)
+        loss_min_hist.append(loss_min)
