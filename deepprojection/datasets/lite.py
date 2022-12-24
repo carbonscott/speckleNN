@@ -238,6 +238,10 @@ class TripletCandidate(Dataset):
                 #                                     ^
                 # Torch Channel ______________________|
 
+            # Normalize the image...
+            img  = img - img.mean()
+            img /= img.std()
+
             # Keep img in memory...
             img_nplist[i] = img
 
