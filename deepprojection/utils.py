@@ -463,9 +463,11 @@ class ConfusionMatrix:
 
 class TorchModelAttributeParser:
 
-    def __init__(self):
+    def __init__(self): return None
 
-        self.module_to_attr_dict = {
+    def reset_attr_dict(self):
+
+        module_to_attr_dict = {
             nn.Conv2d : {
                 "in_channels"  : None,
                 "out_channels" : None,
@@ -500,10 +502,14 @@ class TorchModelAttributeParser:
             },
         }
 
+        return module_to_attr_dict
+
 
     def parse(self, model):
+        module_to_attr_dict = self.reset_attr_dict()
+
         model_type = type(model)
-        attr_dict   = self.module_to_attr_dict.get(model_type, {})
+        attr_dict  = module_to_attr_dict.get(model_type, {})
 
         for attr in attr_dict.keys():
             attr_dict[attr] = getattr(model, attr, None)
@@ -524,6 +530,8 @@ class NNSize:
         self.method_dict = { nn.Conv2d    : self.get_shape_from_conv2d,
                              nn.MaxPool2d : self.get_shape_from_pool }
 
+        logger.info("___/ NEURAL NETWORK SHAPE \___")
+
         return None
 
 
@@ -531,9 +539,15 @@ class NNSize:
         for layer_name, (model_type, model_attr_tuple) in self.conv_dict.items():
             if model_type not in self.method_dict: continue
 
+            logger.info(f"layer: {layer_name}, {model_type}")
+            logger.info(f"in : {self.channels}, {self.size_y}, {self.size_x}")
+
             #  Obtain the size of the new volume...
             self.channels, self.size_y, self.size_x = \
                 self.method_dict[model_type](**model_attr_tuple)
+
+            logger.info(f"out: {self.channels}, {self.size_y}, {self.size_x}")
+            logger.info(f"")
 
         return self.channels, self.size_y, self.size_x
 

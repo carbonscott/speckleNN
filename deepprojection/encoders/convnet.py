@@ -476,12 +476,12 @@ class FewShotModel4(nn.Module):
 
             # CNN motif 2...
             nn.Conv2d( in_channels  = 32,
-                       out_channels = 32,
+                       out_channels = 1,
                        kernel_size  = 1,
                        stride       = 1,
                        padding      = 0,
                        bias         = bias, ),
-            nn.Conv2d( in_channels  = 32,
+            nn.Conv2d( in_channels  = 1,
                        out_channels = 64,
                        kernel_size  = 5,
                        stride       = 1,
@@ -495,12 +495,12 @@ class FewShotModel4(nn.Module):
 
             # CNN motif 3...
             nn.Conv2d( in_channels  = 64,
-                       out_channels = 64,
+                       out_channels = 1,
                        kernel_size  = 1,
                        stride       = 1,
                        padding      = 0,
                        bias         = bias, ),
-            nn.Conv2d( in_channels  = 64,
+            nn.Conv2d( in_channels  = 1,
                        out_channels = 128,
                        kernel_size  = 5,
                        stride       = 1,
