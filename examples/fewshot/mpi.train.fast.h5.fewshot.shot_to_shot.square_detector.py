@@ -7,12 +7,13 @@ import torch
 import socket
 import pickle
 import tqdm
+import numpy as np
 
 from deepprojection.datasets.lite    import SPIDataset                , TripletCandidate
 from deepprojection.model            import OnlineTripletSiameseModel , ConfigSiameseModel
 from deepprojection.trainer          import OnlineTripletTrainer      , ConfigTrainer
 from deepprojection.validator        import OnlineTripletLossValidator, ConfigValidator
-from deepprojection.encoders.convnet import FewShotModel              , ConfigEncoder, Hirotaka0122
+from deepprojection.encoders.convnet import FewShotModel              , ConfigEncoder, FewShotModel2, FewShotModel3, FewShotModel4
 from deepprojection.utils            import EpochManager              , MetaLog, init_logger, split_dataset, set_seed
 
 from datetime import datetime
@@ -90,6 +91,29 @@ with open(path_dataset, 'rb') as fh:
 data_train   , data_val_and_test = split_dataset(dataset_list     , frac_train   , seed = None)
 data_validate, data_test         = split_dataset(data_val_and_test, frac_validate, seed = None)
 
+# Add shot to shot fluctuation to data_train and data_validate...
+# Load photon count and probability
+photon_count_list, prob_list = np.load('image_distribution_by_photon_count.npy')
+
+def create_random_scale_function(photon_count_list, prob_list):
+    def random_scale_function(img):
+        idx_of_photon_count_list = np.random.choice(range(len(prob_list)),
+                                                    size    = 1,
+                                                    p       = prob_list,
+                                                    replace = True)
+        photon_count = photon_count_list[idx_of_photon_count_list]
+        scale_factor = photon_count / np.mean(photon_count_list)
+
+        return scale_factor * img
+
+    return random_scale_function
+
+random_scale_function = create_random_scale_function(photon_count_list, prob_list)
+
+data_train    = [ (random_scale_function(img), label, metadata) for img, label, metadata in data_train ]
+data_validate = [ (random_scale_function(img), label, metadata) for img, label, metadata in data_validate ]
+
+
 # Define the training set
 dataset_train = TripletCandidate( dataset_list          = data_train, 
                                   num_sample            = num_sample_train,
@@ -131,7 +155,9 @@ if mpi_rank == 0:
                                     size_x  = size_x,
                                     isbias  = False )
     ## encoder = FewShotModel(config_encoder)
-    encoder = Hirotaka0122(config_encoder)
+    ## encoder = FewShotModel2(config_encoder)
+    ## encoder = FewShotModel3(config_encoder)
+    encoder = FewShotModel4(config_encoder)
 
 
     # [[[ MODEL ]]]

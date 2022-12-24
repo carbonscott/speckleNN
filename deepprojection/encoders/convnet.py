@@ -215,7 +215,6 @@ class FewShotModel(nn.Module):
             nn.MaxPool2d( kernel_size = 2,
                           stride      = 2,
                           padding     = 0, ),
-            ## nn.Dropout(0.1),
 
             # CNN motif 2...
             nn.Conv2d( in_channels  = 32,
@@ -229,7 +228,6 @@ class FewShotModel(nn.Module):
             nn.MaxPool2d( kernel_size = 2,
                           stride      = 2,
                           padding     = 0, ),
-            ## nn.Dropout(0.1),
         )
 
         # Fetch all input arguments that define the layer...
@@ -293,7 +291,6 @@ class FewShotModel2(nn.Module):
             nn.MaxPool2d( kernel_size = 2,
                           stride      = 2,
                           padding     = 0, ),
-            ## nn.Dropout(0.1),
 
             # CNN motif 2...
             nn.Conv2d( in_channels  = 32,
@@ -307,7 +304,19 @@ class FewShotModel2(nn.Module):
             nn.MaxPool2d( kernel_size = 2,
                           stride      = 2,
                           padding     = 0, ),
-            ## nn.Dropout(0.1),
+
+            # CNN motif 3...
+            nn.Conv2d( in_channels  = 64,
+                       out_channels = 128,
+                       kernel_size  = 5,
+                       stride       = 1,
+                       padding      = 0,
+                       bias         = bias, ),
+            nn.PReLU(),
+            nn.BatchNorm2d( num_features = 128 ),
+            nn.MaxPool2d( kernel_size = 2,
+                          stride      = 2,
+                          padding     = 0, ),
         )
 
         # Fetch all input arguments that define the layer...
@@ -327,6 +336,204 @@ class FewShotModel2(nn.Module):
             nn.PReLU(),
             nn.Linear( in_features  = 512, 
                        out_features = dim_emb, 
+                       bias         = bias),
+        )
+
+
+    def encode(self, x):
+        x = self.feature_extractor(x)
+        x = x.view(-1, self.feature_size)
+        x = self.embed(x)
+
+        # L2 Normalize...
+        dnorm = torch.norm(x, dim = -1, keepdim = True)
+        x = x / dnorm
+
+        return x
+
+
+
+
+class FewShotModel3(nn.Module):
+    """ ... """
+
+    def __init__(self, config):
+        super().__init__()
+
+        size_y, size_x = config.size_y, config.size_x
+        dim_img        = size_y * size_x
+        bias           = config.isbias
+        dim_emb        = config.dim_emb
+
+        # Define the feature extraction layer...
+        in_channels = 1
+        self.feature_extractor = nn.Sequential(
+            # CNN motif 1...
+            nn.Conv2d( in_channels  = 1,
+                       out_channels = 32,
+                       kernel_size  = 5,
+                       stride       = 1,
+                       padding      = 0,
+                       bias         = bias, ),
+            nn.PReLU(),
+            nn.BatchNorm2d( num_features = 32 ),
+            nn.MaxPool2d( kernel_size = 2,
+                          stride      = 2,
+                          padding     = 0, ),
+
+            # CNN motif 2...
+            nn.Conv2d( in_channels  = 32,
+                       out_channels = 64,
+                       kernel_size  = 5,
+                       stride       = 1,
+                       padding      = 0,
+                       bias         = bias, ),
+            nn.PReLU(),
+            nn.BatchNorm2d( num_features = 64 ),
+            nn.MaxPool2d( kernel_size = 2,
+                          stride      = 2,
+                          padding     = 0, ),
+
+            # CNN motif 3...
+            nn.Conv2d( in_channels  = 64,
+                       out_channels = 128,
+                       kernel_size  = 5,
+                       stride       = 1,
+                       padding      = 0,
+                       bias         = bias, ),
+            nn.PReLU(),
+            nn.BatchNorm2d( num_features = 128 ),
+            nn.MaxPool2d( kernel_size = 2,
+                          stride      = 2,
+                          padding     = 0, ),
+        )
+
+        # Fetch all input arguments that define the layer...
+        attr_parser = TorchModelAttributeParser()
+        conv_dict = {}
+        for layer_name, model in self.feature_extractor.named_children():
+            conv_dict[layer_name] = attr_parser.parse(model)
+
+        # Calculate the output size...
+        self.feature_size = reduce(lambda x, y: x * y, NNSize(size_y, size_x, in_channels, conv_dict).shape())
+
+        # Define the embedding layer...
+        self.embed = nn.Sequential(
+            nn.Linear( in_features  = self.feature_size,
+                       out_features = self.feature_size // 3,
+                       bias         = bias),
+            nn.PReLU(),
+            nn.Linear( in_features  = self.feature_size // 3,
+                       out_features = self.feature_size // 9,
+                       bias         = bias),
+            nn.PReLU(),
+            nn.Linear( in_features  = self.feature_size // 9,
+                       out_features = dim_emb,
+                       bias         = bias),
+        )
+
+
+    def encode(self, x):
+        x = self.feature_extractor(x)
+        x = x.view(-1, self.feature_size)
+        x = self.embed(x)
+
+        # L2 Normalize...
+        dnorm = torch.norm(x, dim = -1, keepdim = True)
+        x = x / dnorm
+
+        return x
+
+
+
+
+class FewShotModel4(nn.Module):
+    """ ... """
+
+    def __init__(self, config):
+        super().__init__()
+
+        size_y, size_x = config.size_y, config.size_x
+        dim_img        = size_y * size_x
+        bias           = config.isbias
+        dim_emb        = config.dim_emb
+
+        # Define the feature extraction layer...
+        in_channels = 1
+        self.feature_extractor = nn.Sequential(
+            # CNN motif 1...
+            nn.Conv2d( in_channels  = 1,
+                       out_channels = 32,
+                       kernel_size  = 5,
+                       stride       = 1,
+                       padding      = 0,
+                       bias         = bias, ),
+            nn.PReLU(),
+            nn.BatchNorm2d( num_features = 32 ),
+            nn.MaxPool2d( kernel_size = 2,
+                          stride      = 2,
+                          padding     = 0, ),
+
+            # CNN motif 2...
+            nn.Conv2d( in_channels  = 32,
+                       out_channels = 32,
+                       kernel_size  = 1,
+                       stride       = 1,
+                       padding      = 0,
+                       bias         = bias, ),
+            nn.Conv2d( in_channels  = 32,
+                       out_channels = 64,
+                       kernel_size  = 5,
+                       stride       = 1,
+                       padding      = 0,
+                       bias         = bias, ),
+            nn.PReLU(),
+            nn.BatchNorm2d( num_features = 64 ),
+            nn.MaxPool2d( kernel_size = 2,
+                          stride      = 2,
+                          padding     = 0, ),
+
+            # CNN motif 3...
+            nn.Conv2d( in_channels  = 64,
+                       out_channels = 64,
+                       kernel_size  = 1,
+                       stride       = 1,
+                       padding      = 0,
+                       bias         = bias, ),
+            nn.Conv2d( in_channels  = 64,
+                       out_channels = 128,
+                       kernel_size  = 5,
+                       stride       = 1,
+                       padding      = 0,
+                       bias         = bias, ),
+            nn.PReLU(),
+            nn.BatchNorm2d( num_features = 128 ),
+            nn.MaxPool2d( kernel_size = 2,
+                          stride      = 2,
+                          padding     = 0, ),
+        )
+
+        # Fetch all input arguments that define the layer...
+        attr_parser = TorchModelAttributeParser()
+        conv_dict = {}
+        for layer_name, model in self.feature_extractor.named_children():
+            conv_dict[layer_name] = attr_parser.parse(model)
+
+        # Calculate the output size...
+        self.feature_size = reduce(lambda x, y: x * y, NNSize(size_y, size_x, in_channels, conv_dict).shape())
+
+        # Define the embedding layer...
+        self.embed = nn.Sequential(
+            nn.Linear( in_features  = self.feature_size,
+                       out_features = self.feature_size // 3,
+                       bias         = bias),
+            nn.PReLU(),
+            nn.Linear( in_features  = self.feature_size // 3,
+                       out_features = self.feature_size // 9,
+                       bias         = bias),
+            nn.PReLU(),
+            nn.Linear( in_features  = self.feature_size // 9,
+                       out_features = dim_emb,
                        bias         = bias),
         )
 
