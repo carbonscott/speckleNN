@@ -148,11 +148,11 @@ class TripletCandidate(Dataset):
                        num_sample_per_label  = 2,
                        trans                 = None,
                        mpi_comm              = None):
-        self.dataset_list          = dataset_list
-        self.num_sample            = num_sample
+        self.dataset_list         = dataset_list
+        self.num_sample           = num_sample
         self.num_sample_per_label = num_sample_per_label
-        self.trans                 = trans
-        self.mpi_comm              = mpi_comm
+        self.trans                = trans
+        self.mpi_comm             = mpi_comm
 
         # Set up mpi...
         if self.mpi_comm is not None:
@@ -231,16 +231,16 @@ class TripletCandidate(Dataset):
             if self.trans is not None:
                 img = self.trans(img)
 
+            # Normalize the image...
+            img  = img - img.mean()
+            img /= img.std()
+
             if i == 0:
                 # Preallocate a matrix to hold all data...
                 size_y, size_x = img.shape[-2:]
                 img_nplist = np.zeros((num_candidate, 1, size_y, size_x), dtype = np.float32)
                 #                                     ^
                 # Torch Channel ______________________|
-
-            # Normalize the image...
-            img  = img - img.mean()
-            img /= img.std()
 
             # Keep img in memory...
             img_nplist[i] = img
