@@ -449,12 +449,12 @@ class ConfusionMatrix:
 
         # Calculate metrics...
         tp, fp, tn, fn = confusion
-        accuracy    = (tp + tn) / (tp + tn + fp + fn)
-        precision   = tp / (tp + fp)
-        recall      = tp / (tp + fn)
-        specificity = tn / (tn + fp) if tn + fp > 0 else None
-        f1_inv      = (1 / precision + 1 / recall)
-        f1          = 2 / f1_inv
+        accuracy    = (tp + tn) / (tp + tn + fp + fn) if tp + tn + fp + fn > 0           else None
+        precision   = tp / (tp + fp)                  if tp + fp > 0                     else None
+        recall      = tp / (tp + fn)                  if tp + fn > 0                     else None
+        specificity = tn / (tn + fp)                  if tn + fp > 0                     else None
+        f1_inv      = (1 / precision + 1 / recall)    if not None in (precision, recall) else None
+        f1          = 2 / f1_inv                      if f1_inv is not None              else None
 
         return accuracy, precision, recall, specificity, f1
 
