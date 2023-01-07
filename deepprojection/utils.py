@@ -453,7 +453,7 @@ class ConfusionMatrix:
         precision   = tp / (tp + fp)                  if tp + fp > 0                     else None
         recall      = tp / (tp + fn)                  if tp + fn > 0                     else None
         specificity = tn / (tn + fp)                  if tn + fp > 0                     else None
-        f1_inv      = (1 / precision + 1 / recall)    if not None in (precision, recall) else None
+        f1_inv      = (1 / precision + 1 / recall)    if tp > 0                          else None
         f1          = 2 / f1_inv                      if f1_inv is not None              else None
 
         return accuracy, precision, recall, specificity, f1
