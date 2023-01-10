@@ -25,16 +25,16 @@ set_seed(seed)
 
 # [[[ CONFIG ]]]
 # [USER]
-timestamp = "2022_1230_1009_49"
-epoch     = 113
-tag       = "v2"
+timestamp = "2022_1225_0931_12"
+epoch     = 266
+tag       = "support_num_10"
 
 fl_chkpt = f"{timestamp}.epoch={epoch}.chkpt"
 
 # Define the test set
 # [USER]
 size_sample_query = 1000
-num_max_support   = 20
+num_max_support   = 10
 frac_support      = 0.4
 size_batch        = 100
 trans             = None
