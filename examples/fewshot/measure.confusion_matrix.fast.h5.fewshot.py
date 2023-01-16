@@ -86,8 +86,8 @@ for enum_pdb, pdb in enumerate(pdb_list):
 
     # Scan through a list of shot to shot fluc setting...
     # [USER INPUT]
-    for enum_photon, photon_exponent in enumerate(scan_rng):
-        photon_scale = 10 ** photon_exponent
+    for enum_photon, scaling_exponent in enumerate(scan_rng):
+        photon_scale = 10 ** scaling_exponent
 
         # Increase the photon intensities...
         dataset_rescale_list = [ (img * photon_scale, label, metadata) for (img, label, metadata) in dataset_list ]
@@ -107,7 +107,7 @@ for enum_pdb, pdb in enumerate(pdb_list):
             _, hit = label
             support_hit_to_idx_dict[hit].append(enum_data)
 
-        for hit, idx_in_data_support in support_hit_to_idx_dict.items():
+        for hit, idx_support in support_hit_to_idx_dict.items():
             if len(support_hit_to_idx_dict[hit]) > num_max_support:
                 support_hit_to_idx_dict[hit] = random.sample(support_hit_to_idx_dict[hit], k = num_max_support)
 
@@ -193,22 +193,38 @@ for enum_pdb, pdb in enumerate(pdb_list):
 
 
         # [[[ METRIC ]]]
-        diff_query_support_hit_to_idx_dict = {}
+        diff_query_support_dict = {}
         for hit in hit_list:
-            diff_query_support_hit_to_idx_dict[hit] = query_batch_emb[:,None] - support_batch_emb_dict[hit]
+            # N: number of examples.
+            # S: number of support examples
+            # E: dimension of an embedding
+            # diff_query_support_dict[hit]: N x S x E
+            # query_batch_emb[:, None]    : N x 1 x E
+            # support_batch_emb_dict[hit] :     S x E
+            diff_query_support_dict[hit] = query_batch_emb[:,None] - support_batch_emb_dict[hit]
 
         dist_dict = {}
         for hit in hit_list:
-            dist_dict[hit] = torch.sum(diff_query_support_hit_to_idx_dict[hit] * diff_query_support_hit_to_idx_dict[hit], dim = -1)
+            # N: number of examples.
+            # S: number of support examples
+            # dist_dict[hit]: N x S
+            dist_dict[hit] = torch.sum(diff_query_support_dict[hit] * diff_query_support_dict[hit], dim = -1)
 
-        # Use Torch tensor as a facilitate to get the predicted hit...
+        # Use enumeration as an intermediate to obtain predicted hits...
         enum_to_hit_dict = {}
+
+        # Encode hit type with enum
+        # enum 0 : hit 1
+        # enum 1 : hit 2
         for enum_hit, hit in enumerate(hit_list):
             enum_to_hit_dict[enum_hit] = hit
 
-            # Fetch the values and indices the support with the min dist when measured against the query...
+            # Fetch the values and indices of the closet support for the query...
             min_support_val, min_support_idx = dist_dict[hit].min(dim = -1)
             if enum_hit == 0:
+                # H: number of hit types (single vs multi)
+                # N: number of examples
+                # min_support_tensor: H x N
                 min_support_tensor = torch.zeros((len(hit_list), *min_support_val.shape))
 
             min_support_tensor[enum_hit] = min_support_val
@@ -227,10 +243,10 @@ for enum_pdb, pdb in enumerate(pdb_list):
         for pred_hit, real_hit in zip(pred_hit_list, real_hit_list):
             res_dict[pred_hit][real_hit].append( None )
 
-        pdb_photon_res_dict[pdb].append([photon_exponent, res_dict])
+        pdb_photon_res_dict[pdb].append([scaling_exponent, res_dict])
 
         acc = ConfusionMatrix(res_dict).get_metrics(1)[0]
-        print(f"Working on {pdb}, {photon_exponent}, {acc}...")
+        print(f"Working on {pdb}, {scaling_exponent}, {acc}...")
 
 
     # [USER INPUT]
