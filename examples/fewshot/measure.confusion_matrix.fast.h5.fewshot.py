@@ -25,16 +25,16 @@ set_seed(seed)
 
 # [[[ CONFIG ]]]
 # [USER]
-timestamp = "2022_1225_0931_12"
-epoch     = 266
-tag       = "support_num_10"
+timestamp       = "2023_0101_0856_44"
+epoch           = 71
+num_max_support = 1
+tag             = f"seed_{seed}.support_{num_max_support}"
 
 fl_chkpt = f"{timestamp}.epoch={epoch}.chkpt"
 
 # Define the test set
 # [USER]
 size_sample_query = 1000
-num_max_support   = 10
 frac_support      = 0.4
 size_batch        = 100
 trans             = None
@@ -70,6 +70,11 @@ pdb_candidate_list = size_pdb_dict[bucket]
 num_pdb_for_test = 100
 num_pdb_for_test = min(len(pdb_candidate_list), num_pdb_for_test)
 pdb_list = random.sample(pdb_candidate_list, k = num_pdb_for_test)
+
+## # [DEBUG] Remove those lines when not debug.
+## pdb_list = [ "6N38" ] * 5
+## scan_rng = [0.0, 1.0]
+
 pdb_photon_res_dict = {}
 for enum_pdb, pdb in enumerate(pdb_list):
     pdb_photon_res_dict[pdb] = []
@@ -112,10 +117,11 @@ for enum_pdb, pdb in enumerate(pdb_list):
                 support_hit_to_idx_dict[hit] = random.sample(support_hit_to_idx_dict[hit], k = num_max_support)
 
         # Form query dataset...
-        dataset_query = SPIOnlineDataset( dataset_list   = data_query, 
-                                          size_sample    = size_sample_query,
-                                          joins_metadata = False,
-                                          trans          = trans, )
+        dataset_query = SPIOnlineDataset( dataset_list       = data_query,
+                                          prints_cache_state = False,
+                                          size_sample        = size_sample_query,
+                                          joins_metadata     = False,
+                                          trans              = trans, )
 
         if enum_pdb == 0 and enum_photon == 0:
             # [[[ Preprocess dataset ]]]
@@ -145,6 +151,12 @@ for enum_pdb, pdb in enumerate(pdb_list):
             model = OnlineTripletSiameseModel(config_siamese)
             model.init_params(fl_chkpt = fl_chkpt)
             model.to(device = device)
+
+        # Set seed for reproducibility
+        set_seed(seed)
+
+        # Cache it otherwise it changes each time it is called...
+        dataset_query.cache_dataset()
 
         # [[[ EMBEDDING (SUPPORT) ]]]
         support_batch_emb_dict = { hit : None for hit in hit_list }
@@ -195,19 +207,19 @@ for enum_pdb, pdb in enumerate(pdb_list):
         # [[[ METRIC ]]]
         diff_query_support_dict = {}
         for hit in hit_list:
-            # N: number of examples.
+            # Q: number of query examples.
             # S: number of support examples
             # E: dimension of an embedding
-            # diff_query_support_dict[hit]: N x S x E
-            # query_batch_emb[:, None]    : N x 1 x E
+            # diff_query_support_dict[hit]: Q x S x E
+            # query_batch_emb[:, None]    : Q x 1 x E
             # support_batch_emb_dict[hit] :     S x E
             diff_query_support_dict[hit] = query_batch_emb[:,None] - support_batch_emb_dict[hit]
 
         dist_dict = {}
         for hit in hit_list:
-            # N: number of examples.
+            # Q: number of query examples.
             # S: number of support examples
-            # dist_dict[hit]: N x S
+            # dist_dict[hit]: Q x S
             dist_dict[hit] = torch.sum(diff_query_support_dict[hit] * diff_query_support_dict[hit], dim = -1)
 
         # Use enumeration as an intermediate to obtain predicted hits...
@@ -219,7 +231,7 @@ for enum_pdb, pdb in enumerate(pdb_list):
         for enum_hit, hit in enumerate(hit_list):
             enum_to_hit_dict[enum_hit] = hit
 
-            # Fetch the values and indices of the closet support for the query...
+            # Fetch the values and indices of the closet support for this hit type for the query...
             min_support_val, min_support_idx = dist_dict[hit].min(dim = -1)
             if enum_hit == 0:
                 # H: number of hit types (single vs multi)
@@ -230,7 +242,10 @@ for enum_pdb, pdb in enumerate(pdb_list):
             min_support_tensor[enum_hit] = min_support_val
 
         # Obtain the predicted hit...
+        # Obtain the min among examples across all hit type (dim = 0)
         pred_hit_as_enum_list = min_support_tensor.min(dim = 0)[1]
+
+        # Obtain the predicted hit for each input example
         pred_hit_list = [ enum_to_hit_dict[enum.item()] for enum in pred_hit_as_enum_list ]
 
         # Obtain the real hit...

@@ -335,6 +335,8 @@ class SPIOnlineDataset(Dataset):
                        size_sample, 
                        size_sample_per_class = None, 
                        trans                 = None, 
+                       normalizes_img        = True,
+                       prints_cache_state    = True,
                        allows_cache_trans    = False,
                        seed                  = None, 
                        joins_metadata        = True,
@@ -343,6 +345,8 @@ class SPIOnlineDataset(Dataset):
         self.size_sample           = size_sample
         self.size_sample_per_class = size_sample_per_class
         self.dataset_list          = dataset_list
+        self.normalizes_img        = normalizes_img
+        self.prints_cache_state    = prints_cache_state
         self.trans                 = trans
         self.allows_cache_trans    = allows_cache_trans
         self.joins_metadata        = joins_metadata
@@ -406,7 +410,8 @@ class SPIOnlineDataset(Dataset):
         for idx in idx_list:
             if idx in self.dataset_cache_dict: continue
 
-            print(f"Cacheing data point {idx}...")
+            if self.prints_cache_state:
+                print(f"Cacheing data point {idx}...")
 
             img, label, metadata = self.get_data(idx)
             self.dataset_cache_dict[idx] = (img, label, metadata)
@@ -503,10 +508,11 @@ class SPIOnlineDataset(Dataset):
         img, label, metadata = self.dataset_cache_dict[idx] if idx in self.dataset_cache_dict \
                                                             else self.get_data(idx)
 
-        # Normalize input image...
-        img_mean = np.mean(img)
-        img_std  = np.std(img)
-        img      = (img - img_mean) / img_std
+        if self.normalizes_img:
+            # Normalize input image...
+            img_mean = np.mean(img)
+            img_std  = np.std(img)
+            img      = (img - img_mean) / img_std
 
         if self.joins_metadata: metadata = ' '.join(metadata)
 
