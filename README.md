@@ -1,8 +1,8 @@
-# Deepprojection
+# speckleNN
 
-![](./figures/deepprojection.github.01.png)
+![](./figures/speckleNN.png)
 
-Deepprojection is a hit classifier for single particle imaging (SPI)
+`speckleNN` is a hit classifier for single particle imaging (SPI)
 experiments.  The primary goal of the classifier is to identify *single-hit*s in
 a dataset.  The classifier achieved an accuracy of 99%, which was trained on 200
 experimental scattering images and tested against 140 other images.  The
@@ -16,13 +16,13 @@ classifier can perform classification at nearly 450Hz on the same GPU (1080Ti).
 - Direct from github with `pip` (Recommended)
 
   ```bash
-  pip install git+https://github.com/carbonscott/deepprojection --upgrade --user
+  pip install git+https://github.com/carbonscott/speckleNN --upgrade --user
   ```
 
 - Download and pip
 
   ```bash
-  cd <path_to_deepprojection>    # e.g. cd $HOME/codes/deepprojection
+  cd <path_to_speckleNN>    # e.g. cd $HOME/codes/speckleNN
 
   pip install . --user
   ```
@@ -30,7 +30,7 @@ classifier can perform classification at nearly 450Hz on the same GPU (1080Ti).
 - Download and change `PYTHONPATH`
 
   ```bash
-  export PYTHONPATH="<path_to_deepprojection>:$PYTHONPATH"
+  export PYTHONPATH="<path_to_speckleNN>:$PYTHONPATH"
   ```
 
 
@@ -75,7 +75,7 @@ conda install -c lcls-rhel7 psana-conda
 ### Three scenarios
 
 Each scattering image, captured by a PnCCD detector, consists of four panels.
-Deepprojection classifier is able to perform training and inference on
+speckleNN classifier is able to perform training and inference on
 **panels**, **stacks of panels**, and **whole images**, respectively.  
 
 ### Experiment vs Simulation
