@@ -240,7 +240,7 @@ class FewShotModel(nn.Module):
         self.feature_size = reduce(lambda x, y: x * y, NNSize(size_y, size_x, in_channels, conv_dict).shape())
 
         # Define the embedding layer...
-        self.embed = nn.Sequential(
+        self.fc = nn.Sequential(
             nn.Linear( in_features  = self.feature_size, 
                        out_features = 512, 
                        bias         = bias),
@@ -254,7 +254,7 @@ class FewShotModel(nn.Module):
     def encode(self, x):
         x = self.feature_extractor(x)
         x = x.view(-1, self.feature_size)
-        x = self.embed(x)
+        x = self.fc(x)
 
         # L2 Normalize...
         dnorm = torch.norm(x, dim = -1, keepdim = True)
