@@ -12,6 +12,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from math import floor, ceil
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -578,12 +579,24 @@ class NNSize:
         out_channels = self.channels
         kernel_size  = kwargs["kernel_size"]
         stride       = kwargs["stride"]
+        padding      = kwargs["padding"]
+        dilation     = kwargs["dilation"]
+        ceil_mode    = kwargs["ceil_mode"]
 
-        kernel_size = kernel_size[0] if isinstance(kernel_size, tuple) else kernel_size
-        stride      = stride[0]      if isinstance(stride     , tuple) else stride
+        if isinstance(kernel_size, (int, float, str, bool)):
+            kernel_size = (kernel_size, kernel_size)
+        if isinstance(stride, (int, float, str, bool)):
+            stride = (stride, stride)
+        if isinstance(padding, (int, float, str, bool)):
+            padding = (padding, padding)
+        if isinstance(dilation, (int, float, str, bool)):
+            dilation = (dilation, dilation)
 
-        out_size_y = (size_y - kernel_size) // stride + 1
-        out_size_x = (size_x - kernel_size) // stride + 1
+        out_size_y = (size_y + 2 * padding[0] - dilation[0] * (kernel_size[0] - 1) - 1) / stride[0] + 1
+        out_size_x = (size_x + 2 * padding[1] - dilation[1] * (kernel_size[1] - 1) - 1) / stride[1] + 1
+
+        out_size_y = ceil(out_size_y) if ceil_mode else floor(out_size_y)
+        out_size_x = ceil(out_size_x) if ceil_mode else floor(out_size_x)
 
         return out_channels, out_size_y, out_size_x
 
